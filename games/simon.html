@@ -1,0 +1,67 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+:root{--ac:#0072ff;--bg:#060810}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);color:#f2f2f4;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;touch-action:none;user-select:none}
+#status{font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.45;min-height:16px}
+#grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:min(280px,80vw)}
+.sb{height:clamp(70px,20vw,110px);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;cursor:pointer;transition:background .1s,transform .1s;border:2px solid}
+.sb:active{transform:scale(.94)}
+#ov{position:fixed;inset:0;background:rgba(6,6,8,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;backdrop-filter:blur(6px);z-index:99}
+#ov.show{display:flex}
+.ovl{font-size:10px;letter-spacing:3px;text-transform:uppercase;opacity:.45}
+#ovn{font-size:clamp(58px,18vw,90px);font-weight:700;color:var(--ac);line-height:1;letter-spacing:-3px}
+.ovbtns{display:flex;gap:10px;margin-top:10px}
+.obtn{padding:12px 26px;border-radius:10px;border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+#br{background:var(--ac);color:#fff}#bn{background:rgba(255,255,255,.1);color:#f2f2f4;border:1px solid rgba(255,255,255,.12)}
+</style></head><body>
+<div id="status">Смотри…</div>
+<div id="grid"></div>
+<div id="ov">
+  <div class="ovl">дошёл до</div><div id="ovn">0</div><div class="ovl">шагов</div>
+  <div class="ovbtns"><button class="obtn" id="br">Ещё раз</button><button class="obtn" id="bn">Дальше →</button></div>
+</div>
+<script>
+window.addEventListener('message',e=>{
+  if(e.data.type==='init'){if(e.data.accent)document.documentElement.style.setProperty('--ac',e.data.accent);if(e.data.bg)document.body.style.background=e.data.bg;}
+  if(e.data.type==='start'){hidOv();start();}
+});
+window.addEventListener('load',()=>{parent.postMessage({type:'ready'},'*');setTimeout(start,100);});
+function sc(n){parent.postMessage({type:'score',value:n},'*');}
+function hidOv(){document.getElementById('ov').classList.remove('show');}
+document.getElementById('br').onclick=()=>{hidOv();start();};
+document.getElementById('bn').onclick=()=>parent.postMessage({type:'next'},'*');
+
+const CL=['#ff3c5f','#3c8fff','#00e5a0','#ffe44d'],EM=['🔴','🔵','🟢','🟡'];
+let seq=[],user=[],showing=false;
+const g=document.getElementById('grid');
+
+// Build buttons
+CL.forEach((c,i)=>{
+  const b=document.createElement('div');b.className='sb';b.id='sb'+i;
+  b.style.background=c+'22';b.style.borderColor=c+'55';b.textContent=EM[i];
+  b.addEventListener('click',()=>{if(!showing)press(i);});
+  g.appendChild(b);
+});
+
+function flash(i,on){const b=document.getElementById('sb'+i);b.style.background=on?CL[i]+'cc':CL[i]+'22';b.style.transform=on?'scale(1.06)':'scale(1)';}
+function setStatus(t){document.getElementById('status').textContent=t;}
+
+function start(){seq=[];user=[];showing=false;sc(0);setTimeout(addShow,400);}
+function addShow(){
+  showing=true;setStatus('Смотри…');seq.push(Math.floor(Math.random()*4));
+  let k=0;
+  const iv=setInterval(()=>{
+    if(k>0)flash(seq[k-1],false);
+    if(k<seq.length){setTimeout(()=>flash(seq[k],true),100);k++;}
+    else{clearInterval(iv);setTimeout(()=>{showing=false;user=[];setStatus('Твоя очередь!');},400);}
+  },700);
+}
+function press(i){
+  flash(i,true);setTimeout(()=>flash(i,false),200);
+  user.push(i);const p=user.length-1;
+  if(user[p]!==seq[p]){setStatus('❌ Ошибка!');setTimeout(()=>{document.getElementById('ovn').textContent=seq.length-1;document.getElementById('ov').classList.add('show');parent.postMessage({type:'gameover',value:seq.length-1},'*');},500);return;}
+  if(user.length===seq.length){sc(seq.length);setTimeout(addShow,500);}
+}
+</script></body></html>

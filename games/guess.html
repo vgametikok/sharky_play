@@ -1,0 +1,56 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+:root{--ac:#ff3c5f;--bg:#0d080a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);color:#f2f2f4;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
+.wrap{display:flex;flex-direction:column;align-items:center;gap:16px;width:min(340px,90vw)}
+.num{font-size:clamp(48px,16vw,72px);font-weight:700;color:var(--ac);line-height:1;letter-spacing:-3px}
+.hint{font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:.5;min-height:18px}
+.row{display:flex;gap:10px;width:100%}
+input{flex:1;background:#0f0f18;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;color:#f2f2f4;font-size:22px;font-weight:700;text-align:center;padding:12px;outline:none;-webkit-appearance:none}
+input:focus{border-color:var(--ac)}
+button.ok{padding:12px 18px;border-radius:10px;border:none;background:var(--ac);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+#ov{position:fixed;inset:0;background:rgba(6,6,8,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;backdrop-filter:blur(6px);z-index:99}
+#ov.show{display:flex}
+.ovl{font-size:10px;letter-spacing:3px;text-transform:uppercase;opacity:.45}
+#ovn{font-size:clamp(58px,18vw,90px);font-weight:700;color:var(--ac);line-height:1;letter-spacing:-3px}
+.ovbtns{display:flex;gap:10px;margin-top:10px}
+.obtn{padding:12px 26px;border-radius:10px;border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+#br{background:var(--ac);color:#fff}#bn{background:rgba(255,255,255,.1);color:#f2f2f4;border:1px solid rgba(255,255,255,.12)}
+</style></head><body>
+<div class="wrap">
+  <div class="num">1–100</div>
+  <div class="hint" id="hint">Угадай число</div>
+  <div class="row">
+    <input id="inp" type="number" min="1" max="100" placeholder="?" inputmode="numeric">
+    <button class="ok" id="ok">ОК</button>
+  </div>
+</div>
+<div id="ov">
+  <div class="ovl">угадал за</div><div id="ovn">0</div><div class="ovl">попыток</div>
+  <div class="ovbtns"><button class="obtn" id="br">Ещё раз</button><button class="obtn" id="bn">Дальше →</button></div>
+</div>
+<script>
+window.addEventListener('message',e=>{
+  if(e.data.type==='init'){if(e.data.accent)document.documentElement.style.setProperty('--ac',e.data.accent);if(e.data.bg)document.body.style.background=e.data.bg;}
+  if(e.data.type==='start'){hidOv();start();}
+});
+window.addEventListener('load',()=>{parent.postMessage({type:'ready'},'*');setTimeout(start,100);});
+function sc(n){parent.postMessage({type:'score',value:n},'*');}
+function hidOv(){document.getElementById('ov').classList.remove('show');}
+document.getElementById('br').onclick=()=>{hidOv();start();};
+document.getElementById('bn').onclick=()=>parent.postMessage({type:'next'},'*');
+
+let secret,attempts;
+function start(){secret=Math.floor(Math.random()*100)+1;attempts=0;sc(0);document.getElementById('hint').textContent='Угадай число';document.getElementById('hint').style.color='';document.getElementById('inp').value='';}
+function guess(){
+  const v=parseInt(document.getElementById('inp').value);
+  if(isNaN(v)||v<1||v>100)return;
+  attempts++;sc(attempts);document.getElementById('inp').value='';
+  if(v===secret){document.getElementById('ovn').textContent=attempts;document.getElementById('ov').classList.add('show');parent.postMessage({type:'gameover',value:attempts},'*');return;}
+  const h=document.getElementById('hint');h.textContent=v<secret?'📈 Больше!':'📉 Меньше!';h.style.color=v<secret?'#00e5a0':'#ff3c5f';
+}
+document.getElementById('ok').onclick=guess;
+document.getElementById('inp').addEventListener('keydown',e=>{if(e.key==='Enter')guess();});
+</script></body></html>

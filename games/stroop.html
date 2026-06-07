@@ -1,0 +1,68 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+:root{--ac:#00c6ff;--bg:#060d14}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);color:#f2f2f4;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none}
+.wrap{display:flex;flex-direction:column;align-items:center;gap:16px;width:min(340px,92vw)}
+#word{font-size:clamp(32px,11vw,52px);font-weight:700;letter-spacing:-1px;text-align:center;padding:8px 0}
+.hint{font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.4;text-align:center}
+#grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.cbtn{padding:14px 8px;border-radius:10px;border:2px solid;background:transparent;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:transform .1s,background .12s}
+.cbtn:active{transform:scale(.92)}
+#tbar{position:fixed;bottom:0;left:0;height:3px;background:var(--ac);width:100%;z-index:5}
+#ov{position:fixed;inset:0;background:rgba(6,6,8,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;backdrop-filter:blur(6px);z-index:99}
+#ov.show{display:flex}
+.ovl{font-size:10px;letter-spacing:3px;text-transform:uppercase;opacity:.45}
+#ovn{font-size:clamp(58px,18vw,90px);font-weight:700;color:var(--ac);line-height:1;letter-spacing:-3px}
+.ovbtns{display:flex;gap:10px;margin-top:10px}
+.obtn{padding:12px 26px;border-radius:10px;border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+#br{background:var(--ac);color:#000}#bn{background:rgba(255,255,255,.1);color:#f2f2f4;border:1px solid rgba(255,255,255,.12)}
+</style></head><body>
+<div class="wrap">
+  <div class="hint">Нажми цвет ЧЕРНИЛ, не смысл слова</div>
+  <div id="word">ЦВЕТ</div>
+  <div id="grid"></div>
+</div>
+<div id="tbar"></div>
+<div id="ov">
+  <div class="ovl">правильных</div><div id="ovn">0</div><div class="ovl">очков</div>
+  <div class="ovbtns"><button class="obtn" id="br">Ещё раз</button><button class="obtn" id="bn">Дальше →</button></div>
+</div>
+<script>
+window.addEventListener('message',e=>{
+  if(e.data.type==='init'){if(e.data.accent)document.documentElement.style.setProperty('--ac',e.data.accent);if(e.data.bg)document.body.style.background=e.data.bg;}
+  if(e.data.type==='start'){hidOv();start();}
+});
+window.addEventListener('load',()=>{parent.postMessage({type:'ready'},'*');setTimeout(start,100);});
+function sc(n){parent.postMessage({type:'score',value:n},'*');}
+function hidOv(){document.getElementById('ov').classList.remove('show');}
+document.getElementById('br').onclick=()=>{hidOv();start();};
+document.getElementById('bn').onclick=()=>parent.postMessage({type:'next'},'*');
+
+const COLS=[{n:'КРАСНЫЙ',c:'#ff3c5f'},{n:'СИНИЙ',c:'#3c8fff'},{n:'ЗЕЛЁНЫЙ',c:'#00e5a0'},{n:'ЖЁЛТЫЙ',c:'#ffe44d'}];
+let score=0,tl=20,tick,correctColor='';
+function start(){
+  score=0;tl=20;sc(0);
+  const bar=document.getElementById('tbar');bar.style.transition='none';bar.style.width='100%';
+  clearInterval(tick);tick=setInterval(()=>{tl--;if(tl<=0){clearInterval(tick);document.getElementById('ovn').textContent=score;document.getElementById('ov').classList.add('show');parent.postMessage({type:'gameover',value:score},'*');}},1000);
+  requestAnimationFrame(()=>{bar.style.transition='width 20s linear';bar.style.width='0%';});
+  nextQ();
+}
+function nextQ(){
+  const word=COLS[Math.floor(Math.random()*4)];
+  let inkIdx;do{inkIdx=Math.floor(Math.random()*4);}while(COLS[inkIdx].c===word.c);
+  const ink=COLS[inkIdx];
+  correctColor=ink.c;
+  document.getElementById('word').textContent=word.n;document.getElementById('word').style.color=ink.c;
+  const g=document.getElementById('grid');g.innerHTML='';
+  COLS.forEach(col=>{
+    const b=document.createElement('button');b.className='cbtn';
+    b.style.borderColor=col.c;b.style.color=col.c;b.textContent=col.n;
+    b.addEventListener('click',()=>{if(col.c===correctColor){score++;sc(score);b.style.background=col.c+'33';}else{b.style.background='rgba(255,60,95,.2)';}setTimeout(nextQ,180);});
+    b.addEventListener('touchstart',()=>b.style.transform='scale(.92)',{passive:true});
+    b.addEventListener('touchend',()=>b.style.transform='',{passive:true});
+    g.appendChild(b);
+  });
+}
+</script></body></html>

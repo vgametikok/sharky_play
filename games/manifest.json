@@ -1,0 +1,16 @@
+{
+  "games": [
+    { "id":"tap",       "author":"sharky",  "title":"Поймай!",          "accent":"#ff3c5f", "bg":"#0d080f", "scoreLabel":"тапов",          "emoji":"🎯", "plays":"12.4K", "src":"games/tap.html" },
+    { "id":"reaction",  "author":"sharky",  "title":"Реакция",          "accent":"#00e5a0", "bg":"#070e0b", "scoreLabel":"мс",             "emoji":"⚡", "plays":"8.1K",  "src":"games/reaction.html" },
+    { "id":"avoid",     "author":"sharky",  "title":"Не задень",        "accent":"#ffe44d", "bg":"#0d0c06", "scoreLabel":"сек",            "emoji":"🟡", "plays":"6.7K",  "src":"games/avoid.html" },
+    { "id":"memory",    "author":"sharky",  "title":"Память",           "accent":"#7b5cff", "bg":"#09070f", "scoreLabel":"пар",            "emoji":"🧠", "plays":"9.3K",  "src":"games/memory.html" },
+    { "id":"guess",     "author":"sharky",  "title":"Угадай число",     "accent":"#ff3c5f", "bg":"#0d080a", "scoreLabel":"попыток",        "emoji":"🔢", "plays":"5.5K",  "src":"games/guess.html" },
+    { "id":"snake",     "author":"sharky",  "title":"Змейка",           "accent":"#00e5a0", "bg":"#070e0b", "scoreLabel":"очков",          "emoji":"🐍", "plays":"14.2K", "src":"games/snake.html" },
+    { "id":"stroop",    "author":"pixelforge", "title":"Цвет или слово?",  "accent":"#00c6ff", "bg":"#060d14", "scoreLabel":"очков",          "emoji":"🎨", "plays":"7.2K",  "src":"games/stroop.html" },
+    { "id":"simon",     "author":"pixelforge", "title":"Саймон",           "accent":"#0072ff", "bg":"#060810", "scoreLabel":"шагов",          "emoji":"💡", "plays":"6.1K",  "src":"games/simon.html" },
+    { "id":"mathblitz", "author":"pixelforge", "title":"Матем-блиц",       "accent":"#00e5d4", "bg":"#06100f", "scoreLabel":"ответов",        "emoji":"➕", "plays":"4.9K",  "src":"games/mathblitz.html" },
+    { "id":"mole",      "author":"arcadelab",  "title":"Крот!",            "accent":"#f7971e", "bg":"#100a04", "scoreLabel":"попаданий",      "emoji":"🦔", "plays":"11.3K", "src":"games/mole.html" },
+    { "id":"flappy",    "author":"arcadelab",  "title":"Флаппи",           "accent":"#ffd200", "bg":"#0a0a04", "scoreLabel":"очков",          "emoji":"🐤", "plays":"9.8K",  "src":"games/flappy.html" },
+    { "id":"code",      "author":"arcadelab",  "title":"Запомни код",      "accent":"#ff9a00", "bg":"#100804", "scoreLabel":"раундов",        "emoji":"🔐", "plays":"3.7K",  "src":"games/code.html" }
+  ]
+}

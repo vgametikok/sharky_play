@@ -1,0 +1,57 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+:root{--ac:#ff3c5f;--bg:#0d080f}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);color:#f2f2f4;font-family:system-ui,sans-serif;touch-action:none;-webkit-font-smoothing:antialiased;user-select:none}
+#arena{width:100%;height:100%;position:relative;overflow:hidden}
+.tgt{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .08s;font-size:24px}
+.tgt:active{transform:scale(.8)!important}
+#tbar{position:fixed;bottom:0;left:0;height:3px;background:var(--ac);width:100%;z-index:5}
+#ov{position:fixed;inset:0;background:rgba(6,6,8,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;backdrop-filter:blur(6px);z-index:99}
+#ov.show{display:flex}
+.ovl{font-size:10px;letter-spacing:3px;text-transform:uppercase;opacity:.45}
+#ovn{font-size:clamp(58px,18vw,90px);font-weight:700;color:var(--ac);line-height:1;letter-spacing:-3px}
+.ovbtns{display:flex;gap:10px;margin-top:10px}
+.obtn{padding:12px 26px;border-radius:10px;border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:transform .1s}
+.obtn:active{transform:scale(.92)}
+#br{background:var(--ac);color:#fff}
+#bn{background:rgba(255,255,255,.1);color:#f2f2f4;border:1px solid rgba(255,255,255,.12)}
+</style></head><body>
+<div id="arena"></div>
+<div id="tbar"></div>
+<div id="ov">
+  <div class="ovl">результат</div><div id="ovn">0</div><div class="ovl" id="ovs">тапов</div>
+  <div class="ovbtns"><button class="obtn" id="br">Ещё раз</button><button class="obtn" id="bn">Дальше →</button></div>
+</div>
+<script>
+window.addEventListener('message',e=>{
+  if(e.data.type==='init'){if(e.data.accent)document.documentElement.style.setProperty('--ac',e.data.accent);if(e.data.bg)document.body.style.background=e.data.bg;}
+  if(e.data.type==='start'){hidOv();start();}
+});
+window.addEventListener('load',()=>{parent.postMessage({type:'ready'},'*');setTimeout(start,100);});
+function sc(n){parent.postMessage({type:'score',value:n},'*');}
+function go(n){document.getElementById('ovn').textContent=n;document.getElementById('ov').classList.add('show');parent.postMessage({type:'gameover',value:n},'*');}
+function hidOv(){document.getElementById('ov').classList.remove('show');}
+document.getElementById('br').onclick=()=>{hidOv();start();};
+document.getElementById('bn').onclick=()=>parent.postMessage({type:'next'},'*');
+
+let score=0,tl=20,tick=null;
+function start(){
+  score=0;tl=20;sc(0);
+  const a=document.getElementById('arena');a.innerHTML='';
+  const bar=document.getElementById('tbar');bar.style.transition='none';bar.style.width='100%';
+  spawn();
+  clearInterval(tick);tick=setInterval(()=>{tl--;if(tl<=0){clearInterval(tick);a.querySelector('.tgt')?.remove();go(score);}},1000);
+  requestAnimationFrame(()=>{bar.style.transition='width 20s linear';bar.style.width='0%';});
+}
+function spawn(){
+  document.querySelector('.tgt')?.remove();
+  const t=document.createElement('div');t.className='tgt';
+  const sz=Math.random()*28+44;
+  const W=window.innerWidth,H=window.innerHeight;
+  t.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*(W-sz)}px;top:${Math.random()*(H-sz)}px;background:var(--ac);box-shadow:0 0 18px color-mix(in srgb,var(--ac) 50%,transparent)`;
+  t.textContent='🎯';t.addEventListener('click',()=>{score++;sc(score);spawn();});
+  document.getElementById('arena').appendChild(t);
+}
+</script></body></html>

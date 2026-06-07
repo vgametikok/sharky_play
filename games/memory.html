@@ -1,0 +1,57 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+:root{--ac:#7b5cff;--bg:#09070f}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);color:#f2f2f4;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
+#grid{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(6px,2vw,12px);padding:16px;width:100%;max-width:min(100vw,calc(100vh - 20px))}
+.mc{aspect-ratio:1;border-radius:10px;background:#161620;display:flex;align-items:center;justify-content:center;font-size:clamp(20px,7vw,36px);cursor:pointer;transition:transform .18s,background .18s,border-color .18s;border:1.5px solid transparent}
+.mc.f{background:#1e1e30;border-color:var(--ac);transform:scale(1.04)}
+.mc.m{background:#0e1e10;border-color:#00e5a0;opacity:.65;pointer-events:none}
+#ov{position:fixed;inset:0;background:rgba(6,6,8,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;backdrop-filter:blur(6px);z-index:99}
+#ov.show{display:flex}
+.ovl{font-size:10px;letter-spacing:3px;text-transform:uppercase;opacity:.45}
+#ovn{font-size:clamp(58px,18vw,90px);font-weight:700;color:var(--ac);line-height:1;letter-spacing:-3px}
+.ovbtns{display:flex;gap:10px;margin-top:10px}
+.obtn{padding:12px 26px;border-radius:10px;border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+#br{background:var(--ac);color:#fff}#bn{background:rgba(255,255,255,.1);color:#f2f2f4;border:1px solid rgba(255,255,255,.12)}
+</style></head><body>
+<div id="grid"></div>
+<div id="ov">
+  <div class="ovl">найдено пар</div><div id="ovn">0</div><div class="ovl">из 8</div>
+  <div class="ovbtns"><button class="obtn" id="br">Ещё раз</button><button class="obtn" id="bn">Дальше →</button></div>
+</div>
+<script>
+window.addEventListener('message',e=>{
+  if(e.data.type==='init'){if(e.data.accent)document.documentElement.style.setProperty('--ac',e.data.accent);if(e.data.bg)document.body.style.background=e.data.bg;}
+  if(e.data.type==='start'){hidOv();start();}
+});
+window.addEventListener('load',()=>{parent.postMessage({type:'ready'},'*');setTimeout(start,100);});
+function sc(n){parent.postMessage({type:'score',value:n},'*');}
+function hidOv(){document.getElementById('ov').classList.remove('show');}
+document.getElementById('br').onclick=()=>{hidOv();start();};
+document.getElementById('bn').onclick=()=>parent.postMessage({type:'next'},'*');
+
+const EM=['🎮','🎯','⚡','🔥','💎','🌀','🎲','🎪'];
+let pairs=0,flipped=[],locked=false;
+function start(){
+  pairs=0;flipped=[];locked=false;sc(0);
+  const g=document.getElementById('grid');g.innerHTML='';
+  [...EM,...EM].sort(()=>Math.random()-.5).forEach((em,i)=>{
+    const c=document.createElement('div');c.className='mc';c.dataset.v=em;c.dataset.i=i;c.textContent='?';
+    c.addEventListener('click',()=>flip(c));g.appendChild(c);
+  });
+}
+function flip(c){
+  if(locked||c.classList.contains('f')||c.classList.contains('m'))return;
+  c.textContent=c.dataset.v;c.classList.add('f');flipped.push(c);
+  if(flipped.length===2){locked=true;setTimeout(check,650);}
+}
+function check(){
+  const[a,b]=flipped;
+  if(a.dataset.v===b.dataset.v){a.classList.add('m');b.classList.add('m');pairs++;sc(pairs);
+    if(pairs===8)setTimeout(()=>{document.getElementById('ovn').textContent=8;document.getElementById('ov').classList.add('show');parent.postMessage({type:'gameover',value:8},'*');},400);
+  }else{a.textContent='?';b.textContent='?';a.classList.remove('f');b.classList.remove('f');}
+  flipped=[];locked=false;
+}
+</script></body></html>

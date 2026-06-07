@@ -1,0 +1,75 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+:root{--ac:#ffe44d;--bg:#0d0c06}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);touch-action:none;user-select:none}
+#player{position:fixed;width:26px;height:26px;border-radius:50%;background:var(--ac);transform:translate(-50%,-50%);pointer-events:none;z-index:2;box-shadow:0 0 14px color-mix(in srgb,var(--ac) 60%,transparent)}
+#ov{position:fixed;inset:0;background:rgba(6,6,8,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;backdrop-filter:blur(6px);z-index:99}
+#ov.show{display:flex}
+.ovl{font-size:10px;letter-spacing:3px;text-transform:uppercase;opacity:.45;color:#f2f2f4}
+#ovn{font-size:clamp(58px,18vw,90px);font-weight:700;color:var(--ac);line-height:1;letter-spacing:-3px}
+.ovbtns{display:flex;gap:10px;margin-top:10px}
+.obtn{padding:12px 26px;border-radius:10px;border:none;font-family:system-ui,sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+#br{background:var(--ac);color:#000}#bn{background:rgba(255,255,255,.1);color:#f2f2f4;border:1px solid rgba(255,255,255,.12)}
+</style></head><body>
+<div id="player"></div>
+<div id="ov">
+  <div class="ovl">продержался</div><div id="ovn">0</div><div class="ovl">секунд</div>
+  <div class="ovbtns"><button class="obtn" id="br">Ещё раз</button><button class="obtn" id="bn">Дальше →</button></div>
+</div>
+<script>
+window.addEventListener('message',e=>{
+  if(e.data.type==='init'){if(e.data.accent)document.documentElement.style.setProperty('--ac',e.data.accent);if(e.data.bg)document.body.style.background=e.data.bg;}
+  if(e.data.type==='start'){hidOv();start();}
+  if(e.data.type==='pause'){running=false;cancelAnimationFrame(raf);clearInterval(sp);}
+});
+window.addEventListener('load',()=>{parent.postMessage({type:'ready'},'*');setTimeout(start,100);});
+function sc(n){parent.postMessage({type:'score',value:n},'*');}
+function hidOv(){document.getElementById('ov').classList.remove('show');}
+document.getElementById('br').onclick=()=>{hidOv();start();};
+document.getElementById('bn').onclick=()=>parent.postMessage({type:'next'},'*');
+
+let px=.5,py=.5,enemies=[],running=false,t0=0,raf,sp;
+const W=()=>window.innerWidth,H=()=>window.innerHeight;
+const pl=document.getElementById('player');
+
+document.addEventListener('touchmove',e=>{e.preventDefault();const r=document.body.getBoundingClientRect();px=(e.touches[0].clientX)/W();py=(e.touches[0].clientY)/H();px=Math.max(0,Math.min(1,px));py=Math.max(0,Math.min(1,py));},{passive:false});
+document.addEventListener('mousemove',e=>{px=e.clientX/W();py=e.clientY/H();});
+
+function start(){
+  enemies.forEach(e=>e.el?.remove());enemies=[];
+  running=true;t0=performance.now();
+  clearInterval(sp);
+  sp=setInterval(()=>{
+    if(!running)return;
+    const ed=Math.floor(Math.random()*4);let ex,ey;
+    if(ed===0){ex=Math.random();ey=0;}else if(ed===1){ex=1;ey=Math.random();}
+    else if(ed===2){ex=Math.random();ey=1;}else{ex=0;ey=Math.random();}
+    enemies.push({x:ex,y:ey,s:.0018+Math.random()*.002,r:18+Math.random()*12,el:null});
+  },Math.max(400,1000));
+  cancelAnimationFrame(raf);loop();
+}
+function loop(){
+  if(!running)return;
+  const el=(performance.now()-t0)/1000;
+  sc(Math.floor(el));
+  pl.style.left=px*W()+'px';pl.style.top=py*H()+'px';
+  const ref=Math.min(W(),H());
+  for(const en of enemies){
+    const dx=px-en.x,dy=py-en.y,d=Math.sqrt(dx*dx+dy*dy)||.001;
+    en.x+=(dx/d)*en.s*(ref/300);en.y+=(dy/d)*en.s*(ref/300);
+    if(!en.el){en.el=document.createElement('div');en.el.style.cssText='position:fixed;border-radius:50%;background:#ff3c5f;transform:translate(-50%,-50%);pointer-events:none;opacity:.85;';document.body.appendChild(en.el);}
+    en.el.style.width=en.el.style.height=en.r+'px';
+    en.el.style.left=(en.x*W())+'px';en.el.style.top=(en.y*H())+'px';
+    const d2=Math.sqrt(((px-en.x)*W())**2+((py-en.y)*H())**2);
+    if(d2<en.r/2+13){end(Math.floor(el));return;}
+  }
+  raf=requestAnimationFrame(loop);
+}
+function end(s){
+  running=false;cancelAnimationFrame(raf);clearInterval(sp);
+  document.getElementById('ovn').textContent=s;document.getElementById('ov').classList.add('show');
+  parent.postMessage({type:'gameover',value:s},'*');
+}
+</script></body></html>

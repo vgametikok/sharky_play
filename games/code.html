@@ -1,0 +1,81 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+:root{--ac:#ff9a00;--bg:#100804}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);color:#f2f2f4;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none}
+.wrap{display:flex;flex-direction:column;align-items:center;gap:18px;width:min(320px,90vw)}
+#rlabel{font-size:10px;letter-spacing:3px;text-transform:uppercase;opacity:.4}
+#code{font-size:clamp(36px,13vw,58px);font-weight:700;letter-spacing:10px;color:var(--ac);text-align:center;min-height:1.2em;transition:filter .4s}
+#hint{font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.4;min-height:16px;text-align:center}
+input{width:100%;background:#110a04;border:2px solid rgba(255,154,0,.25);border-radius:10px;padding:13px;color:#f2f2f4;font-size:clamp(22px,8vw,32px);font-weight:700;text-align:center;outline:none;-webkit-appearance:none;letter-spacing:8px}
+input:focus{border-color:var(--ac)}
+button.ok{width:100%;padding:13px;border-radius:10px;border:none;background:var(--ac);color:#000;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:transform .1s}
+button.ok:active{transform:scale(.95)}
+#ov{position:fixed;inset:0;background:rgba(6,6,8,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;backdrop-filter:blur(6px);z-index:99}
+#ov.show{display:flex}
+.ovl{font-size:10px;letter-spacing:3px;text-transform:uppercase;opacity:.45}
+#ovn{font-size:clamp(58px,18vw,90px);font-weight:700;color:var(--ac);line-height:1;letter-spacing:-3px}
+.ovbtns{display:flex;gap:10px;margin-top:10px}
+.obtn{padding:12px 26px;border-radius:10px;border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+#br{background:var(--ac);color:#000}#bn{background:rgba(255,255,255,.1);color:#f2f2f4;border:1px solid rgba(255,255,255,.12)}
+</style></head><body>
+<div class="wrap">
+  <div id="rlabel">Раунд 1</div>
+  <div id="code">••••</div>
+  <div id="hint">Запоминай…</div>
+  <input id="inp" type="number" inputmode="numeric" placeholder="_ _ _ _" style="display:none">
+  <button class="ok" id="ok" style="display:none">Проверить</button>
+</div>
+<div id="ov">
+  <div class="ovl">прошёл раундов</div><div id="ovn">0</div><div class="ovl">раундов</div>
+  <div class="ovbtns"><button class="obtn" id="br">Ещё раз</button><button class="obtn" id="bn">Дальше →</button></div>
+</div>
+<script>
+window.addEventListener('message',e=>{
+  if(e.data.type==='init'){if(e.data.accent)document.documentElement.style.setProperty('--ac',e.data.accent);if(e.data.bg)document.body.style.background=e.data.bg;}
+  if(e.data.type==='start'){hidOv();start();}
+});
+window.addEventListener('load',()=>{parent.postMessage({type:'ready'},'*');setTimeout(start,100);});
+function sc(n){parent.postMessage({type:'score',value:n},'*');}
+function hidOv(){document.getElementById('ov').classList.remove('show');}
+document.getElementById('br').onclick=()=>{hidOv();start();};
+document.getElementById('bn').onclick=()=>parent.postMessage({type:'next'},'*');
+
+let round=0,score=0,secret='';
+function start(){round=0;score=0;sc(0);nextRound();}
+function nextRound(){
+  round++;
+  const len=Math.min(3+round,7);
+  secret=Array.from({length:len},()=>Math.floor(Math.random()*10)).join('');
+  document.getElementById('rlabel').textContent=`Раунд ${round} · ${len} цифр`;
+  const cd=document.getElementById('code');
+  cd.textContent=secret;cd.style.filter='';
+  document.getElementById('hint').textContent='Запоминай…';
+  document.getElementById('inp').style.display='none';
+  document.getElementById('ok').style.display='none';
+  document.getElementById('inp').value='';
+  const ms=1000+len*420;
+  setTimeout(()=>{
+    cd.style.filter='blur(10px)';
+    document.getElementById('hint').textContent='Введи код!';
+    document.getElementById('inp').style.display='block';
+    document.getElementById('ok').style.display='block';
+    setTimeout(()=>document.getElementById('inp').focus(),80);
+  },ms);
+}
+function check(){
+  const v=document.getElementById('inp').value.trim();
+  if(!v)return;
+  if(v===secret){
+    score++;sc(score);
+    document.getElementById('hint').textContent='✅ Верно!';
+    setTimeout(nextRound,700);
+  }else{
+    document.getElementById('hint').textContent=`❌ Было: ${secret}`;
+    setTimeout(()=>{document.getElementById('ovn').textContent=score;document.getElementById('ov').classList.add('show');parent.postMessage({type:'gameover',value:score},'*');},1400);
+  }
+}
+document.getElementById('ok').onclick=check;
+document.getElementById('inp').addEventListener('keydown',e=>{if(e.key==='Enter')check();});
+</script></body></html>
