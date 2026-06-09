@@ -153,6 +153,13 @@ a{color:var(--a4)}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a24;border:1px solid var(--line);color:var(--text);padding:11px 20px;border-radius:10px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:all .25s;z-index:90}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .note{background:rgba(123,92,255,.08);border:1px solid rgba(123,92,255,.25);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--sub2);line-height:1.6;margin-bottom:18px}
+.idchip{font-family:var(--fm);font-size:11px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:3px 7px;color:var(--sub2)}
+.pager{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;flex-wrap:wrap;color:var(--sub)}
+.pgnums{display:flex;gap:6px;flex-wrap:wrap}
+.pgbtn{min-width:34px;height:34px;padding:0 9px;border-radius:8px;background:var(--panel);border:1.5px solid var(--line);color:var(--sub2);font-family:var(--fm);font-size:13px}
+.pgbtn:hover:not(:disabled){color:var(--text);border-color:var(--a4)}
+.pgbtn.active{background:var(--a4);color:#fff;border-color:var(--a4)}
+.pgbtn:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -344,6 +351,8 @@ let usersById = {};         // id -> user
 let gameCountByAuthor = {}; // username -> count (non-deleted)
 let queue = [];            // pending games for batch
 let editingId = null;
+let gamesPage = 1;
+const GAMES_PER_PAGE = 50;
 
 // ════════ HELPERS ════════
 const $ = s => document.querySelector(s);
@@ -629,10 +638,11 @@ async function insertGames(list){
 $('#new-author-btn').addEventListener('click', ()=>openAuthorModal());
 
 // ════════ GAMES TABLE ════════
-['#f-status','#f-author','#f-search'].forEach(s=>$(s).addEventListener('input', renderGames));
+['#f-status','#f-author','#f-search'].forEach(s=>$(s).addEventListener('input', ()=>{gamesPage=1;renderGames();}));
 function gameActions(g){
   const a=[];
   const btn=(label,cls,fn)=>`<button class="btn ${cls} sm" data-act="${fn}" data-id="${esc(g.id)}">${label}</button>`;
+  a.push(btn('🔗','ghost','share'));
   a.push(btn('Превью','ghost','preview'));
   if(g.status==='draft'||g.status==='rejected') a.push(btn('Опубликовать','green','publish'));
   if(g.status==='draft') a.push(btn('Отклонить','yellow','reject'));
@@ -651,30 +661,57 @@ function renderGames(){
     if(q && !(g.title.toLowerCase().includes(q)||g.id.toLowerCase().includes(q))) return false;
     return true;
   });
-  $('#games-count').textContent = `${rows.length} / ${GAMES.length}`;
-  if(!rows.length){$('#games-table').innerHTML='<div class="empty">Ничего не найдено</div>';return;}
+  const total = rows.length;
+  $('#games-count').textContent = `${total} / ${GAMES.length}`;
+  if(!total){$('#games-table').innerHTML='<div class="empty">Ничего не найдено</div>';return;}
+  const pages = Math.ceil(total/GAMES_PER_PAGE);
+  if(gamesPage>pages) gamesPage=pages;
+  const start=(gamesPage-1)*GAMES_PER_PAGE;
+  const pageRows = rows.slice(start, start+GAMES_PER_PAGE);
   $('#games-table').innerHTML = `<table class="tbl"><thead><tr>
-    <th>Игра</th><th>Автор</th><th>Теги</th><th>Статус</th><th>Создана</th><th></th></tr></thead><tbody>${
-    rows.map(g=>{
+    <th>Игра</th><th>ID</th><th>Автор</th><th>Теги</th><th>Статус</th><th>Создана</th><th></th></tr></thead><tbody>${
+    pageRows.map(g=>{
       const au=usersByName[g.author_id];
       const thumb = (g.thumbnail_url && g.thumbnail_status==='active')
         ? `<div class="thumb" style="background:${esc(g.bg)}"><img src="${esc(g.thumbnail_url)}"></div>`
         : `<div class="thumb" style="background:${esc(g.bg)}">${esc(g.emoji)}</div>`;
       return `<tr>
-        <td><div class="cellflex">${thumb}<div><div style="font-weight:700">${esc(g.title)}</div><div class="mono">${esc(g.id)}</div></div></div></td>
+        <td><div class="cellflex">${thumb}<div style="font-weight:700">${esc(g.title)}</div></div></td>
+        <td><code class="idchip">${esc(g.id)}</code></td>
         <td>${au?esc(au.display_name):'—'}<div class="mono">@${esc(g.author_id)}</div></td>
         <td><div class="tags"><span class="tag">${esc(g.genre)}</span><span class="tag">${esc(g.setting)}</span><span class="tag">${esc(g.difficulty)}</span></div></td>
         <td>${statusBadge(g.status)}</td>
         <td class="mono">${fmtDate(g.created_at)}</td>
         <td>${gameActions(g)}</td></tr>`;
-    }).join('')}</tbody></table>`;
+    }).join('')}</tbody></table>` + gamesPager(pages, total, start, pageRows.length);
   $('#games-table').querySelectorAll('button[data-act]').forEach(b=>b.addEventListener('click',()=>onGameAct(b.dataset.act,b.dataset.id)));
+  $('#games-table').querySelectorAll('[data-page-go]').forEach(b=>b.addEventListener('click',()=>{gamesPage=+b.dataset.pageGo;renderGames();window.scrollTo(0,0);}));
+}
+function gamesPager(pages, total, start, shown){
+  if(pages<=1) return `<div class="pager"><span class="mono">Всего: ${total}</span></div>`;
+  let nums='';
+  for(let p=1;p<=pages;p++) nums+=`<button class="pgbtn${p===gamesPage?' active':''}" data-page-go="${p}">${p}</button>`;
+  return `<div class="pager">
+    <span class="mono">Показано ${start+1}–${start+shown} из ${total}</span>
+    <div class="pgnums">
+      <button class="pgbtn" data-page-go="${Math.max(1,gamesPage-1)}" ${gamesPage===1?'disabled':''}>‹</button>
+      ${nums}
+      <button class="pgbtn" data-page-go="${Math.min(pages,gamesPage+1)}" ${gamesPage===pages?'disabled':''}>›</button>
+    </div>
+  </div>`;
+}
+function shareLink(id){
+  const base = location.origin + location.pathname.replace(/admin\.html.*$/,'');
+  const url = base + '?g=' + encodeURIComponent(id);
+  if(navigator.clipboard){ navigator.clipboard.writeText(url).then(()=>toast('Ссылка скопирована')).catch(()=>prompt('Ссылка на игру:',url)); }
+  else prompt('Ссылка на игру:',url);
 }
 
 async function onGameAct(act,id){
   const g = GAMES.find(x=>x.id===id); if(!g) return;
   if(act==='preview'){ openPreview(g); return; }
   if(act==='edit'){ openEditGame(g); return; }
+  if(act==='share'){ shareLink(g.id); return; }
   let patch=null, msg='';
   if(act==='publish'){ patch={status:'published', published_at: g.published_at||new Date().toISOString()}; msg='Опубликовано'; }
   if(act==='reject'){ patch={status:'rejected'}; msg='Отклонено'; }
