@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1100">
+<title>Sharky · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#060608; --panel:#0e0e14; --panel2:#13131c; --line:rgba(255,255,255,.08);
+  --a1:#ff3c5f; --a2:#00e5a0; --a3:#ffe44d; --a4:#7b5cff;
+  --text:#f2f2f4; --sub:rgba(242,242,244,.45); --sub2:rgba(242,242,244,.65);
+  --fd:'Space Grotesk',sans-serif; --fm:'Space Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);font-family:var(--fd);color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font-family:var(--fd);cursor:pointer}
+input,select,textarea{font-family:var(--fd)}
+a{color:var(--a4)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#22222e;border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ── LOGIN ── */
+#login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 100% at 50% 0%,#15101f 0%,#060608 60%);z-index:50}
+.login-card{width:340px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:32px 28px}
+.login-logo{font-size:30px;font-weight:700;letter-spacing:-1.5px;margin-bottom:2px}
+.login-logo span{color:var(--a1)}
+.login-tag{font-family:var(--fm);font-size:11px;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:24px}
+.fld{margin-bottom:14px}
+.fld label{display:block;font-size:11px;color:var(--sub);font-family:var(--fm);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.fld input,.fld select,.fld textarea{width:100%;background:var(--panel2);border:1.5px solid var(--line);border-radius:9px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;transition:border-color .15s}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--a4)}
+.fld textarea{resize:vertical;min-height:64px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:9px;padding:10px 16px;font-size:13px;font-weight:700;color:#fff;background:var(--a4);transition:filter .15s,transform .08s}
+.btn:hover{filter:brightness(1.12)}
+.btn:active{transform:scale(.97)}
+.btn.full{width:100%;padding:12px}
+.btn.ghost{background:var(--panel2);border:1.5px solid var(--line);color:var(--text)}
+.btn.green{background:var(--a2);color:#04130d}
+.btn.red{background:var(--a1)}
+.btn.yellow{background:var(--a3);color:#1a1500}
+.btn.sm{padding:5px 10px;font-size:11px;border-radius:7px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.login-err{color:var(--a1);font-size:12px;min-height:16px;margin-top:4px}
+
+/* ── APP SHELL ── */
+#app{display:none;height:100%}
+#app.on{display:grid;grid-template-columns:230px 1fr}
+.side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:22px 16px}
+.side-logo{font-size:24px;font-weight:700;letter-spacing:-1px;padding:0 8px 22px}
+.side-logo span{color:var(--a1)}
+.navbtn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;color:var(--sub2);font-size:14px;font-weight:500;padding:11px 12px;border-radius:9px;margin-bottom:3px;transition:background .15s,color .15s}
+.navbtn:hover{background:var(--panel2);color:var(--text)}
+.navbtn.active{background:var(--panel2);color:var(--text)}
+.navbtn.active::before{content:'';width:3px;height:16px;border-radius:3px;background:var(--a4);margin-left:-12px;margin-right:9px}
+.navbtn .ic{font-size:16px;width:20px;text-align:center}
+.side-foot{margin-top:auto;border-top:1px solid var(--line);padding-top:16px}
+.side-who{font-size:13px;font-weight:700}
+.side-who small{display:block;font-family:var(--fm);font-size:11px;color:var(--sub);font-weight:400}
+.side-foot .btn{margin-top:12px;width:100%}
+
+.main{overflow-y:auto;padding:26px 30px 60px}
+.page{display:none}
+.page.on{display:block}
+.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:16px;flex-wrap:wrap}
+.page-title{font-size:22px;font-weight:700;letter-spacing:-.5px}
+.page-title small{font-family:var(--fm);font-size:12px;color:var(--sub);font-weight:400;margin-left:8px}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toolbar input,.toolbar select{background:var(--panel);border:1.5px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--text);font-size:13px;outline:none}
+.toolbar input:focus,.toolbar select:focus{border-color:var(--a4)}
+.toolbar input[type=search]{min-width:200px}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tbl th{text-align:left;font-family:var(--fm);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--sub);padding:12px 14px;border-bottom:1px solid var(--line);font-weight:700}
+.tbl td{padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.clickable{cursor:pointer}
+.tbl tr.clickable:hover{background:var(--panel2)}
+.thumb{width:42px;height:42px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;overflow:hidden;flex-shrink:0}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.cellflex{display:flex;align-items:center;gap:11px}
+.mono{font-family:var(--fm);font-size:11px;color:var(--sub)}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-family:var(--fm);font-size:10px;padding:2px 7px;border-radius:6px;background:var(--panel2);color:var(--sub2);letter-spacing:.3px}
+.badge{display:inline-flex;align-items:center;font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+.b-published{background:rgba(0,229,160,.14);color:var(--a2)}
+.b-draft{background:rgba(255,255,255,.08);color:var(--sub2)}
+.b-rejected{background:rgba(255,60,95,.14);color:var(--a1)}
+.b-hidden{background:rgba(255,228,77,.14);color:var(--a3)}
+.b-deleted{background:rgba(255,60,95,.1);color:rgba(255,60,95,.7)}
+.b-active{background:rgba(0,229,160,.14);color:var(--a2)}
+.b-admin{background:rgba(123,92,255,.16);color:var(--a4)}
+.b-user{background:rgba(255,255,255,.08);color:var(--sub2)}
+.b-adult{background:rgba(255,60,95,.18);color:var(--a1)}
+.rowacts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.empty{padding:40px;text-align:center;color:var(--sub);font-size:14px}
+
+/* ── ADD PAGE ── */
+.addgrid{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
+.card h3{font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.colorfld{display:flex;gap:8px;align-items:center}
+.colorfld input[type=color]{width:42px;height:42px;padding:2px;border:1.5px solid var(--line);border-radius:9px;background:var(--panel2);cursor:pointer}
+.colorfld input[type=text]{flex:1}
+.upl{display:flex;gap:8px;align-items:center;margin-top:6px}
+.upl-status{font-family:var(--fm);font-size:11px;color:var(--sub)}
+.upl-status.ok{color:var(--a2)}
+.filelabel{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1.5px solid var(--line);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;color:var(--sub2)}
+.filelabel:hover{color:var(--text)}
+.filelabel input{display:none}
+.preview-card{aspect-ratio:1;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow:hidden;position:relative;border:1px solid var(--line)}
+.preview-card .pc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.preview-card .pc-emoji{font-size:40px;z-index:1}
+.preview-card .pc-title{font-size:15px;font-weight:700;z-index:1;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+.prev-frame{width:100%;height:300px;border:1px solid var(--line);border-radius:12px;background:#000;margin-top:12px}
+.queue-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel2)}
+.queue-item .qi-emoji{font-size:18px}
+.queue-item .qi-x{margin-left:auto;background:none;border:none;color:var(--sub);font-size:16px}
+.queue-item .qi-x:hover{color:var(--a1)}
+.hint{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5}
+.author-pick{display:flex;gap:10px;align-items:center;margin-bottom:18px}
+.author-pick select{flex:1}
+
+/* ── MODAL ── */
+.modal{position:fixed;inset:0;background:rgba(2,2,5,.78);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:60;padding:30px}
+.modal.on{display:flex}
+.modal-box{background:var(--panel);border:1px solid var(--line);border-radius:16px;width:760px;max-width:100%;max-height:90vh;overflow-y:auto;padding:26px}
+.modal-box.narrow{width:440px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-head h2{font-size:18px;font-weight:700}
+.x{background:var(--panel2);border:none;color:var(--text);width:32px;height:32px;border-radius:50%;font-size:15px}
+
+/* ── PROFILE DRILL-IN ── */
+.prof-head{display:flex;gap:18px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:18px}
+.prof-av{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0}
+.prof-meta h2{font-size:20px;font-weight:700}
+.prof-meta .ph{font-family:var(--fm);font-size:12px;color:var(--sub)}
+.prof-meta .pid{font-family:var(--fm);font-size:11px;color:rgba(242,242,244,.35);margin-top:3px}
+.prof-badges{display:flex;gap:6px;margin-top:7px}
+.prof-acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:340px}
+.gmod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;display:grid;grid-template-columns:48px 1fr auto;gap:14px;align-items:center}
+.gmod .gm-title{font-weight:700;font-size:14px}
+.gm-block{display:flex;gap:8px;align-items:center;margin-top:8px}
+.gm-block .gm-label{font-family:var(--fm);font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;width:64px}
+
+/* toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a24;border:1px solid var(--line);color:var(--text);padding:11px 20px;border-radius:10px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:all .25s;z-index:90}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.note{background:rgba(123,92,255,.08);border:1px solid rgba(123,92,255,.25);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--sub2);line-height:1.6;margin-bottom:18px}
+</style>
+</head>
+<body>
+
+<!-- ════ LOGIN ════ -->
+<div id="login">
+  <div class="login-card">
+    <div class="login-logo">Shar<span>ky</span></div>
+    <div class="login-tag" id="login-tag">Admin · Control Room</div>
+    <div class="fld"><label>Логин (@username)</label><input id="lg-user" autocomplete="username" placeholder="ваш telegram username"></div>
+    <div class="fld"><label id="lg-pw-label">Пароль</label><input id="lg-pw" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <div class="fld" id="lg-pw2-wrap" style="display:none"><label>Повторите пароль</label><input id="lg-pw2" type="password" placeholder="••••••••"></div>
+    <button class="btn full" id="lg-btn">Войти</button>
+    <div class="login-err" id="lg-err"></div>
+  </div>
+</div>
+
+<!-- ════ APP ════ -->
+<div id="app">
+  <!-- sidebar -->
+  <aside class="side">
+    <div class="side-logo">Shar<span>ky</span></div>
+    <button class="navbtn active" data-page="games"><span class="ic">🎮</span>Игры</button>
+    <button class="navbtn" data-page="add"><span class="ic">＋</span>Добавить</button>
+    <button class="navbtn" data-page="authors"><span class="ic">👤</span>Авторы</button>
+    <button class="navbtn" data-page="profiles"><span class="ic">🛡️</span>Профили</button>
+    <div class="side-foot">
+      <div class="side-who" id="who">—<small id="who-id"></small></div>
+      <button class="btn ghost" id="logout">Выйти</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ── PAGE: GAMES ── -->
+    <section class="page on" data-page="games">
+      <div class="page-head">
+        <div class="page-title">Игры <small id="games-count"></small></div>
+        <div class="toolbar">
+          <select id="f-status">
+            <option value="">Все статусы</option>
+            <option value="draft">Черновики</option>
+            <option value="published">Опубликовано</option>
+            <option value="rejected">Отклонено</option>
+            <option value="hidden">Скрыто</option>
+            <option value="deleted">Удалено</option>
+          </select>
+          <select id="f-author"><option value="">Все авторы</option></select>
+          <input type="search" id="f-search" placeholder="Поиск по названию / id…">
+        </div>
+      </div>
+      <div id="games-table"></div>
+    </section>
+
+    <!-- ── PAGE: ADD ── -->
+    <section class="page" data-page="add">
+      <div class="page-head"><div class="page-title">Добавить игры</div></div>
+      <div class="addgrid">
+        <div class="card">
+          <div class="author-pick">
+            <select id="add-author"></select>
+            <button class="btn ghost sm" id="new-author-btn">＋ Новый автор</button>
+          </div>
+          <h3>🎮 Игра</h3>
+          <div id="add-form"></div>
+          <div style="display:flex;gap:10px;margin-top:18px">
+            <button class="btn ghost" id="add-to-queue">Добавить в очередь</button>
+            <button class="btn" id="add-now">Сохранить одну</button>
+          </div>
+          <div class="hint">Файл игры и обложка загружаются в Supabase Storage при выборе, либо можно вставить готовый URL. Старые игры с GitHub — просто URL вида <span class="mono">games/tap.html</span>.</div>
+        </div>
+        <div>
+          <div class="card">
+            <h3>Превью</h3>
+            <div class="preview-card" id="prev-card" style="background:#0d080f"></div>
+            <iframe class="prev-frame" id="prev-frame"></iframe>
+          </div>
+          <div class="card" style="margin-top:18px">
+            <h3>Очередь <small class="mono" id="q-author"></small></h3>
+            <div id="queue-list"><div class="empty" style="padding:18px">Пусто</div></div>
+            <button class="btn green full" id="save-all" style="margin-top:12px;display:none">Сохранить всё (<span id="q-n">0</span>)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PAGE: AUTHORS ── -->
+    <section class="page" data-page="authors">
+      <div class="page-head">
+        <div class="page-title">Авторы <small id="authors-count"></small></div>
+        <button class="btn" id="create-author-btn">＋ Создать автора</button>
+      </div>
+      <div id="authors-table"></div>
+    </section>
+
+    <!-- ── PAGE: PROFILES (list) ── -->
+    <section class="page" data-page="profiles">
+      <div id="prof-list-view">
+        <div class="page-head">
+          <div class="page-title">Профили <small id="profiles-count"></small></div>
+          <div class="toolbar">
+            <select id="pf-games">
+              <option value="all">Все</option>
+              <option value="with">С играми</option>
+              <option value="without">Без игр</option>
+            </select>
+            <select id="pf-status">
+              <option value="">Любой статус</option>
+              <option value="active">Активные</option>
+              <option value="hidden">Скрытые</option>
+              <option value="deleted">Удалённые</option>
+            </select>
+            <input type="search" id="pf-search" placeholder="Поиск по @ / имени…">
+          </div>
+        </div>
+        <div id="profiles-table"></div>
+      </div>
+      <!-- drill-in -->
+      <div id="prof-detail-view" style="display:none">
+        <button class="btn ghost sm" id="prof-back" style="margin-bottom:16px">← К списку профилей</button>
+        <div id="prof-detail"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ════ MODAL: new/edit author ════ -->
+<div class="modal" id="author-modal">
+  <div class="modal-box narrow">
+    <div class="modal-head"><h2 id="am-title">Новый автор</h2><button class="x" data-close>✕</button></div>
+    <div class="fld"><label>username (без @)</label><input id="am-username"></div>
+    <div class="fld"><label>Отображаемое имя</label><input id="am-name"></div>
+    <div class="frow">
+      <div class="fld"><label>Эмодзи-аватар</label><input id="am-emoji" maxlength="2" value="🎮"></div>
+      <div class="fld"><label>Градиент</label>
+        <select id="am-gradient">
+          <option value="linear-gradient(135deg,#7b5cff,#ff3c5f)">Фиолет → розовый</option>
+          <option value="linear-gradient(135deg,#00c6ff,#0072ff)">Голубой → синий</option>
+          <option value="linear-gradient(135deg,#f7971e,#ffd200)">Оранж → жёлтый</option>
+          <option value="linear-gradient(135deg,#00e5a0,#00c6ff)">Зелёный → голубой</option>
+          <option value="linear-gradient(135deg,#ff3c5f,#7b5cff)">Розовый → фиолет</option>
+        </select>
+      </div>
+    </div>
+    <div class="fld"><label>Bio</label><textarea id="am-bio" placeholder="Описание профиля"></textarea></div>
+    <button class="btn full" id="am-save">Сохранить</button>
+  </div>
+</div>
+
+<!-- ════ MODAL: edit game ════ -->
+<div class="modal" id="game-modal">
+  <div class="modal-box">
+    <div class="modal-head"><h2>Редактировать игру</h2><button class="x" data-close>✕</button></div>
+    <div id="edit-form"></div>
+    <button class="btn full green" id="em-save" style="margin-top:18px">Сохранить изменения</button>
+  </div>
+</div>
+
+<!-- ════ MODAL: game preview ════ -->
+<div class="modal" id="preview-modal">
+  <div class="modal-box">
+    <div class="modal-head"><h2 id="pm-title">Превью</h2><button class="x" data-close>✕</button></div>
+    <iframe id="pm-frame" style="width:100%;height:420px;border:1px solid var(--line);border-radius:12px;background:#000"></iframe>
+    <div class="rowacts" style="margin-top:16px;justify-content:flex-start" id="pm-acts"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════ CONFIG ════════
+const SUPABASE_URL = 'https://safjqsofdrxdmvnfgvjf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhZmpxc29mZHJ4ZG12bmZndmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4Nzk2NDgsImV4cCI6MjA5NjQ1NTY0OH0.gcZ452loXUS0fmApZLr7PqvIYYZ8TqxIX2plgLNnoDo';
+const PW_SALT = 'sharky_admin_v1'; // клиентский хэш — не настоящая защита, см. оговорку
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const GENRES = ['arcade','puzzle','reaction','memory','logic','other'];
+const SETTINGS = ['abstract','space','nature','city','retro','other'];
+const DIFFS = ['easy','medium','hard'];
+
+// ════════ STATE ════════
+let admin = null;          // logged-in admin row
+let USERS = [];            // all users
+let GAMES = [];            // all games
+let usersByName = {};       // username -> user
+let usersById = {};         // id -> user
+let gameCountByAuthor = {}; // username -> count (non-deleted)
+let queue = [];            // pending games for batch
+let editingId = null;
+
+// ════════ HELPERS ════════
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const slug = s => String(s||'').toLowerCase().trim().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'');
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
+function fmtDate(s){if(!s)return'—';const d=new Date(s);return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'2-digit'});}
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(PW_SALT+str));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function statusBadge(s){return `<span class="badge b-${s}">${s}</span>`;}
+
+// ════════ AUTH ════════
+let firstRunUser = null;
+$('#lg-btn').addEventListener('click', doLogin);
+$('#lg-pw').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
+$('#lg-pw2').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
+
+async function doLogin(){
+  const err = $('#lg-err'); err.textContent='';
+  const uname = $('#lg-user').value.trim().replace(/^@/,'');
+  const pw = $('#lg-pw').value;
+  if(!uname || !pw){err.textContent='Заполни логин и пароль';return;}
+  $('#lg-btn').disabled = true;
+  try{
+    const {data, error} = await db.from('users').select('*').eq('username', uname).eq('role','admin').maybeSingle();
+    if(error) throw error;
+    if(!data){err.textContent='Профиль не найден или не админ';$('#lg-btn').disabled=false;return;}
+
+    // first run: no password set yet
+    if(!data.password_hash){
+      if($('#lg-pw2-wrap').style.display==='none'){
+        firstRunUser = data;
+        $('#login-tag').textContent='Первый вход · задайте пароль';
+        $('#lg-pw-label').textContent='Новый пароль';
+        $('#lg-pw2-wrap').style.display='block';
+        $('#lg-btn').textContent='Задать пароль и войти';
+        $('#lg-btn').disabled=false;
+        return;
+      }
+      const pw2 = $('#lg-pw2').value;
+      if(pw.length<6){err.textContent='Минимум 6 символов';$('#lg-btn').disabled=false;return;}
+      if(pw!==pw2){err.textContent='Пароли не совпадают';$('#lg-btn').disabled=false;return;}
+      const hash = await sha256(pw);
+      const {error:e2} = await db.from('users').update({password_hash:hash}).eq('id', data.id);
+      if(e2) throw e2;
+      data.password_hash = hash;
+      enterApp(data);
+      return;
+    }
+    // normal login
+    const hash = await sha256(pw);
+    if(hash !== data.password_hash){err.textContent='Неверный пароль';$('#lg-btn').disabled=false;return;}
+    enterApp(data);
+  }catch(e){console.error(e);err.textContent='Ошибка: '+(e.message||e);$('#lg-btn').disabled=false;}
+}
+
+function enterApp(user){
+  admin = user;
+  $('#login').style.display='none';
+  $('#app').classList.add('on');
+  $('#who').firstChild.textContent = user.display_name || ('@'+user.username);
+  $('#who-id').textContent = '@'+user.username;
+  loadAll();
+}
+$('#logout').addEventListener('click', ()=>location.reload());
+
+// ════════ NAV ════════
+document.querySelectorAll('.navbtn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.navbtn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    const p = b.dataset.page;
+    document.querySelectorAll('.page').forEach(x=>x.classList.toggle('on', x.dataset.page===p));
+    if(p==='profiles'){showProfList();}
+  });
+});
+
+// ════════ LOAD ════════
+async function loadAll(){
+  await Promise.all([loadUsers(), loadGames()]);
+  buildIndexes();
+  fillAuthorSelects();
+  renderGames();
+  renderAuthors();
+  renderProfiles();
+  renderAddForm();
+}
+async function loadUsers(){
+  const {data,error}=await db.from('users').select('*').order('created_at',{ascending:true});
+  if(error){toast('Ошибка загрузки профилей');return;}
+  USERS = data||[];
+}
+async function loadGames(){
+  const {data,error}=await db.from('games').select('*').order('created_at',{ascending:false});
+  if(error){toast('Ошибка загрузки игр');return;}
+  GAMES = data||[];
+}
+function buildIndexes(){
+  usersByName={}; usersById={}; gameCountByAuthor={};
+  USERS.forEach(u=>{usersByName[u.username]=u; usersById[u.id]=u; gameCountByAuthor[u.username]=0;});
+  GAMES.forEach(g=>{ if(g.status!=='deleted') gameCountByAuthor[g.author_id]=(gameCountByAuthor[g.author_id]||0)+1; });
+}
+function fillAuthorSelects(){
+  const opts = USERS.map(u=>`<option value="${esc(u.username)}">${esc(u.display_name)} (@${esc(u.username)})</option>`).join('');
+  $('#add-author').innerHTML = opts;
+  $('#f-author').innerHTML = '<option value="">Все авторы</option>'+opts;
+}
+
+// ════════ GAME FORM (reusable) ════════
+function gameFormHTML(p){
+  const sel=(arr,id)=>`<select id="${p}_${id}">${arr.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>`;
+  return `
+  <div class="frow">
+    <div class="fld"><label>id (slug)</label><input id="${p}_id" placeholder="my-game"></div>
+    <div class="fld"><label>Название</label><input id="${p}_title" maxlength="30" placeholder="до 30 символов"></div>
+  </div>
+  <div class="fld"><label>Описание</label><textarea id="${p}_description" placeholder="Короткое описание (для ленты позже)"></textarea></div>
+  <div class="frow3">
+    <div class="fld"><label>Эмодзи</label><input id="${p}_emoji" maxlength="2" value="🎮"></div>
+    <div class="fld"><label>Подпись счёта</label><input id="${p}_score_label" value="очков"></div>
+    <div class="fld"><label>Статус</label><select id="${p}_status"><option value="draft">draft</option><option value="published">published</option></select></div>
+  </div>
+  <div class="frow3">
+    <div class="fld"><label>Жанр</label>${sel(GENRES,'genre')}</div>
+    <div class="fld"><label>Сеттинг</label>${sel(SETTINGS,'setting')}</div>
+    <div class="fld"><label>Сложность</label>${sel(DIFFS,'difficulty')}</div>
+  </div>
+  <div class="frow">
+    <div class="fld"><label>Accent</label><div class="colorfld"><input type="color" id="${p}_accent_c" value="#ff3c5f"><input type="text" id="${p}_accent" value="#ff3c5f"></div></div>
+    <div class="fld"><label>Фон</label><div class="colorfld"><input type="color" id="${p}_bg_c" value="#0d080f"><input type="text" id="${p}_bg" value="#0d080f"></div></div>
+  </div>
+  <div class="fld"><label>Файл игры (.html) или URL</label>
+    <input id="${p}_src" placeholder="https://… или games/my-game.html">
+    <div class="upl">
+      <label class="filelabel">📎 Загрузить .html<input type="file" accept=".html,text/html" id="${p}_srcfile"></label>
+      <span class="upl-status" id="${p}_srcstatus"></span>
+    </div>
+  </div>
+  <div class="fld"><label>Обложка (картинка) или URL</label>
+    <input id="${p}_thumbnail_url" placeholder="https://…">
+    <div class="upl">
+      <label class="filelabel">🖼️ Загрузить обложку<input type="file" accept="image/*" id="${p}_thumbfile"></label>
+      <span class="upl-status" id="${p}_thumbstatus"></span>
+    </div>
+  </div>`;
+}
+
+function wireGameForm(p, onChange){
+  // color sync
+  [['accent'],['bg']].forEach(([k])=>{
+    const c=$(`#${p}_${k}_c`), t=$(`#${p}_${k}`);
+    c.addEventListener('input',()=>{t.value=c.value;onChange&&onChange();});
+    t.addEventListener('input',()=>{if(/^#[0-9a-f]{6}$/i.test(t.value))c.value=t.value;onChange&&onChange();});
+  });
+  // uploads
+  $(`#${p}_srcfile`).addEventListener('change',e=>uploadFile(e.target.files[0],'games',p,'src',onChange));
+  $(`#${p}_thumbfile`).addEventListener('change',e=>uploadFile(e.target.files[0],'thumbnails',p,'thumbnail_url',onChange));
+  if(onChange){
+    ['title','emoji'].forEach(k=>$(`#${p}_${k}`).addEventListener('input',onChange));
+    $(`#${p}_src`).addEventListener('change',onChange);
+    $(`#${p}_thumbnail_url`).addEventListener('change',onChange);
+    // auto-slug from title
+    $(`#${p}_title`).addEventListener('input',()=>{const idf=$(`#${p}_id`);if(!idf.dataset.touched)idf.value=slug($(`#${p}_title`).value);});
+    $(`#${p}_id`).addEventListener('input',e=>{e.target.dataset.touched='1';e.target.value=slug(e.target.value);});
+  }
+}
+
+async function uploadFile(file, bucket, p, targetField, onChange){
+  if(!file)return;
+  const id = slug($(`#${p}_id`).value);
+  if(!id){toast('Сначала заполни id игры');return;}
+  const statusEl = $(`#${p}_${targetField==='src'?'srcstatus':'thumbstatus'}`);
+  statusEl.textContent='загрузка…'; statusEl.className='upl-status';
+  try{
+    const ext = bucket==='games' ? 'html' : (file.name.split('.').pop()||'png');
+    const path = `${id}.${ext}`;
+    const {error}=await db.storage.from(bucket).upload(path, file, {upsert:true, contentType:file.type||(bucket==='games'?'text/html':undefined)});
+    if(error) throw error;
+    const url = db.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+    $(`#${p}_${targetField}`).value = url;
+    statusEl.textContent='загружено ✓'; statusEl.className='upl-status ok';
+    onChange&&onChange();
+  }catch(e){console.error(e);statusEl.textContent='ошибка'; toast('Ошибка загрузки: '+(e.message||e));}
+}
+
+function readGameForm(p){
+  const v=k=>$(`#${p}_${k}`).value.trim();
+  return {
+    id: slug(v('id')), title: v('title'), description: v('description')||null,
+    emoji: v('emoji')||'🎮', score_label: v('score_label')||'очков', status: v('status'),
+    genre: v('genre'), setting: v('setting'), difficulty: v('difficulty'),
+    accent: v('accent'), bg: v('bg'),
+    src: v('src'), thumbnail_url: v('thumbnail_url')||null
+  };
+}
+function validGame(g){
+  if(!g.id) return 'Нужен id (slug)';
+  if(!g.title) return 'Нужно название';
+  if(g.title.length>30) return 'Название длиннее 30 символов';
+  if(!/^#[0-9a-f]{6}$/i.test(g.accent)) return 'Accent — hex вида #ff3c5f';
+  if(!/^#[0-9a-f]{6}$/i.test(g.bg)) return 'Фон — hex вида #0d080f';
+  if(!g.src) return 'Нужен файл игры или URL';
+  return null;
+}
+function fillGameForm(p,g){
+  const s=(k,val)=>{const el=$(`#${p}_${k}`);if(el)el.value=val??'';};
+  s('id',g.id); $(`#${p}_id`).dataset.touched='1';
+  s('title',g.title); s('description',g.description); s('emoji',g.emoji);
+  s('score_label',g.score_label); s('status',g.status); s('genre',g.genre);
+  s('setting',g.setting); s('difficulty',g.difficulty);
+  s('accent',g.accent); $(`#${p}_accent_c`).value=g.accent;
+  s('bg',g.bg); $(`#${p}_bg_c`).value=g.bg;
+  s('src',g.src); s('thumbnail_url',g.thumbnail_url);
+}
+
+// ════════ ADD PAGE ════════
+function renderAddForm(){
+  $('#add-form').innerHTML = gameFormHTML('a');
+  wireGameForm('a', updatePreview);
+  updatePreview();
+}
+function updatePreview(){
+  const g = readGameForm('a');
+  const card = $('#prev-card');
+  card.style.background = /^#[0-9a-f]{6}$/i.test(g.bg)?g.bg:'#0d080f';
+  card.innerHTML = (g.thumbnail_url?`<img class="pc-img" src="${esc(g.thumbnail_url)}">`:'')
+    + `<div class="pc-emoji">${esc(g.emoji)}</div>`
+    + `<div class="pc-title" style="color:${/^#[0-9a-f]{6}$/i.test(g.accent)?g.accent:'#fff'}">${esc(g.title||'Без названия')}</div>`;
+  const f=$('#prev-frame');
+  if(g.src && f.dataset.src!==g.src){f.dataset.src=g.src;f.src=g.src;}
+}
+
+$('#add-now').addEventListener('click', async ()=>{
+  const g = readGameForm('a'); const err = validGame(g);
+  if(err){toast(err);return;}
+  g.author_id = $('#add-author').value;
+  await insertGames([g]);
+});
+$('#add-to-queue').addEventListener('click', ()=>{
+  const g = readGameForm('a'); const err = validGame(g);
+  if(err){toast(err);return;}
+  g.author_id = $('#add-author').value;
+  if(queue.length && queue[0].author_id!==g.author_id){
+    if(!confirm('В очереди игры другого автора. Очередь привязана к одному автору — очистить и начать заново?')) return;
+    queue=[];
+  }
+  if(queue.some(q=>q.id===g.id)){toast('id уже в очереди');return;}
+  queue.push(g);
+  renderQueue();
+  // reset form fields but keep author
+  renderAddForm();
+  toast('В очереди: '+queue.length);
+});
+function renderQueue(){
+  const wrap=$('#queue-list');
+  $('#q-author').textContent = queue.length?('@'+queue[0].author_id):'';
+  if(!queue.length){wrap.innerHTML='<div class="empty" style="padding:18px">Пусто</div>';$('#save-all').style.display='none';return;}
+  wrap.innerHTML = queue.map((g,i)=>`<div class="queue-item"><span class="qi-emoji">${esc(g.emoji)}</span><div><div style="font-weight:700;font-size:13px">${esc(g.title)}</div><div class="mono">${esc(g.id)} · ${esc(g.status)}</div></div><button class="qi-x" data-i="${i}">✕</button></div>`).join('');
+  wrap.querySelectorAll('.qi-x').forEach(b=>b.addEventListener('click',()=>{queue.splice(+b.dataset.i,1);renderQueue();}));
+  $('#q-n').textContent=queue.length;
+  $('#save-all').style.display='block';
+}
+$('#save-all').addEventListener('click', async ()=>{ await insertGames(queue.slice()); queue=[]; renderQueue(); });
+
+async function insertGames(list){
+  const rows = list.map(g=>({
+    id:g.id, title:g.title, description:g.description, author_id:g.author_id, src:g.src,
+    accent:g.accent, bg:g.bg, score_label:g.score_label, emoji:g.emoji,
+    genre:g.genre, setting:g.setting, difficulty:g.difficulty, status:g.status,
+    thumbnail_url:g.thumbnail_url,
+    published_at: g.status==='published'? new Date().toISOString(): null
+  }));
+  const {error}=await db.from('games').insert(rows);
+  if(error){toast('Ошибка: '+error.message);return;}
+  toast(`Сохранено игр: ${rows.length}`);
+  await loadGames(); buildIndexes(); renderGames(); renderAuthors();
+  renderAddForm();
+}
+
+// new author from add page
+$('#new-author-btn').addEventListener('click', ()=>openAuthorModal());
+
+// ════════ GAMES TABLE ════════
+['#f-status','#f-author','#f-search'].forEach(s=>$(s).addEventListener('input', renderGames));
+function gameActions(g){
+  const a=[];
+  const btn=(label,cls,fn)=>`<button class="btn ${cls} sm" data-act="${fn}" data-id="${esc(g.id)}">${label}</button>`;
+  a.push(btn('Превью','ghost','preview'));
+  if(g.status==='draft'||g.status==='rejected') a.push(btn('Опубликовать','green','publish'));
+  if(g.status==='draft') a.push(btn('Отклонить','yellow','reject'));
+  if(g.status==='published') a.push(btn('Скрыть','yellow','hide'));
+  if(g.status==='hidden') a.push(btn('Показать','green','publish'));
+  if(g.status==='deleted') a.push(btn('Восстановить','green','publish'));
+  a.push(btn('Изм.','ghost','edit'));
+  if(g.status!=='deleted') a.push(btn('Удалить','red','delete'));
+  return `<div class="rowacts">${a.join('')}</div>`;
+}
+function renderGames(){
+  const st=$('#f-status').value, au=$('#f-author').value, q=$('#f-search').value.toLowerCase().trim();
+  let rows = GAMES.filter(g=>{
+    if(st && g.status!==st) return false;
+    if(au && g.author_id!==au) return false;
+    if(q && !(g.title.toLowerCase().includes(q)||g.id.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  $('#games-count').textContent = `${rows.length} / ${GAMES.length}`;
+  if(!rows.length){$('#games-table').innerHTML='<div class="empty">Ничего не найдено</div>';return;}
+  $('#games-table').innerHTML = `<table class="tbl"><thead><tr>
+    <th>Игра</th><th>Автор</th><th>Теги</th><th>Статус</th><th>Создана</th><th></th></tr></thead><tbody>${
+    rows.map(g=>{
+      const au=usersByName[g.author_id];
+      const thumb = (g.thumbnail_url && g.thumbnail_status==='active')
+        ? `<div class="thumb" style="background:${esc(g.bg)}"><img src="${esc(g.thumbnail_url)}"></div>`
+        : `<div class="thumb" style="background:${esc(g.bg)}">${esc(g.emoji)}</div>`;
+      return `<tr>
+        <td><div class="cellflex">${thumb}<div><div style="font-weight:700">${esc(g.title)}</div><div class="mono">${esc(g.id)}</div></div></div></td>
+        <td>${au?esc(au.display_name):'—'}<div class="mono">@${esc(g.author_id)}</div></td>
+        <td><div class="tags"><span class="tag">${esc(g.genre)}</span><span class="tag">${esc(g.setting)}</span><span class="tag">${esc(g.difficulty)}</span></div></td>
+        <td>${statusBadge(g.status)}</td>
+        <td class="mono">${fmtDate(g.created_at)}</td>
+        <td>${gameActions(g)}</td></tr>`;
+    }).join('')}</tbody></table>`;
+  $('#games-table').querySelectorAll('button[data-act]').forEach(b=>b.addEventListener('click',()=>onGameAct(b.dataset.act,b.dataset.id)));
+}
+
+async function onGameAct(act,id){
+  const g = GAMES.find(x=>x.id===id); if(!g) return;
+  if(act==='preview'){ openPreview(g); return; }
+  if(act==='edit'){ openEditGame(g); return; }
+  let patch=null, msg='';
+  if(act==='publish'){ patch={status:'published', published_at: g.published_at||new Date().toISOString()}; msg='Опубликовано'; }
+  if(act==='reject'){ patch={status:'rejected'}; msg='Отклонено'; }
+  if(act==='hide'){ patch={status:'hidden'}; msg='Скрыто'; }
+  if(act==='delete'){ if(!confirm(`Удалить «${g.title}»? Игра уйдёт в статус deleted, восстановить можно.`))return; patch={status:'deleted'}; msg='Удалено'; }
+  if(!patch) return;
+  await updateGame(id, patch, msg);
+}
+async function updateGame(id, patch, msg){
+  const {error}=await db.from('games').update(patch).eq('id',id);
+  if(error){toast('Ошибка: '+error.message);return;}
+  Object.assign(GAMES.find(x=>x.id===id), patch);
+  buildIndexes(); renderGames(); renderAuthors();
+  if($('#prof-detail-view').style.display!=='none') renderProfDetail(currentProfId);
+  toast(msg||'Готово');
+}
+
+// game preview modal
+function openPreview(g){
+  $('#pm-title').textContent = g.title;
+  const f=$('#pm-frame'); f.src=g.src;
+  f.onload=()=>{ try{f.contentWindow.postMessage({type:'init'},'*');f.contentWindow.postMessage({type:'start'},'*');}catch(e){} };
+  const acts=[];
+  if(g.status!=='published') acts.push(`<button class="btn green sm" id="pm-pub">Опубликовать</button>`);
+  if(g.status==='draft') acts.push(`<button class="btn yellow sm" id="pm-rej">Отклонить</button>`);
+  $('#pm-acts').innerHTML=acts.join('');
+  $('#pm-pub')&&$('#pm-pub').addEventListener('click',()=>{updateGame(g.id,{status:'published',published_at:g.published_at||new Date().toISOString()},'Опубликовано');closeModal('preview-modal');});
+  $('#pm-rej')&&$('#pm-rej').addEventListener('click',()=>{updateGame(g.id,{status:'rejected'},'Отклонено');closeModal('preview-modal');});
+  openModal('preview-modal');
+}
+
+// edit game modal
+function openEditGame(g){
+  editingId=g.id;
+  $('#edit-form').innerHTML = gameFormHTML('e');
+  $('#e_id').disabled = true; // id — первичный ключ, не меняем
+  wireGameForm('e', null);
+  fillGameForm('e', g);
+  openModal('game-modal');
+}
+$('#em-save').addEventListener('click', async ()=>{
+  const g=readGameForm('e'); const err=validGame(g);
+  if(err){toast(err);return;}
+  const patch={title:g.title,description:g.description,emoji:g.emoji,score_label:g.score_label,
+    status:g.status,genre:g.genre,setting:g.setting,difficulty:g.difficulty,accent:g.accent,
+    bg:g.bg,src:g.src,thumbnail_url:g.thumbnail_url};
+  if(g.status==='published'){const cur=GAMES.find(x=>x.id===editingId);patch.published_at=cur.published_at||new Date().toISOString();}
+  await updateGame(editingId, patch, 'Изменения сохранены');
+  closeModal('game-modal');
+});
+
+// ════════ AUTHORS ════════
+$('#create-author-btn').addEventListener('click', ()=>openAuthorModal());
+let editingAuthor=null;
+function openAuthorModal(user){
+  editingAuthor = user||null;
+  $('#am-title').textContent = user?'Редактировать автора':'Новый автор';
+  $('#am-username').value = user?user.username:''; $('#am-username').disabled=!!user;
+  $('#am-name').value = user?user.display_name:'';
+  $('#am-emoji').value = user?(user.avatar_emoji||'🎮'):'🎮';
+  $('#am-gradient').value = user?(user.gradient||$('#am-gradient').options[0].value):$('#am-gradient').options[0].value;
+  $('#am-bio').value = user?(user.bio||''):'';
+  openModal('author-modal');
+}
+$('#am-save').addEventListener('click', async ()=>{
+  const username = slug($('#am-username').value).replace(/-/g,'');
+  const name = $('#am-name').value.trim();
+  if(!editingAuthor && !username){toast('Нужен username');return;}
+  if(!name){toast('Нужно имя');return;}
+  const payload={display_name:name, avatar_emoji:$('#am-emoji').value||'🎮', gradient:$('#am-gradient').value, bio:$('#am-bio').value.trim()};
+  let error;
+  if(editingAuthor){
+    ({error}=await db.from('users').update(payload).eq('id',editingAuthor.id));
+  }else{
+    payload.username=username; payload.is_virtual=true; payload.role='user';
+    payload.managed_by=admin.id; payload.status='active';
+    ({error}=await db.from('users').insert(payload));
+  }
+  if(error){toast('Ошибка: '+error.message);return;}
+  toast(editingAuthor?'Автор обновлён':'Автор создан');
+  closeModal('author-modal');
+  await loadUsers(); buildIndexes(); fillAuthorSelects(); renderAuthors(); renderProfiles();
+  if(!editingAuthor) $('#add-author').value = username;
+});
+function renderAuthors(){
+  const list = USERS.filter(u=>u.is_virtual || u.managed_by);
+  $('#authors-count').textContent = `${list.length}`;
+  if(!list.length){$('#authors-table').innerHTML='<div class="empty">Пока нет авторов</div>';return;}
+  $('#authors-table').innerHTML = `<table class="tbl"><thead><tr>
+    <th>Автор</th><th>@username</th><th>id</th><th>Игр</th><th>Принадлежит</th><th></th></tr></thead><tbody>${
+    list.map(u=>{
+      const owner = u.managed_by?usersById[u.managed_by]:null;
+      return `<tr>
+        <td><div class="cellflex"><div class="thumb" style="background:${esc(u.gradient||'#222')}">${esc(u.avatar_emoji||'🎮')}</div><div style="font-weight:700">${esc(u.display_name)}${u.is_virtual?' <span class="tag">virtual</span>':''}</div></div></td>
+        <td class="mono">@${esc(u.username)}</td>
+        <td class="mono">${esc(u.id.slice(0,8))}…</td>
+        <td>${gameCountByAuthor[u.username]||0}</td>
+        <td class="mono">${owner?('@'+esc(owner.username)):'—'}</td>
+        <td><div class="rowacts"><button class="btn ghost sm" data-edit="${esc(u.id)}">Изм.</button></div></td></tr>`;
+    }).join('')}</tbody></table>`;
+  $('#authors-table').querySelectorAll('button[data-edit]').forEach(b=>b.addEventListener('click',()=>openAuthorModal(usersById[b.dataset.edit])));
+}
+
+// ════════ PROFILES ════════
+['#pf-games','#pf-status','#pf-search'].forEach(s=>$(s).addEventListener('input', renderProfiles));
+let currentProfId=null;
+function showProfList(){ $('#prof-list-view').style.display='block'; $('#prof-detail-view').style.display='none'; }
+$('#prof-back').addEventListener('click', showProfList);
+
+function renderProfiles(){
+  const g=$('#pf-games').value, st=$('#pf-status').value, q=$('#pf-search').value.toLowerCase().trim();
+  let rows = USERS.filter(u=>{
+    const cnt=gameCountByAuthor[u.username]||0;
+    if(g==='with' && cnt===0) return false;
+    if(g==='without' && cnt>0) return false;
+    if(st && (u.status||'active')!==st) return false;
+    if(q && !(u.username.toLowerCase().includes(q)||(u.display_name||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  $('#profiles-count').textContent = `${rows.length} / ${USERS.length}`;
+  if(!rows.length){$('#profiles-table').innerHTML='<div class="empty">Ничего не найдено</div>';return;}
+  $('#profiles-table').innerHTML = `<table class="tbl"><thead><tr>
+    <th>Профиль</th><th>id</th><th>Роль</th><th>Статус</th><th>18+</th><th>Игр</th><th></th></tr></thead><tbody>${
+    rows.map(u=>{
+      const status=u.status||'active';
+      return `<tr class="clickable" data-open="${esc(u.id)}">
+        <td><div class="cellflex"><div class="thumb" style="background:${esc(u.gradient||'#222')}">${esc(u.avatar_emoji||'👤')}</div><div><div style="font-weight:700">${esc(u.display_name)}</div><div class="mono">@${esc(u.username)}</div></div></div></td>
+        <td class="mono">${esc(u.id.slice(0,8))}…</td>
+        <td><span class="badge b-${u.role}">${esc(u.role)}</span></td>
+        <td>${statusBadge(status)}</td>
+        <td>${u.is_adult?'<span class="badge b-adult">18+</span>':'<span class="mono">—</span>'}</td>
+        <td>${gameCountByAuthor[u.username]||0}</td>
+        <td onclick="event.stopPropagation()">${profActions(u)}</td></tr>`;
+    }).join('')}</tbody></table>`;
+  $('#profiles-table').querySelectorAll('tr[data-open]').forEach(tr=>tr.addEventListener('click',()=>openProfDetail(tr.dataset.open)));
+  $('#profiles-table').querySelectorAll('button[data-pact]').forEach(b=>b.addEventListener('click',()=>onProfAct(b.dataset.pact,b.dataset.id)));
+}
+function profActions(u){
+  const status=u.status||'active';
+  const btn=(l,c,a)=>`<button class="btn ${c} sm" data-pact="${a}" data-id="${esc(u.id)}">${l}</button>`;
+  const a=[];
+  if(status==='active'){ a.push(btn('Скрыть','yellow','hide')); a.push(btn('Удалить','red','delete')); }
+  if(status==='hidden'){ a.push(btn('Восстановить','green','restore')); a.push(btn('Удалить','red','delete')); }
+  if(status==='deleted'){ a.push(btn('Восстановить','green','restore')); }
+  a.push(btn(u.is_adult?'Снять 18+':'18+', u.is_adult?'ghost':'red', 'adult'));
+  return `<div class="rowacts">${a.join('')}</div>`;
+}
+async function onProfAct(act,id){
+  const u=usersById[id]; if(!u) return;
+  let patch=null, msg='';
+  if(act==='hide'){patch={status:'hidden'};msg='Профиль скрыт';}
+  if(act==='restore'){patch={status:'active'};msg='Профиль восстановлен';}
+  if(act==='delete'){if(!confirm(`Удалить профиль @${u.username}? Мягкое удаление, восстановить можно.`))return;patch={status:'deleted'};msg='Профиль удалён';}
+  if(act==='adult'){patch={is_adult:!u.is_adult};msg=u.is_adult?'Снята метка 18+':'Помечено 18+';}
+  if(!patch) return;
+  const {error}=await db.from('users').update(patch).eq('id',id);
+  if(error){toast('Ошибка: '+error.message);return;}
+  Object.assign(u,patch);
+  renderProfiles();
+  if(currentProfId===id && $('#prof-detail-view').style.display!=='none') renderProfDetail(id);
+  toast(msg);
+}
+
+function openProfDetail(id){
+  currentProfId=id;
+  $('#prof-list-view').style.display='none';
+  $('#prof-detail-view').style.display='block';
+  renderProfDetail(id);
+}
+function renderProfDetail(id){
+  const u=usersById[id]; if(!u){showProfList();return;}
+  const status=u.status||'active';
+  const games = GAMES.filter(g=>g.author_id===u.username);
+  const head = `<div class="prof-head">
+    <div class="prof-av" style="background:${esc(u.gradient||'#222')}">${esc(u.avatar_emoji||'👤')}</div>
+    <div class="prof-meta">
+      <h2>${esc(u.display_name)}</h2>
+      <div class="ph">@${esc(u.username)} · ${esc(u.role)}</div>
+      <div class="pid">id: ${esc(u.id)}</div>
+      <div class="prof-badges">${statusBadge(status)}${u.is_adult?'<span class="badge b-adult">18+</span>':''}${u.is_virtual?'<span class="tag">virtual</span>':''}</div>
+    </div>
+    <div class="prof-acts">${profActions(u)}</div>
+  </div>`;
+
+  const gamesHtml = games.length ? games.map(g=>{
+    const ts=g.thumbnail_status||'active';
+    const cover = g.thumbnail_url
+      ? `<div class="thumb" style="width:48px;height:48px;background:${esc(g.bg)};${ts!=='active'?'opacity:.4':''}"><img src="${esc(g.thumbnail_url)}"></div>`
+      : `<div class="thumb" style="width:48px;height:48px;background:${esc(g.bg)}">${esc(g.emoji)}</div>`;
+    // game moderation buttons
+    const gbtn=(l,c,a)=>`<button class="btn ${c} sm" data-gact="${a}" data-id="${esc(g.id)}">${l}</button>`;
+    const gacts=[];
+    if(g.status==='published'||g.status==='draft'||g.status==='rejected') gacts.push(gbtn('Скрыть','yellow','hide'));
+    if(g.status==='hidden') gacts.push(gbtn('Показать','green','publish'));
+    if(g.status==='deleted') gacts.push(gbtn('Восстановить','green','publish'));
+    if(g.status!=='deleted') gacts.push(gbtn('Удалить','red','delete'));
+    // cover moderation buttons
+    let cacts='';
+    if(g.thumbnail_url){
+      const cbtn=(l,c,a)=>`<button class="btn ${c} sm" data-cact="${a}" data-id="${esc(g.id)}">${l}</button>`;
+      const arr=[];
+      if(ts==='active') arr.push(cbtn('Скрыть','yellow','c_hide'));
+      if(ts!=='active') arr.push(cbtn('Восстановить','green','c_restore'));
+      if(ts!=='deleted') arr.push(cbtn('Удалить','red','c_delete'));
+      cacts=`<div class="gm-block"><span class="gm-label">обложка</span>${statusBadge(ts)}${arr.join('')}</div>`;
+    }else{
+      cacts=`<div class="gm-block"><span class="gm-label">обложка</span><span class="mono">нет</span></div>`;
+    }
+    return `<div class="gmod">
+      ${cover}
+      <div>
+        <div class="gm-title">${esc(g.title)} <span class="mono">${esc(g.id)}</span></div>
+        <div class="gm-block"><span class="gm-label">игра</span>${statusBadge(g.status)}${gacts.join('')}</div>
+        ${cacts}
+      </div>
+      <button class="btn ghost sm" data-preview="${esc(g.id)}">Превью</button>
+    </div>`;
+  }).join('') : '<div class="empty">У автора нет игр</div>';
+
+  $('#prof-detail').innerHTML = head + `<h3 style="margin:6px 0 12px;font-size:15px">Игры автора (${games.length})</h3>` + gamesHtml;
+
+  // wire
+  $('#prof-detail').querySelectorAll('button[data-pact]').forEach(b=>b.addEventListener('click',()=>onProfAct(b.dataset.pact,b.dataset.id)));
+  $('#prof-detail').querySelectorAll('button[data-gact]').forEach(b=>b.addEventListener('click',()=>onGameAct(b.dataset.gact,b.dataset.id)));
+  $('#prof-detail').querySelectorAll('button[data-cact]').forEach(b=>b.addEventListener('click',()=>onCoverAct(b.dataset.cact,b.dataset.id)));
+  $('#prof-detail').querySelectorAll('button[data-preview]').forEach(b=>b.addEventListener('click',()=>openPreview(GAMES.find(g=>g.id===b.dataset.preview))));
+}
+async function onCoverAct(act,id){
+  let patch=null,msg='';
+  if(act==='c_hide'){patch={thumbnail_status:'hidden'};msg='Обложка скрыта';}
+  if(act==='c_restore'){patch={thumbnail_status:'active'};msg='Обложка восстановлена';}
+  if(act==='c_delete'){if(!confirm('Скрыть обложку как удалённую? Файл в Storage сохранится, восстановить можно.'))return;patch={thumbnail_status:'deleted'};msg='Обложка удалена';}
+  if(!patch)return;
+  const {error}=await db.from('games').update(patch).eq('id',id);
+  if(error){toast('Ошибка: '+error.message);return;}
+  Object.assign(GAMES.find(x=>x.id===id),patch);
+  renderProfDetail(currentProfId); renderGames();
+  toast(msg);
+}
+
+// ════════ MODAL UTILS ════════
+function openModal(id){$('#'+id).classList.add('on');}
+function closeModal(id){$('#'+id).classList.remove('on'); if(id==='preview-modal')$('#pm-frame').src='about:blank';}
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.closest('.modal').id)));
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m.id);}));
+</script>
+</body>
+</html>
