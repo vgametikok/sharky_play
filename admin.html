@@ -111,6 +111,10 @@ a{color:var(--a4)}
 .upl{display:flex;gap:8px;align-items:center;margin-top:6px}
 .upl-status{font-family:var(--fm);font-size:11px;color:var(--sub)}
 .upl-status.ok{color:var(--a2)}
+.upl-status.busy{color:var(--a4)}
+.upl-status.err{color:var(--a1)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(123,92,255,.3);border-top-color:var(--a4);border-radius:50%;vertical-align:-2px;margin-right:5px;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .filelabel{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1.5px solid var(--line);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;color:var(--sub2)}
 .filelabel:hover{color:var(--text)}
 .filelabel input{display:none}
@@ -522,12 +526,24 @@ function wireGameForm(p, onChange){
   }
 }
 
+function genId(filename){
+  const base = (slug((filename||'').replace(/\.[^.]+$/,'')).slice(0,10).replace(/-+$/,'')) || 'game';
+  const code = String(Math.floor(Math.random()*1e7)).padStart(7,'0');
+  return base + '-' + code;
+}
+function setUploadBusy(on){
+  ['#add-now','#add-to-queue','#save-all','#em-save'].forEach(s=>{const el=$(s);if(el)el.disabled=on;});
+}
 async function uploadFile(file, bucket, p, targetField, onChange){
   if(!file)return;
-  const id = slug($(`#${p}_id`).value);
-  if(!id){toast('Сначала заполни id игры');return;}
+  const idf = $(`#${p}_id`);
+  // ID присваивается автоматически из имени файла игры (имя ≤10 симв. + 7-значный код)
+  if(bucket==='games'){ idf.value = genId(file.name); idf.dataset.touched='1'; }
+  let id = slug(idf.value);
+  if(!id){ id = genId(file.name); idf.value = id; idf.dataset.touched='1'; }
   const statusEl = $(`#${p}_${targetField==='src'?'srcstatus':'thumbstatus'}`);
-  statusEl.textContent='загрузка…'; statusEl.className='upl-status';
+  statusEl.innerHTML='<span class="spin"></span> Загрузка…'; statusEl.className='upl-status busy';
+  setUploadBusy(true);
   try{
     const ext = bucket==='games' ? 'html' : (file.name.split('.').pop()||'png');
     const path = `${id}.${ext}`;
@@ -535,9 +551,14 @@ async function uploadFile(file, bucket, p, targetField, onChange){
     if(error) throw error;
     const url = db.storage.from(bucket).getPublicUrl(path).data.publicUrl;
     $(`#${p}_${targetField}`).value = url;
-    statusEl.textContent='загружено ✓'; statusEl.className='upl-status ok';
+    statusEl.innerHTML='✓ загружено'; statusEl.className='upl-status ok';
     onChange&&onChange();
-  }catch(e){console.error(e);statusEl.textContent='ошибка'; toast('Ошибка загрузки: '+(e.message||e));}
+  }catch(e){
+    console.error(e);
+    statusEl.innerHTML='✕ ошибка: '+esc(e.message||String(e));
+    statusEl.className='upl-status err';
+    toast('Ошибка загрузки: '+(e.message||e));
+  }finally{ setUploadBusy(false); }
 }
 
 function readGameForm(p){
