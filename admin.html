@@ -592,7 +592,7 @@ function updatePreview(){
     + `<div class="pc-emoji">${esc(g.emoji)}</div>`
     + `<div class="pc-title" style="color:${/^#[0-9a-f]{6}$/i.test(g.accent)?g.accent:'#fff'}">${esc(g.title||'Без названия')}</div>`;
   const f=$('#prev-frame');
-  if(g.src && f.dataset.src!==g.src){f.dataset.src=g.src;f.src=g.src;}
+  if(g.src && f.dataset.src!==g.src){f.dataset.src=g.src;renderGameIntoFrame(f,g.src);}
 }
 
 $('#add-now').addEventListener('click', async ()=>{
@@ -755,10 +755,15 @@ async function deleteStorageByUrl(url){
   }catch(e){ console.warn('storage delete failed', e); }
 }
 async function hardDeleteGame(g){
+  const {data, error}=await db.from('games').delete().eq('id',g.id).select();
+  if(error){toast('Ошибка удаления: '+error.message);return;}
+  if(!data || !data.length){
+    toast('В БД не удалилось (0 строк) — нет delete-политики на таблице games');
+    return;
+  }
+  // строка удалена — теперь чистим файлы
   await deleteStorageByUrl(g.src);
   await deleteStorageByUrl(g.thumbnail_url);
-  const {error}=await db.from('games').delete().eq('id',g.id);
-  if(error){toast('Ошибка удаления: '+error.message);return;}
   GAMES = GAMES.filter(x=>x.id!==g.id);
   buildIndexes(); renderGames(); renderAuthors();
   if($('#prof-detail-view').style.display!=='none') renderProfDetail(currentProfId);
@@ -766,10 +771,25 @@ async function hardDeleteGame(g){
 }
 
 // game preview modal
+// Игру нельзя грузить по URL из Storage (Supabase отдаёт HTML как text/plain),
+// поэтому скачиваем тело файла и вставляем через srcdoc — это игнорирует тип ответа.
+async function renderGameIntoFrame(frame, src){
+  if(!src){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; return; }
+  frame.removeAttribute('srcdoc'); frame.src='about:blank';
+  try{
+    const r = await fetch(src, {cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const html = await r.text();
+    frame.onload = ()=>{ try{ frame.contentWindow.postMessage({type:'init'},'*'); frame.contentWindow.postMessage({type:'start'},'*'); }catch(e){} };
+    frame.srcdoc = html;
+  }catch(e){
+    frame.srcdoc = '<body style="font-family:sans-serif;color:#ff7a90;background:#0d080f;padding:24px;margin:0">Не удалось загрузить игру: '+esc(String(e.message||e))+'</body>';
+  }
+}
+
 function openPreview(g){
   $('#pm-title').textContent = g.title;
-  const f=$('#pm-frame'); f.src=g.src;
-  f.onload=()=>{ try{f.contentWindow.postMessage({type:'init'},'*');f.contentWindow.postMessage({type:'start'},'*');}catch(e){} };
+  renderGameIntoFrame($('#pm-frame'), g.src);
   const acts=[];
   if(g.status!=='published') acts.push(`<button class="btn green sm" id="pm-pub">Опубликовать</button>`);
   if(g.status==='draft') acts.push(`<button class="btn yellow sm" id="pm-rej">Отклонить</button>`);
@@ -991,7 +1011,7 @@ async function onCoverAct(act,id){
 
 // ════════ MODAL UTILS ════════
 function openModal(id){$('#'+id).classList.add('on');}
-function closeModal(id){$('#'+id).classList.remove('on'); if(id==='preview-modal')$('#pm-frame').src='about:blank';}
+function closeModal(id){$('#'+id).classList.remove('on'); if(id==='preview-modal'){const f=$('#pm-frame');f.removeAttribute('srcdoc');f.src='about:blank';}}
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.closest('.modal').id)));
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m.id);}));
 </script>
