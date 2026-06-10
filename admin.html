@@ -529,7 +529,6 @@ async function uploadFile(file, bucket, p, targetField, onChange){
       headers:{
         'Authorization':'Bearer '+token,
         'apikey':SUPABASE_KEY,
-        'x-upsert':'true',
         'Content-Type': file.type || (bucket==='games'?'text/html':'application/octet-stream')
       },
       body: file
