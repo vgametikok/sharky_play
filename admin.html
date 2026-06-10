@@ -529,7 +529,7 @@ async function uploadFile(file, bucket, p, targetField, onChange){
       headers:{
         'Authorization':'Bearer '+token,
         'apikey':SUPABASE_KEY,
-        'Content-Type': file.type || (bucket==='games'?'text/html':'application/octet-stream')
+        'Content-Type': bucket==='games' ? 'text/html; charset=utf-8' : (file.type || 'image/png')
       },
       body: file
     });
@@ -655,6 +655,7 @@ function gameActions(g){
   if(g.status==='published') a.push(btn('Скрыть','yellow','hide'));
   if(g.status==='hidden') a.push(btn('Показать','green','publish'));
   if(g.status==='deleted') a.push(btn('Восстановить','green','publish'));
+  if(g.status==='deleted') a.push(btn('Удалить навсегда','red','purge'));
   a.push(btn('Изм.','ghost','edit'));
   if(g.status!=='deleted') a.push(btn('Удалить','red','delete'));
   return `<div class="rowacts">${a.join('')}</div>`;
@@ -718,6 +719,10 @@ async function onGameAct(act,id){
   if(act==='preview'){ openPreview(g); return; }
   if(act==='edit'){ openEditGame(g); return; }
   if(act==='share'){ shareLink(g.id); return; }
+  if(act==='purge'){
+    if(!confirm(`Удалить «${g.title}» НАВСЕГДА?\n\nИгра и её файл будут стёрты безвозвратно — восстановить будет нельзя.`)) return;
+    await hardDeleteGame(g); return;
+  }
   let patch=null, msg='';
   if(act==='publish'){ patch={status:'published', published_at: g.published_at||new Date().toISOString()}; msg='Опубликовано'; }
   if(act==='reject'){ patch={status:'rejected'}; msg='Отклонено'; }
@@ -733,6 +738,29 @@ async function updateGame(id, patch, msg){
   buildIndexes(); renderGames(); renderAuthors();
   if($('#prof-detail-view').style.display!=='none') renderProfDetail(currentProfId);
   toast(msg||'Готово');
+}
+async function deleteStorageByUrl(url){
+  if(!url) return;
+  const m = String(url).match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+  if(!m) return; // не Supabase Storage (например, ссылка на GitHub) — пропускаем
+  try{
+    const {data:{session}}=await db.auth.getSession();
+    const token = session && session.access_token;
+    if(!token) return;
+    await fetch(`${SUPABASE_URL}/storage/v1/object/${m[1]}/${m[2]}`,{
+      method:'DELETE', headers:{Authorization:'Bearer '+token, apikey:SUPABASE_KEY}
+    });
+  }catch(e){ console.warn('storage delete failed', e); }
+}
+async function hardDeleteGame(g){
+  await deleteStorageByUrl(g.src);
+  await deleteStorageByUrl(g.thumbnail_url);
+  const {error}=await db.from('games').delete().eq('id',g.id);
+  if(error){toast('Ошибка удаления: '+error.message);return;}
+  GAMES = GAMES.filter(x=>x.id!==g.id);
+  buildIndexes(); renderGames(); renderAuthors();
+  if($('#prof-detail-view').style.display!=='none') renderProfDetail(currentProfId);
+  toast('Удалено навсегда');
 }
 
 // game preview modal
@@ -913,6 +941,7 @@ function renderProfDetail(id){
     if(g.status==='published'||g.status==='draft'||g.status==='rejected') gacts.push(gbtn('Скрыть','yellow','hide'));
     if(g.status==='hidden') gacts.push(gbtn('Показать','green','publish'));
     if(g.status==='deleted') gacts.push(gbtn('Восстановить','green','publish'));
+    if(g.status==='deleted') gacts.push(gbtn('Удалить навсегда','red','purge'));
     if(g.status!=='deleted') gacts.push(gbtn('Удалить','red','delete'));
     // cover moderation buttons
     let cacts='';
