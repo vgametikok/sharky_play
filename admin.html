@@ -173,9 +173,8 @@ a{color:var(--a4)}
   <div class="login-card">
     <div class="login-logo">Shar<span>ky</span></div>
     <div class="login-tag" id="login-tag">Admin · Control Room</div>
-    <div class="fld"><label>Логин (@username)</label><input id="lg-user" autocomplete="username" placeholder="ваш telegram username"></div>
-    <div class="fld"><label id="lg-pw-label">Пароль</label><input id="lg-pw" type="password" autocomplete="current-password" placeholder="••••••••"></div>
-    <div class="fld" id="lg-pw2-wrap" style="display:none"><label>Повторите пароль</label><input id="lg-pw2" type="password" placeholder="••••••••"></div>
+    <div class="fld"><label>Email</label><input id="lg-user" type="email" autocomplete="username" placeholder="ваш@email"></div>
+    <div class="fld"><label>Пароль</label><input id="lg-pw" type="password" autocomplete="current-password" placeholder="••••••••"></div>
     <button class="btn full" id="lg-btn">Войти</button>
     <div class="login-err" id="lg-err"></div>
   </div>
@@ -338,9 +337,10 @@ a{color:var(--a4)}
 // ════════ CONFIG ════════
 const SUPABASE_URL = 'https://safjqsofdrxdmvnfgvjf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhZmpxc29mZHJ4ZG12bmZndmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4Nzk2NDgsImV4cCI6MjA5NjQ1NTY0OH0.gcZ452loXUS0fmApZLr7PqvIYYZ8TqxIX2plgLNnoDo';
-const PW_SALT = 'sharky_admin_v1'; // клиентский хэш — не настоящая защита, см. оговорку
 const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: true }
+});
 
 const GENRES = ['arcade','puzzle','reaction','memory','logic','other'];
 const SETTINGS = ['abstract','space','nature','city','retro','other'];
@@ -364,54 +364,27 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 const slug = s => String(s||'').toLowerCase().trim().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'');
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
 function fmtDate(s){if(!s)return'—';const d=new Date(s);return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'2-digit'});}
-async function sha256(str){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(PW_SALT+str));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-}
 function statusBadge(s){return `<span class="badge b-${s}">${s}</span>`;}
 
-// ════════ AUTH ════════
-let firstRunUser = null;
+// ════════ AUTH (Supabase Auth + RLS) ════════
 $('#lg-btn').addEventListener('click', doLogin);
+$('#lg-user').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
 $('#lg-pw').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
-$('#lg-pw2').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
 
 async function doLogin(){
   const err = $('#lg-err'); err.textContent='';
-  const uname = $('#lg-user').value.trim().replace(/^@/,'');
+  const email = $('#lg-user').value.trim();
   const pw = $('#lg-pw').value;
-  if(!uname || !pw){err.textContent='Заполни логин и пароль';return;}
+  if(!email || !pw){err.textContent='Заполни email и пароль';return;}
   $('#lg-btn').disabled = true;
   try{
-    const {data, error} = await db.from('users').select('*').eq('username', uname).eq('role','admin').maybeSingle();
-    if(error) throw error;
-    if(!data){err.textContent='Профиль не найден или не админ';$('#lg-btn').disabled=false;return;}
-
-    // first run: no password set yet
-    if(!data.password_hash){
-      if($('#lg-pw2-wrap').style.display==='none'){
-        firstRunUser = data;
-        $('#login-tag').textContent='Первый вход · задайте пароль';
-        $('#lg-pw-label').textContent='Новый пароль';
-        $('#lg-pw2-wrap').style.display='block';
-        $('#lg-btn').textContent='Задать пароль и войти';
-        $('#lg-btn').disabled=false;
-        return;
-      }
-      const pw2 = $('#lg-pw2').value;
-      if(pw.length<6){err.textContent='Минимум 6 символов';$('#lg-btn').disabled=false;return;}
-      if(pw!==pw2){err.textContent='Пароли не совпадают';$('#lg-btn').disabled=false;return;}
-      const hash = await sha256(pw);
-      const {error:e2} = await db.from('users').update({password_hash:hash}).eq('id', data.id);
-      if(e2) throw e2;
-      data.password_hash = hash;
-      enterApp(data);
-      return;
-    }
-    // normal login
-    const hash = await sha256(pw);
-    if(hash !== data.password_hash){err.textContent='Неверный пароль';$('#lg-btn').disabled=false;return;}
-    enterApp(data);
+    const {data, error} = await db.auth.signInWithPassword({email, password:pw});
+    if(error){err.textContent = /invalid/i.test(error.message)?'Неверный email или пароль':('Ошибка: '+error.message); $('#lg-btn').disabled=false; return;}
+    // проверяем, что это админ (серверная проверка через RLS-функцию)
+    const {data:isAdmin, error:e2} = await db.rpc('is_admin');
+    if(e2){err.textContent='Ошибка проверки прав: '+e2.message; await db.auth.signOut(); $('#lg-btn').disabled=false; return;}
+    if(!isAdmin){err.textContent='Этот аккаунт не админ'; await db.auth.signOut(); $('#lg-btn').disabled=false; return;}
+    enterApp(data.user);
   }catch(e){console.error(e);err.textContent='Ошибка: '+(e.message||e);$('#lg-btn').disabled=false;}
 }
 
@@ -419,11 +392,11 @@ function enterApp(user){
   admin = user;
   $('#login').style.display='none';
   $('#app').classList.add('on');
-  $('#who').firstChild.textContent = user.display_name || ('@'+user.username);
-  $('#who-id').textContent = '@'+user.username;
+  $('#who').firstChild.textContent = 'Admin';
+  $('#who-id').textContent = user.email || '';
   loadAll();
 }
-$('#logout').addEventListener('click', ()=>location.reload());
+$('#logout').addEventListener('click', async ()=>{ await db.auth.signOut(); location.reload(); });
 
 // ════════ NAV ════════
 document.querySelectorAll('.navbtn').forEach(b=>{
@@ -808,7 +781,7 @@ $('#am-save').addEventListener('click', async ()=>{
     ({error}=await db.from('users').update(payload).eq('id',editingAuthor.id));
   }else{
     payload.username=username; payload.is_virtual=true; payload.role='user';
-    payload.managed_by=admin.id; payload.status='active';
+    payload.status='active';
     ({error}=await db.from('users').insert(payload));
   }
   if(error){toast('Ошибка: '+error.message);return;}
