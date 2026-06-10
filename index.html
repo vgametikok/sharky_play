@@ -28,10 +28,6 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .ld-dot{width:8px;height:8px;border-radius:50%;background:var(--a1);animation:ldpulse 1.2s ease-in-out infinite}
 .ld-dot:nth-child(2){animation-delay:.2s;background:var(--a2)}
 .ld-dot:nth-child(3){animation-delay:.4s;background:var(--a4)}
-.ld-error{display:none;flex-direction:column;align-items:center;gap:16px;padding:0 32px;text-align:center}
-.ld-error-msg{font-size:14px;color:var(--sub);line-height:1.5;max-width:280px}
-.ld-retry{padding:12px 30px;border-radius:12px;background:var(--a1);border:none;color:#fff;font-family:var(--fd);font-size:15px;font-weight:700;cursor:pointer;transition:transform .12s;-webkit-tap-highlight-color:transparent}
-.ld-retry:active{transform:scale(.95)}
 @keyframes ldpulse{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
 
 /* ── DECK ── */
@@ -49,13 +45,8 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .hud-score{font-family:var(--fm);font-size:clamp(17px,5vw,23px);font-weight:700;line-height:1;min-width:40px;text-align:right}
 .arena{flex:1;min-height:0;width:100%;border-radius:14px;overflow:hidden;position:relative;margin-right:10px}
 .arena iframe{width:100%;height:100%;border:none;display:block;border-radius:14px;background:transparent}
-.arena-loading{position:absolute;inset:0;z-index:2;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#0f0f14;border-radius:14px}
+.arena-loading{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#0f0f14;border-radius:14px}
 .arena-loading span{font-size:32px;animation:ldpulse 1.2s ease-in-out infinite}
-.arena-error{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0f0f14;border-radius:14px;padding:0 24px;text-align:center}
-.arena-error-ico{font-size:40px}
-.arena-error-msg{font-size:14px;color:var(--sub)}
-.arena-retry{padding:10px 24px;border-radius:10px;background:var(--card-ac,var(--a1));border:none;color:#fff;font-family:var(--fd);font-size:14px;font-weight:700;cursor:pointer;transition:transform .12s;-webkit-tap-highlight-color:transparent}
-.arena-retry:active{transform:scale(.94)}
 
 /* ── SOCIAL SIDEBAR ── */
 .social-col{grid-column:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 8px 0 0;position:relative;z-index:10}
@@ -93,9 +84,9 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .nav-tab.active::after{content:'';position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--a4)}
 
 /* ── COMMENTS DRAWER ── */
-#drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:640;opacity:0;pointer-events:none;transition:opacity .3s}
+#drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:140;opacity:0;pointer-events:none;transition:opacity .3s}
 #drawer-backdrop.show{opacity:1;pointer-events:all}
-#comments-drawer{position:fixed;bottom:0;left:0;right:0;height:68dvh;background:#0f0f14;border-radius:20px 20px 0 0;z-index:650;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .34s cubic-bezier(.32,.72,0,1);box-shadow:0 -6px 32px rgba(0,0,0,.55)}
+#comments-drawer{position:fixed;bottom:0;left:0;right:0;height:68dvh;background:#0f0f14;border-radius:20px 20px 0 0;z-index:150;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .34s cubic-bezier(.32,.72,0,1);box-shadow:0 -6px 32px rgba(0,0,0,.55)}
 #comments-drawer.open{transform:translateY(0)}
 .d-handle{width:36px;height:4px;background:#2a2a34;border-radius:999px;margin:12px auto 0;flex-shrink:0;cursor:pointer}
 .d-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 11px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
@@ -108,31 +99,9 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .c-body{flex:1}
 .c-name{font-size:11px;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:3px}
 .c-text{font-size:13px;line-height:1.45;color:rgba(255,255,255,.82)}
-.c-like{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;padding:2px 3px;-webkit-tap-highlight-color:transparent}
+.c-like{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;padding:2px 3px}
 .c-like span{font-size:10px;color:var(--sub)}
-.c-like.liked span{color:var(--a1)}
-.c-meta{display:flex;align-items:center;gap:14px;margin-top:6px}
-.c-act{font-size:11px;font-weight:700;color:var(--sub);cursor:pointer;-webkit-tap-highlight-color:transparent}
-.c-act:active{opacity:.6}
-.c-act-del{color:rgba(255,60,95,.85)}
-.c-edited{font-size:10px;color:rgba(255,255,255,.28);font-style:italic}
-.c-author-like{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:11px;color:var(--sub)}
-.c-author-like .cal-av{position:relative;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;background:linear-gradient(135deg,#7b5cff,#ff3c5f)}
-.c-author-like .cal-heart{position:absolute;bottom:-4px;right:-4px;font-size:9px}
-.c-replies-toggle{display:flex;align-items:center;gap:8px;margin-top:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.crt-line{width:22px;height:1px;background:rgba(255,255,255,.18)}
-.crt-label{font-size:11px;font-weight:700;color:var(--a4)}
-.c-replies{display:flex;flex-direction:column;gap:14px;margin-top:14px;padding-left:14px;border-left:2px solid rgba(255,255,255,.07)}
-.c-edit-box{margin-top:8px}
-.c-edit-input{width:100%;background:#1a1a22;border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 12px;color:var(--text);font-family:var(--fd);font-size:13px;outline:none;-webkit-appearance:none}
-.c-edit-input:focus{border-color:var(--a4)}
-.c-edit-actions{display:flex;gap:8px;margin-top:8px}
-.c-edit-save{padding:6px 14px;border-radius:8px;background:var(--a4);border:none;color:#fff;font-family:var(--fd);font-size:12px;font-weight:700;cursor:pointer}
-.c-edit-cancel{padding:6px 14px;border-radius:8px;background:#1a1a22;border:none;color:var(--sub);font-family:var(--fd);font-size:12px;font-weight:700;cursor:pointer}
-.reply-context{display:none;align-items:center;justify-content:space-between;padding:8px 16px;background:#15151c;border-top:1px solid rgba(255,255,255,.06);font-size:12px;color:var(--sub);flex-shrink:0}
-.reply-context.show{display:flex}
-.reply-context button{background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;padding:2px 8px;line-height:1}
-.d-input-row{display:flex;gap:8px;padding:10px 14px calc(18px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;background:#0f0f14}
+.d-input-row{display:flex;gap:8px;padding:10px 14px 18px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;background:#0f0f14}
 .d-input{flex:1;background:#1a1a22;border:1.5px solid rgba(255,255,255,.08);border-radius:999px;padding:9px 16px;color:var(--text);font-family:var(--fd);font-size:13px;outline:none;-webkit-appearance:none}
 .d-input:focus{border-color:var(--a4)}
 .d-send{width:40px;height:40px;border-radius:50%;background:var(--a4);border:none;color:#fff;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:transform .12s}
@@ -182,8 +151,7 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .uprof-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .uprof-scroll::-webkit-scrollbar{display:none}
 .uprof-hero{display:flex;flex-direction:column;align-items:center;gap:9px;padding:22px 20px 16px}
-.uprof-avatar{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#3a2a6a,#6a1a3a);display:flex;align-items:center;justify-content:center;font-size:42px;border:3px solid #1a1a28;position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .12s}
-.uprof-avatar:active{transform:scale(.93)}
+.uprof-avatar{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#3a2a6a,#6a1a3a);display:flex;align-items:center;justify-content:center;font-size:42px;border:3px solid #1a1a28;position:relative}
 .uprof-edit-badge{position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:#222230;border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
 .uprof-name{font-size:21px;font-weight:700;letter-spacing:-.3px}
 .uprof-handle{font-size:12px;color:var(--sub);margin-top:-4px}
@@ -201,30 +169,6 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .uprof-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 14px 30px;align-content:start}
 .uprof-empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:10px;padding:40px 20px;color:var(--sub);font-size:13px;text-align:center;line-height:1.6}
 .uprof-empty-ico{font-size:38px}
-.uprof-stat.tappable{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s}
-.uprof-stat.tappable:active{background:rgba(255,255,255,.05)}
-
-/* ── CONNECTIONS (подписки / подписчики) ── */
-#connections-page{position:fixed;inset:0 0 var(--nav) 0;background:var(--bg);z-index:100;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);overflow:hidden}
-#connections-page.open{transform:translateY(0)}
-.conn-topbar{display:flex;align-items:center;gap:10px;padding:14px 16px 11px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);z-index:2}
-.conn-back{width:34px;height:34px;border-radius:50%;background:#161620;border:none;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .12s,background .15s;flex-shrink:0}
-.conn-back:active{transform:scale(.88);background:#222230}
-.conn-title{font-size:16px;font-weight:700;flex:1}
-.conn-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 0 30px}
-.conn-list::-webkit-scrollbar{display:none}
-.conn-item{display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .12s}
-.conn-item:active{background:rgba(255,255,255,.04)}
-.conn-av{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-.conn-info{flex:1;min-width:0}
-.conn-name{font-size:14px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.conn-handle{font-size:12px;color:var(--sub);margin-top:1px}
-.conn-btn{flex-shrink:0;padding:8px 15px;border-radius:8px;border:none;font-family:var(--fd);font-size:12px;font-weight:700;cursor:pointer;transition:transform .1s,background .15s,color .15s;letter-spacing:-.2px}
-.conn-btn:active{transform:scale(.95)}
-.conn-btn.following{background:#161620;color:var(--text);border:1.5px solid rgba(255,255,255,.14)}
-.conn-btn.not-following{background:var(--a1);color:#fff}
-.conn-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:60px 20px;color:var(--sub);font-size:13px;text-align:center}
-.conn-empty-ico{font-size:38px}
 
 /* ── REGISTRATION MODAL ── */
 #reg-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(12px);z-index:700;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
@@ -264,40 +208,17 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .edit-emoji-btn.selected{border-color:var(--a4)}
 .edit-label{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
 .edit-input{width:100%;background:#1a1a22;border:1.5px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;color:var(--text);font-family:var(--fd);font-size:15px;outline:none;-webkit-appearance:none;margin-bottom:16px}
-.edit-textarea{min-height:68px;line-height:1.45;resize:none}
 .edit-input:focus{border-color:var(--a4)}
 .edit-save-btn{width:100%;padding:15px;border-radius:14px;background:var(--a4);border:none;color:#fff;font-family:var(--fd);font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s}
 .edit-save-btn:active{opacity:.85}
 .edit-cancel{display:block;margin-top:12px;text-align:center;font-size:13px;color:var(--sub);cursor:pointer;padding:6px}
-
-/* ── SETTINGS MODAL ── */
-#settings-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(12px);z-index:700;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
-#settings-modal.show{opacity:1;pointer-events:all}
-.settings-sheet{width:100%;background:#0f0f14;border-radius:24px 24px 0 0;padding:0 0 env(safe-area-inset-bottom);transform:translateY(40px);transition:transform .35s cubic-bezier(.32,.72,0,1)}
-#settings-modal.show .settings-sheet{transform:translateY(0)}
-.settings-handle{width:36px;height:4px;background:#2a2a34;border-radius:999px;margin:14px auto 0}
-.settings-body{padding:20px 24px 32px}
-.settings-title{font-size:17px;font-weight:700;margin-bottom:18px;text-align:center}
-.settings-account{display:flex;align-items:center;gap:13px;padding:12px 14px;background:#16161e;border-radius:14px;margin-bottom:16px}
-.settings-acc-av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#3a2a6a,#6a1a3a);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-.settings-acc-name{font-size:15px;font-weight:700;line-height:1.2}
-.settings-acc-handle{font-size:12px;color:var(--sub);margin-top:2px}
-.settings-logout{width:100%;padding:15px;border-radius:14px;background:rgba(255,60,95,.12);border:1.5px solid rgba(255,60,95,.35);color:var(--a1);font-family:var(--fd);font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
-.settings-logout:active{background:rgba(255,60,95,.2)}
-.settings-login{width:100%;padding:15px;border-radius:14px;background:var(--a4);border:none;color:#fff;font-family:var(--fd);font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s}
-.settings-login:active{opacity:.85}
-.settings-cancel{display:block;margin-top:14px;text-align:center;font-size:13px;color:var(--sub);cursor:pointer;padding:6px}
 </style>
 </head>
 <body>
 
 <div id="loading">
   <div class="ld-logo">Shar<span>ky</span></div>
-  <div class="ld-dots" id="ld-dots"><div class="ld-dot"></div><div class="ld-dot"></div><div class="ld-dot"></div></div>
-  <div class="ld-error" id="ld-error">
-    <div class="ld-error-msg" id="ld-error-msg">Не удалось загрузить. Проверь соединение и попробуй снова.</div>
-    <button class="ld-retry" id="ld-retry">Повторить</button>
-  </div>
+  <div class="ld-dots"><div class="ld-dot"></div><div class="ld-dot"></div><div class="ld-dot"></div></div>
 </div>
 
 <div id="toast"></div>
@@ -330,7 +251,7 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
     </button>
     <div class="prof-topbar-name" id="prof-topbar-name">@sharky</div>
-    <button class="prof-dots" id="prof-dots">⋯</button>
+    <button class="prof-dots">⋯</button>
   </div>
   <div class="prof-scroll">
     <div class="prof-hero">
@@ -347,7 +268,7 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
     <button class="prof-follow-btn" id="prof-follow-btn" style="background:var(--a1);color:#fff">Подписаться</button>
     <div class="prof-tabs">
       <div class="prof-tab active" data-tab="games">🎮 Игры</div>
-      <div class="prof-tab" data-tab="popular">🔥 Популярное</div>
+      <div class="prof-tab" data-tab="liked">❤️ Нравится</div>
     </div>
     <div class="prof-grid" id="prof-grid"></div>
   </div>
@@ -361,7 +282,6 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
   <div class="d-handle" id="d-handle"></div>
   <div class="d-header"><h3 id="comments-title">Комментарии</h3><button class="d-close" id="d-close">✕</button></div>
   <div class="comments-list" id="comments-list"></div>
-  <div class="reply-context" id="reply-context"><span id="reply-context-text"></span><button id="reply-cancel">✕</button></div>
   <div class="d-input-row">
     <input class="d-input" id="comment-input" placeholder="Написать комментарий…" maxlength="120">
     <button class="d-send" id="comment-send">↑</button>
@@ -386,8 +306,8 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
     </div>
     <button class="uprof-edit-btn" id="uprof-action-btn">Войти через Telegram</button>
     <div class="uprof-stats">
-      <div class="uprof-stat tappable" id="uprof-stat-following"><div class="uprof-stat-n" id="uprof-following">0</div><div class="uprof-stat-l">подписки</div></div>
-      <div class="uprof-stat tappable" id="uprof-stat-followers"><div class="uprof-stat-n" id="uprof-followers">0</div><div class="uprof-stat-l">подписчики</div></div>
+      <div class="uprof-stat"><div class="uprof-stat-n" id="uprof-following">0</div><div class="uprof-stat-l">подписки</div></div>
+      <div class="uprof-stat"><div class="uprof-stat-n" id="uprof-followers">0</div><div class="uprof-stat-l">подписчики</div></div>
       <div class="uprof-stat"><div class="uprof-stat-n" id="uprof-likes-total">0</div><div class="uprof-stat-l">лайки</div></div>
     </div>
     <div class="uprof-tabs">
@@ -397,17 +317,6 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
     </div>
     <div class="uprof-grid" id="uprof-grid"></div>
   </div>
-</div>
-
-<!-- CONNECTIONS (подписки / подписчики) -->
-<div id="connections-page">
-  <div class="conn-topbar">
-    <button class="conn-back" id="conn-back">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-    </button>
-    <div class="conn-title" id="conn-title">Подписки</div>
-  </div>
-  <div class="conn-list" id="conn-list"></div>
 </div>
 
 <!-- REGISTRATION MODAL -->
@@ -444,22 +353,8 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
       <div class="edit-emoji-grid" id="edit-emoji-grid"></div>
       <div class="edit-label">Имя</div>
       <input class="edit-input" id="edit-name-input" placeholder="Твоё имя" maxlength="32">
-      <div class="edit-label">Описание</div>
-      <textarea class="edit-input edit-textarea" id="edit-bio-input" placeholder="Пара слов о себе" maxlength="160"></textarea>
       <button class="edit-save-btn" id="edit-save-btn">Сохранить</button>
       <div class="edit-cancel" id="edit-cancel">Отмена</div>
-    </div>
-  </div>
-</div>
-
-<!-- SETTINGS MODAL -->
-<div id="settings-modal">
-  <div class="settings-sheet">
-    <div class="settings-handle"></div>
-    <div class="settings-body">
-      <div class="settings-title">Настройки</div>
-      <div id="settings-content"></div>
-      <div class="settings-cancel" id="settings-cancel">Закрыть</div>
     </div>
   </div>
 </div>
@@ -496,11 +391,6 @@ let currentUser = null; // Supabase user row
 let currentIdx = 0, profileOpen = false, currentAuthorId = 'sharky';
 let activeProfTab = 'games', activeNav = 'feed', activeUTab = 'liked', activeDrawerGame = null;
 let swipeCount = 0; // trigger reg modal after 3
-let connType = 'following'; // 'following' | 'followers'
-let replyTo = null; // { parentId, name }
-let commentsCache = {}, repliesByParent = {};
-const likedComments = new Set();   // session-local: which comments this user liked
-const expandedThreads = new Set(); // which threads are expanded
 
 const deckEl = document.getElementById('deck');
 const cardEls = [];
@@ -522,8 +412,6 @@ function hideSocialBars() { document.querySelectorAll('.social-col').forEach(b =
 function showSocialBars() { document.querySelectorAll('.social-col').forEach(b => b.style.visibility=''); }
 function heartSVG(a){const c=a?'var(--a1)':'rgba(255,255,255,.7)',f=a?'var(--a1)':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;}
 function bookSVG(a){const c=a?'var(--a3)':'rgba(255,255,255,.7)',f=a?'var(--a3)':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;}
-function commentHeartSVG(a){const c=a?'var(--a1)':'rgba(255,255,255,.5)',f=a?'var(--a1)':'none';return `<svg width="16" height="16" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;}
-function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // ══ AUTH ══
 async function loginWithTelegram() {
@@ -537,7 +425,26 @@ async function loginWithTelegram() {
     btn.textContent = 'Входим…';
     btn.disabled = true;
 
-    currentUser = await fetchOrCreateTgUser(tgUser);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${tgUser.id}&select=*`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const users = res.ok ? await res.json() : [];
+
+    if (users.length > 0) {
+      currentUser = users[0];
+    } else {
+      const username = tgUser.username || `user${tgUser.id}`;
+      const { data: newUser, error } = await db.from('users').insert({
+        telegram_id: tgUser.id,
+        username: username,
+        display_name: tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : ''),
+        avatar_emoji: '🎮',
+        bio: '',
+        is_virtual: false
+      }).select().single();
+      if (error) throw error;
+      currentUser = newUser;
+    }
 
     await loadUserSocialData();
     hideRegModal();
@@ -551,24 +458,6 @@ async function loginWithTelegram() {
     document.getElementById('reg-tg-btn').disabled = false;
     toast('Ошибка входа, попробуй снова');
   }
-}
-
-// Fetch the Telegram user's row, or create it on first launch (seamless login)
-async function fetchOrCreateTgUser(tgUser) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${tgUser.id}&select=*`, { headers: REST_HEADERS });
-  const users = res.ok ? await res.json() : [];
-  if (users.length > 0) return users[0];
-  const username = tgUser.username || `user${tgUser.id}`;
-  const { data: newUser, error } = await db.from('users').insert({
-    telegram_id: tgUser.id,
-    username,
-    display_name: tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : ''),
-    avatar_emoji: '🎮',
-    bio: '',
-    is_virtual: false
-  }).select().single();
-  if (error) throw error;
-  return newUser;
 }
 
 // ══ LOAD DATA FROM SUPABASE ══
@@ -586,7 +475,7 @@ async function loadGames() {
 async function loadAuthors(games) {
   const authorIds = [...new Set(games.map(g => g.author_id))];
   const ids = authorIds.join(',');
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?username=in.(${ids})&select=id,username,display_name,avatar_emoji,gradient,bio,is_virtual`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?username=in.(${ids})&select=username,display_name,avatar_emoji,gradient,bio,is_virtual`, {
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
   });
   const data = res.ok ? await res.json() : [];
@@ -594,7 +483,6 @@ async function loadAuthors(games) {
   data.forEach(u => {
     map[u.username] = {
       id: u.username,
-      uid: u.id,
       emoji: u.avatar_emoji,
       avatar_url: u.avatar_url || null,
       name: u.display_name,
@@ -629,7 +517,7 @@ async function loadLikeCounts() {
   const counts = {};
   data.forEach(l => { counts[l.game_id] = (counts[l.game_id]||0) + 1; });
   GAMES.forEach(g => {
-    if (!socialData[g.id]) socialData[g.id] = { likes:0, liked:false, saved:false, commentCount:0, shareCount:0 };
+    if (!socialData[g.id]) socialData[g.id] = { likes:0, liked:false, saved:false, commentCount:0 };
     socialData[g.id].likes = counts[g.id] || 0;
   });
 }
@@ -689,15 +577,6 @@ async function loadFollowingCount() {
   return data.length;
 }
 
-async function loadFollowersCount() {
-  if (!currentUser) return 0;
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/follows?followee_username=eq.${currentUser.username}&select=follower_id`, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-  });
-  const data = res.ok ? await res.json() : [];
-  return data.length;
-}
-
 // ══ SOCIAL ACTIONS ══
 async function toggleLike(i) {
   if (!currentUser) { showRegModal(); return; }
@@ -747,17 +626,9 @@ async function toggleSave(i) {
 
 function doShare(i) {
   const g = GAMES[i];
-  const d = socialData[g.id];
   const text = `Играю в «${g.title}» на Sharky 🎮`;
-  const bump = () => {
-    if (!d) return;
-    d.shareCount = (d.shareCount||0) + 1;
-    const el = document.getElementById(`sbcount-share-${i}`);
-    if (el) el.textContent = fmt(d.shareCount);
-  };
-  if (navigator.share) navigator.share({ title:'Sharky', text }).then(bump).catch(()=>{});
-  else navigator.clipboard.writeText(text).then(() => { toast('📋 Скопировано!'); bump(); });
-  tg?.HapticFeedback?.impactOccurred('light');
+  if (navigator.share) navigator.share({ title:'Sharky', text });
+  else navigator.clipboard.writeText(text).then(() => toast('📋 Скопировано!'));
 }
 
 async function toggleFollow() {
@@ -796,7 +667,6 @@ async function toggleFollow() {
 async function openComments(i) {
   activeDrawerGame = i;
   const g = GAMES[i];
-  clearReply();
   document.getElementById('comments-title').textContent = `Комментарии · ${g.title}`;
   await renderComments(i);
   document.getElementById('comments-drawer').classList.add('open');
@@ -810,23 +680,7 @@ function closeComments() {
   document.getElementById('comments-drawer').classList.remove('open');
   document.getElementById('drawer-backdrop').classList.remove('show');
   showSocialBars();
-  clearReply();
   tg?.BackButton?.hide(); tg?.BackButton?.offClick(closeComments);
-}
-
-// Robust fetch: try FK-join, fall back to manual user hydration
-async function fetchCommentsForGame(gameId) {
-  const res = await db.from('comments')
-    .select('*, users!comments_user_id_fkey(display_name, avatar_emoji)')
-    .eq('game_id', gameId)
-    .order('created_at', { ascending: true });
-  if (!res.error && res.data) return res.data;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/comments?game_id=eq.${gameId}&select=*&order=created_at.asc`, { headers: REST_HEADERS });
-  const rows = r.ok ? await r.json() : [];
-  const users = await fetchUsersById([...new Set(rows.map(c => c.user_id))]);
-  const um = {}; users.forEach(u => um[u.id] = u);
-  rows.forEach(c => { c.users = um[c.user_id] ? { display_name: um[c.user_id].display_name, avatar_emoji: um[c.user_id].avatar_emoji } : null; });
-  return rows;
 }
 
 async function renderComments(i) {
@@ -834,251 +688,34 @@ async function renderComments(i) {
   const g = GAMES[i];
   list.innerHTML = '<div style="text-align:center;color:var(--sub);padding:20px;font-size:12px">Загрузка…</div>';
 
-  let comments = [];
-  try { comments = (await fetchCommentsForGame(g.id)) || []; }
-  catch(e) {
-    console.error('comments load error', e);
-    list.innerHTML = `<div style="text-align:center;color:var(--sub);padding:24px 0;font-size:12px">Не удалось загрузить комментарии</div>`;
-    return;
-  }
-
-  // build caches
-  commentsCache = {};
-  repliesByParent = {};
-  const isAuthorViewer = currentUser && currentUser.username === g.author_id;
-  comments.forEach(c => {
-    commentsCache[c.id] = c;
-    if (c.parent_id) (repliesByParent[c.parent_id] = repliesByParent[c.parent_id] || []).push(c);
-    if (isAuthorViewer && c.author_liked) likedComments.add(c.id);
-  });
+  const { data: comments } = await db
+    .from('comments')
+    .select('*, users!comments_user_id_fkey(display_name, avatar_emoji)')
+    .eq('game_id', g.id)
+    .order('created_at', { ascending: true });
 
   list.innerHTML = '';
-  const top = comments.filter(c => !c.parent_id);
-  if (!top.length) {
+  if (!comments || !comments.length) {
     list.innerHTML = `<div style="text-align:center;color:var(--sub);padding:28px 0;font-size:12px;letter-spacing:1px;">Будь первым! 👇</div>`;
-  } else {
-    top.forEach(c => list.appendChild(buildCommentNode(c, i, false)));
-  }
-
-  // total comment count (incl. replies)
-  if (socialData[g.id]) {
-    socialData[g.id].commentCount = comments.length;
-    const el = document.getElementById(`sbcount-com-${i}`);
-    if (el) el.textContent = fmt(comments.length);
-  }
-}
-
-function buildCommentNode(c, gameIdx, isReply) {
-  const g = GAMES[gameIdx];
-  const isOwn = currentUser && c.user_id === currentUser.id;
-  const replies = repliesByParent[c.id] || [];
-  const replyCount = replies.length;
-  const liked = likedComments.has(c.id);
-  const authorEmoji = AUTHORS[g.author_id]?.emoji || '🎮';
-
-  const item = document.createElement('div');
-  item.className = 'c-item' + (isReply ? ' c-reply' : '');
-  item.dataset.cid = c.id;
-
-  const av = document.createElement('div');
-  av.className = 'c-av';
-  av.textContent = c.users?.avatar_emoji || '🎮';
-
-  const body = document.createElement('div');
-  body.className = 'c-body';
-
-  const nameEl = document.createElement('div');
-  nameEl.className = 'c-name';
-  nameEl.textContent = c.users?.display_name || 'Игрок';
-
-  const textEl = document.createElement('div');
-  textEl.className = 'c-text';
-  textEl.textContent = c.text;
-
-  body.appendChild(nameEl);
-  body.appendChild(textEl);
-
-  if (c.author_liked) {
-    const al = document.createElement('div');
-    al.className = 'c-author-like';
-    al.innerHTML = `<span class="cal-av">${escHtml(authorEmoji)}<span class="cal-heart">❤️</span></span> Понравилось автору`;
-    body.appendChild(al);
-  }
-
-  const meta = document.createElement('div');
-  meta.className = 'c-meta';
-  const replyBtn = document.createElement('span');
-  replyBtn.className = 'c-act';
-  replyBtn.textContent = 'Ответить';
-  replyBtn.addEventListener('click', () => {
-    const parentId = isReply ? c.parent_id : c.id;
-    setReply(parentId, c.users?.display_name || 'Игрок');
-  });
-  meta.appendChild(replyBtn);
-
-  if (isOwn) {
-    const editBtn = document.createElement('span');
-    editBtn.className = 'c-act';
-    editBtn.textContent = 'Изменить';
-    editBtn.addEventListener('click', () => startEditComment(c.id, gameIdx, item, textEl));
-    meta.appendChild(editBtn);
-
-    const delBtn = document.createElement('span');
-    delBtn.className = 'c-act c-act-del';
-    delBtn.textContent = 'Удалить';
-    delBtn.addEventListener('click', () => deleteComment(c.id, gameIdx));
-    meta.appendChild(delBtn);
-  }
-  if (c.edited) {
-    const ed = document.createElement('span');
-    ed.className = 'c-edited';
-    ed.textContent = 'изменено';
-    meta.appendChild(ed);
-  }
-  body.appendChild(meta);
-
-  if (!isReply && replyCount > 0) {
-    const toggle = document.createElement('div');
-    toggle.className = 'c-replies-toggle';
-    const repBox = document.createElement('div');
-    repBox.className = 'c-replies';
-    const setLabel = t => toggle.innerHTML = `<span class="crt-line"></span><span class="crt-label">${t}</span>`;
-    const renderReplies = () => { repBox.innerHTML = ''; replies.forEach(r => repBox.appendChild(buildCommentNode(r, gameIdx, true))); };
-    if (expandedThreads.has(c.id)) { renderReplies(); repBox.style.display = ''; setLabel('Скрыть ответы'); }
-    else { repBox.style.display = 'none'; setLabel(`Показать ответы (${replyCount})`); }
-    toggle.addEventListener('click', () => {
-      if (expandedThreads.has(c.id)) {
-        expandedThreads.delete(c.id);
-        repBox.style.display = 'none';
-        setLabel(`Показать ответы (${replyCount})`);
-      } else {
-        expandedThreads.add(c.id);
-        renderReplies();
-        repBox.style.display = '';
-        setLabel('Скрыть ответы');
-      }
-    });
-    body.appendChild(toggle);
-    body.appendChild(repBox);
-  }
-
-  const likeCol = document.createElement('div');
-  likeCol.className = 'c-like' + (liked ? ' liked' : '');
-  likeCol.innerHTML = commentHeartSVG(liked) + `<span>${c.like_count > 0 ? fmt(c.like_count) : ''}</span>`;
-  likeCol.addEventListener('click', () => toggleCommentLike(c.id, gameIdx, likeCol));
-
-  item.appendChild(av);
-  item.appendChild(body);
-  item.appendChild(likeCol);
-  return item;
-}
-
-async function toggleCommentLike(cid, gameIdx, el) {
-  if (!currentUser) { showRegModal(); return; }
-  const c = commentsCache[cid];
-  if (!c) return;
-  const liked = likedComments.has(cid);
-  if (liked) likedComments.delete(cid); else likedComments.add(cid);
-  c.like_count = Math.max(0, (c.like_count || 0) + (liked ? -1 : 1));
-
-  el.classList.toggle('liked', !liked);
-  el.innerHTML = commentHeartSVG(!liked) + `<span>${c.like_count > 0 ? fmt(c.like_count) : ''}</span>`;
-  tg?.HapticFeedback?.impactOccurred('light');
-
-  const g = GAMES[gameIdx];
-  const isAuthor = currentUser.username === g.author_id;
-  const patch = { like_count: c.like_count };
-  if (isAuthor) { c.author_liked = !liked; patch.author_liked = !liked; }
-  try {
-    await db.from('comments').update(patch).eq('id', cid);
-    if (isAuthor) renderComments(gameIdx); // refresh "понравилось автору" badge
-  } catch(e) { console.error('comment like error', e); }
-}
-
-function setReply(parentId, name) {
-  replyTo = { parentId, name };
-  document.getElementById('reply-context-text').textContent = `Ответ для ${name}`;
-  document.getElementById('reply-context').classList.add('show');
-  const inp = document.getElementById('comment-input');
-  inp.placeholder = `Ответ для ${name}…`;
-  inp.focus();
-}
-function clearReply() {
-  replyTo = null;
-  const ctx = document.getElementById('reply-context');
-  if (ctx) ctx.classList.remove('show');
-  const inp = document.getElementById('comment-input');
-  if (inp) inp.placeholder = 'Написать комментарий…';
-}
-
-function startEditComment(cid, gameIdx, itemEl, textEl) {
-  const c = commentsCache[cid];
-  if (!c) return;
-  const replyCount = (repliesByParent[cid] || []).length;
-  if ((c.like_count || 0) > 0 || replyCount > 0) {
-    toast('Нельзя изменить: уже есть ответы или лайки');
     return;
   }
-  if (itemEl.querySelector('.c-edit-box')) return;
-
-  const box = document.createElement('div');
-  box.className = 'c-edit-box';
-  const inp = document.createElement('input');
-  inp.className = 'c-edit-input';
-  inp.maxLength = 120;
-  inp.value = c.text;
-  const actions = document.createElement('div');
-  actions.className = 'c-edit-actions';
-  const save = document.createElement('button'); save.className = 'c-edit-save'; save.textContent = 'Сохранить';
-  const cancel = document.createElement('button'); cancel.className = 'c-edit-cancel'; cancel.textContent = 'Отмена';
-  actions.appendChild(save); actions.appendChild(cancel);
-  box.appendChild(inp); box.appendChild(actions);
-  textEl.style.display = 'none';
-  textEl.after(box);
-  inp.focus();
-
-  cancel.addEventListener('click', () => { box.remove(); textEl.style.display = ''; });
-  save.addEventListener('click', async () => {
-    const nt = inp.value.trim();
-    if (!nt) { toast('Комментарий не может быть пустым'); return; }
-    const replyCountNow = (repliesByParent[cid] || []).length;
-    if ((commentsCache[cid].like_count || 0) > 0 || replyCountNow > 0) {
-      toast('Уже есть ответы или лайки — изменение отменено');
-      box.remove(); textEl.style.display = '';
-      return;
-    }
-    save.disabled = true; save.textContent = '…';
-    const { error } = await db.from('comments').update({ text: nt, edited: true }).eq('id', cid);
-    if (error) { toast('Ошибка сохранения'); save.disabled = false; save.textContent = 'Сохранить'; return; }
-    c.text = nt; c.edited = true;
-    renderComments(gameIdx);
+  comments.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'c-item';
+    item.innerHTML = `
+      <div class="c-av">${c.users?.avatar_emoji || '🎮'}</div>
+      <div class="c-body">
+        <div class="c-name">${c.users?.display_name || 'Игрок'}</div>
+        <div class="c-text">${c.text}</div>
+      </div>`;
+    list.appendChild(item);
   });
-}
-
-function confirmAction(message, onYes) {
-  if (tg?.showConfirm) tg.showConfirm(message, ok => { if (ok) onYes(); });
-  else if (window.confirm(message)) onYes();
-}
-
-async function deleteComment(cid, gameIdx) {
-  const c = commentsCache[cid];
-  if (!c || !currentUser || c.user_id !== currentUser.id) return;
-  const replyCount = (repliesByParent[cid] || []).length;
-  const msg = replyCount > 0
-    ? `Удалить комментарий и все ответы (${replyCount})?`
-    : 'Удалить комментарий?';
-  confirmAction(msg, async () => {
-    try {
-      // parent_id has ON DELETE CASCADE — replies are removed automatically
-      const { error } = await db.from('comments').delete().eq('id', cid);
-      if (error) { toast('Ошибка удаления'); return; }
-      likedComments.delete(cid);
-      expandedThreads.delete(cid);
-      tg?.HapticFeedback?.impactOccurred('medium');
-      toast('Комментарий удалён');
-      renderComments(gameIdx);
-    } catch(e) { console.error('delete error', e); toast('Ошибка удаления'); }
-  });
+  list.scrollTop = list.scrollHeight;
+  // Update count
+  if (socialData[g.id]) {
+    socialData[g.id].commentCount = comments.length;
+    document.getElementById(`sbcount-com-${i}`).textContent = fmt(comments.length);
+  }
 }
 
 async function postComment(i) {
@@ -1088,14 +725,12 @@ async function postComment(i) {
   if (!text) return;
   inp.value = '';
   const g = GAMES[i];
-  const payload = { game_id: g.id, user_id: currentUser.id, text };
-  const replyParent = replyTo ? replyTo.parentId : null;
-  if (replyParent) payload.parent_id = replyParent;
-  const { error } = await db.from('comments').insert(payload);
-  if (error) { toast('Ошибка отправки'); return; }
-  if (replyParent) expandedThreads.add(replyParent); // keep the answered thread open
-  clearReply();
-  await renderComments(i);
+  const { error } = await db.from('comments').insert({
+    game_id: g.id,
+    user_id: currentUser.id,
+    text
+  });
+  if (!error) await renderComments(i);
 }
 
 // ══ AUTHOR PROFILE ══
@@ -1111,18 +746,8 @@ async function openProfile(authorId) {
   document.getElementById('prof-handle').textContent = a.handle;
   document.getElementById('prof-bio').innerHTML = (a.bio||'').replace(/\n/g,'<br>');
   document.getElementById('prof-followers-n').textContent = fmt(a.followers);
-  // likes = сумма лайков по всем играм автора
-  const authorGames = GAMES.filter(g => g.author_id === currentAuthorId);
-  const totalLikes = authorGames.reduce((s, g) => s + (socialData[g.id]?.likes || 0), 0);
-  document.getElementById('prof-likes-n').textContent = fmt(totalLikes);
-  // following = сколько аккаунтов читает сам автор (асинхронно)
-  document.getElementById('prof-following-n').textContent = fmt(a.following || 0);
-  if (a.uid) {
-    fetch(`${SUPABASE_URL}/rest/v1/follows?follower_id=eq.${a.uid}&select=followee_username`, { headers: REST_HEADERS })
-      .then(r => r.ok ? r.json() : [])
-      .then(rows => { a.following = rows.length; const el = document.getElementById('prof-following-n'); if (el) el.textContent = fmt(rows.length); })
-      .catch(() => {});
-  }
+  document.getElementById('prof-following-n').textContent = a.following;
+  document.getElementById('prof-likes-n').textContent = '—';
 
   const btn = document.getElementById('prof-follow-btn');
   btn.classList.toggle('following', a.followed);
@@ -1150,12 +775,14 @@ function renderProfGrid(tab) {
   const grid = document.getElementById('prof-grid');
   grid.innerHTML = '';
   const ag = GAMES.filter(g => g.author_id === currentAuthorId);
-  if (!ag.length) { grid.innerHTML = `<div class="prof-empty">🎮<br>Нет игр</div>`; return; }
-  let list = ag;
-  if (tab === 'popular') {
-    list = [...ag].sort((a, b) => (socialData[b.id]?.likes || 0) - (socialData[a.id]?.likes || 0));
+  if (tab === 'liked') {
+    const lk = ag.filter(g => socialData[g.id]?.liked || socialData[g.id]?.saved);
+    if (!lk.length) { grid.innerHTML = `<div class="prof-empty">💔<br>Нет понравившихся игр</div>`; return; }
+    lk.forEach(g => grid.appendChild(makePGC(GAMES.indexOf(g))));
+    return;
   }
-  list.forEach(g => grid.appendChild(makePGC(GAMES.indexOf(g))));
+  if (!ag.length) { grid.innerHTML = `<div class="prof-empty">🎮<br>Нет игр</div>`; return; }
+  ag.forEach(g => grid.appendChild(makePGC(GAMES.indexOf(g))));
 }
 
 function makePGC(i) {
@@ -1197,8 +824,6 @@ async function updateUserProfileUI() {
     document.getElementById('uprof-likes-total').textContent = likedCount;
     const followingCount = await loadFollowingCount();
     document.getElementById('uprof-following').textContent = followingCount;
-    const followersCount = await loadFollowersCount();
-    document.getElementById('uprof-followers').textContent = followersCount;
   } else {
     const wrap = document.getElementById('uprof-avatar-wrap');
     wrap.innerHTML = '<span id="uprof-avatar-emoji">👤</span><div class="uprof-edit-badge">✏️</div>';
@@ -1210,157 +835,7 @@ async function updateUserProfileUI() {
     document.getElementById('uprof-action-btn').dataset.mode = 'login';
     document.getElementById('uprof-likes-total').textContent = '0';
     document.getElementById('uprof-following').textContent = '0';
-    document.getElementById('uprof-followers').textContent = '0';
   }
-}
-
-// ══ CONNECTIONS (подписки / подписчики) ══
-const REST_HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
-
-async function fetchUsersByUsername(names) {
-  if (!names.length) return [];
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/users?username=in.(${names.join(',')})&select=id,username,display_name,avatar_emoji,gradient,bio,is_virtual`, { headers: REST_HEADERS });
-  return r.ok ? await r.json() : [];
-}
-async function fetchUsersById(ids) {
-  if (!ids.length) return [];
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=in.(${ids.join(',')})&select=id,username,display_name,avatar_emoji,gradient,bio,is_virtual`, { headers: REST_HEADERS });
-  return r.ok ? await r.json() : [];
-}
-
-async function openConnections(type) {
-  if (!currentUser) { showRegModal(); return; }
-  connType = type;
-  document.getElementById('conn-title').textContent = type === 'following' ? 'Подписки' : 'Подписчики';
-  const list = document.getElementById('conn-list');
-  list.innerHTML = '<div style="text-align:center;color:var(--sub);padding:40px 0;font-size:12px">Загрузка…</div>';
-  document.getElementById('connections-page').classList.add('open');
-  tg?.BackButton?.show(); tg?.BackButton?.onClick(closeConnections);
-  tg?.HapticFeedback?.impactOccurred('light');
-
-  let users = [];
-  try {
-    if (type === 'following') {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/follows?follower_id=eq.${currentUser.id}&select=followee_username`, { headers: REST_HEADERS });
-      const rows = r.ok ? await r.json() : [];
-      users = await fetchUsersByUsername(rows.map(x => x.followee_username));
-    } else {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/follows?followee_username=eq.${currentUser.username}&select=follower_id`, { headers: REST_HEADERS });
-      const rows = r.ok ? await r.json() : [];
-      users = await fetchUsersById(rows.map(x => x.follower_id));
-    }
-  } catch(e) { console.error('Connections error:', e); }
-  renderConnList(type, users);
-}
-
-function closeConnections() {
-  document.getElementById('connections-page').classList.remove('open');
-  tg?.BackButton?.offClick(closeConnections);
-  tg?.BackButton?.hide();
-}
-
-function renderConnList(type, users) {
-  const list = document.getElementById('conn-list');
-  list.innerHTML = '';
-  users = users.filter(u => u.id !== currentUser.id);
-  if (!users.length) {
-    const msg = type === 'following' ? 'Ты пока ни на кого не подписан' : 'У тебя пока нет подписчиков';
-    const ico = type === 'following' ? '👀' : '👥';
-    list.innerHTML = `<div class="conn-empty"><div class="conn-empty-ico">${ico}</div>${msg}</div>`;
-    return;
-  }
-  users.forEach(u => {
-    // merge into AUTHORS so openProfile() can render them
-    if (!AUTHORS[u.username]) {
-      AUTHORS[u.username] = {
-        id: u.username, uid: u.id, emoji: u.avatar_emoji || '🎮', name: u.display_name,
-        handle: '@' + u.username, bio: u.bio || '',
-        gradient: u.gradient || 'linear-gradient(135deg,#7b5cff,#ff3c5f)',
-        ring: u.gradient || 'linear-gradient(135deg,#7b5cff,#ff3c5f)',
-        followers: 0, following: 0,
-        followed: (type === 'following'),
-        is_virtual: u.is_virtual
-      };
-    }
-    const item = document.createElement('div');
-    item.className = 'conn-item';
-    item.innerHTML = `
-      <div class="conn-av" style="background:${u.gradient || 'linear-gradient(135deg,#7b5cff,#ff3c5f)'}">${u.avatar_emoji || '🎮'}</div>
-      <div class="conn-info">
-        <div class="conn-name">${u.display_name}</div>
-        <div class="conn-handle">@${u.username}</div>
-      </div>`;
-    item.addEventListener('click', () => {
-      closeConnections();
-      setTimeout(() => openProfile(u.username), 360);
-    });
-
-    if (type === 'following') {
-      const followed = AUTHORS[u.username]?.followed !== false;
-      const btn = document.createElement('button');
-      btn.className = 'conn-btn ' + (followed ? 'following' : 'not-following');
-      btn.textContent = followed ? 'Отписаться' : 'Подписаться';
-      btn.addEventListener('click', (e) => { e.stopPropagation(); toggleFollowUser(u.username, btn); });
-      item.appendChild(btn);
-    }
-    list.appendChild(item);
-  });
-}
-
-function openAuthorMenu() {
-  const a = AUTHORS[currentAuthorId];
-  if (!a) return;
-  const shareText = `Зацени игры ${a.handle} на Sharky 🎮`;
-  const doShareText = () => {
-    if (navigator.share) navigator.share({ title: 'Sharky', text: shareText }).catch(()=>{});
-    else if (navigator.clipboard) navigator.clipboard.writeText(shareText).then(() => toast('📋 Скопировано!'));
-  };
-  if (tg?.showPopup) {
-    tg.showPopup({
-      title: a.name,
-      message: 'Профиль автора',
-      buttons: [
-        { id: 'share', type: 'default', text: 'Поделиться' },
-        { id: 'copy', type: 'default', text: 'Скопировать @' },
-        { id: 'cancel', type: 'cancel' }
-      ]
-    }, id => {
-      if (id === 'share') doShareText();
-      else if (id === 'copy' && navigator.clipboard) navigator.clipboard.writeText(a.handle).then(() => toast('📋 ' + a.handle));
-    });
-  } else {
-    doShareText();
-  }
-}
-
-async function toggleFollowUser(username, btn) {
-  if (!currentUser) { showRegModal(); return; }
-  const a = AUTHORS[username];
-  const willFollow = !(a && a.followed);
-  if (a) { a.followed = willFollow; a.followers += willFollow ? 1 : -1; }
-  btn.className = 'conn-btn ' + (willFollow ? 'following' : 'not-following');
-  btn.textContent = willFollow ? 'Отписаться' : 'Подписаться';
-  tg?.HapticFeedback?.impactOccurred('light');
-
-  if (willFollow) {
-    await db.from('follows').insert({ follower_id: currentUser.id, followee_username: username });
-  } else {
-    await db.from('follows').delete().eq('follower_id', currentUser.id).eq('followee_username', username);
-  }
-
-  // refresh own following count
-  const c = await loadFollowingCount();
-  document.getElementById('uprof-following').textContent = c;
-
-  // sync follow badges in the feed
-  GAMES.forEach((g, i) => {
-    if (g.author_id === username) {
-      const p = document.getElementById(`avplus-${i}`);
-      const w = document.getElementById(`avwrap-${i}`);
-      if (p) p.textContent = willFollow ? '✓' : '+';
-      if (w) w.classList.toggle('following', willFollow);
-    }
-  });
 }
 
 function renderUGrid(tab) {
@@ -1403,60 +878,6 @@ function hideRegModal() {
   document.getElementById('reg-modal').classList.remove('show');
 }
 
-// ══ SETTINGS / LOGOUT ══
-function openSettings() {
-  const body = document.getElementById('settings-content');
-  if (currentUser) {
-    body.innerHTML = `
-      <div class="settings-account">
-        <div class="settings-acc-av">${escHtml(currentUser.avatar_emoji || '🎮')}</div>
-        <div>
-          <div class="settings-acc-name">${escHtml(currentUser.display_name)}</div>
-          <div class="settings-acc-handle">@${escHtml(currentUser.username)}</div>
-        </div>
-      </div>
-      <button class="settings-logout" id="settings-logout-btn">Выйти из аккаунта</button>`;
-    document.getElementById('settings-logout-btn').addEventListener('click', logout);
-  } else {
-    body.innerHTML = `<button class="settings-login" id="settings-login-btn">Войти в аккаунт</button>`;
-    document.getElementById('settings-login-btn').addEventListener('click', () => { closeSettings(); showRegModal(); });
-  }
-  document.getElementById('settings-modal').classList.add('show');
-}
-
-function closeSettings() {
-  document.getElementById('settings-modal').classList.remove('show');
-}
-
-function logout() {
-  currentUser = null;
-  swipeCount = 0;
-  likedComments.clear();
-  // reset this user's personal flags (global counts stay intact)
-  Object.values(socialData).forEach(d => { d.liked = false; d.saved = false; });
-  Object.values(AUTHORS).forEach(a => { a.followed = false; });
-  // reset feed sidebar to guest state
-  GAMES.forEach((g, i) => {
-    const likeBtn = document.getElementById(`sb-like-${i}`);
-    if (likeBtn) { likeBtn.classList.remove('liked'); const ic = document.getElementById(`sbicon-like-${i}`); if (ic) ic.innerHTML = heartSVG(false); }
-    const saveBtn = document.getElementById(`sb-save-${i}`);
-    if (saveBtn) {
-      saveBtn.classList.remove('saved');
-      const si = document.getElementById(`sbicon-save-${i}`); if (si) si.innerHTML = bookSVG(false);
-      const sc = document.getElementById(`sbcount-save-${i}`); if (sc) sc.textContent = '☆';
-    }
-    const avWrap = document.getElementById(`avwrap-${i}`);
-    const avPlus = document.getElementById(`avplus-${i}`);
-    if (avWrap) avWrap.classList.remove('following');
-    if (avPlus) avPlus.textContent = '+';
-  });
-  closeSettings();
-  updateUserProfileUI();
-  renderUGrid(activeUTab);
-  tg?.HapticFeedback?.impactOccurred('medium');
-  toast('Вы вышли из аккаунта');
-}
-
 // ══ EDIT PROFILE ══
 const AVATAR_EMOJIS = ['🎮','👾','🕹️','🧪','🔥','⚡','🌀','💎','🚀','🎯','🐉','🦊','🐺','🌙','🌊','🎨','🏆','👻','🤖','🎸','🦋','🍀','🌸','🦁','🐼','🦈','🐬','🦄','🌈','✨'];
 let editSelectedEmoji = '🎮';
@@ -1488,7 +909,6 @@ function openEditModal() {
   });
 
   document.getElementById('edit-name-input').value = currentUser.display_name || '';
-  document.getElementById('edit-bio-input').value = currentUser.bio || '';
   document.getElementById('edit-modal').classList.add('show');
 }
 
@@ -1500,14 +920,13 @@ async function saveProfile() {
   if (!currentUser) return;
   const name = document.getElementById('edit-name-input').value.trim();
   if (!name) { toast('⚠️ Введи имя'); return; }
-  const bio = document.getElementById('edit-bio-input').value.trim();
 
   const btn = document.getElementById('edit-save-btn');
   btn.textContent = 'Сохраняем…';
   btn.disabled = true;
 
   const { error } = await db.from('users')
-    .update({ display_name: name, avatar_emoji: editSelectedEmoji, bio })
+    .update({ display_name: name, avatar_emoji: editSelectedEmoji })
     .eq('id', currentUser.id);
 
   btn.textContent = 'Сохранить';
@@ -1517,7 +936,6 @@ async function saveProfile() {
 
   currentUser.display_name = name;
   currentUser.avatar_emoji = editSelectedEmoji;
-  currentUser.bio = bio;
   closeEditModal();
   updateUserProfileUI();
   toast('✅ Профиль обновлён!');
@@ -1540,7 +958,7 @@ function buildSocialHTML(i, g) {
     </div>
     <div class="sb" onclick="doShare(${i})">
       <div class="sb-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div>
-      <span class="sb-count" id="sbcount-share-${i}">${d.shareCount>0?fmt(d.shareCount):''}</span>
+      <span class="sb-count" id="sbcount-share-${i}">—</span>
     </div>
     <div class="sb ${d.saved?'saved':''}" id="sb-save-${i}" onclick="toggleSave(${i})">
       <div class="sb-icon" id="sbicon-save-${i}">${bookSVG(d.saved)}</div>
@@ -1586,67 +1004,43 @@ function buildDeck() {
 }
 
 // ══ IFRAME MANAGEMENT ══
+// Игру нельзя грузить по URL: Supabase Storage отдаёт HTML как text/plain, и
+// iframe.src показал бы исходный код. Поэтому скачиваем тело файла и
+// вставляем через srcdoc — это рендерит HTML напрямую, минуя тип ответа.
+async function mountGame(i) {
+  const arena = document.getElementById(`arena-${i}`);
+  if (!arena || iframes[i]) return;
+  const g = GAMES[i];
+  iframes[i] = 'loading';
+  let html;
+  try {
+    const r = await fetch(g.src, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    html = await r.text();
+  } catch (e) {
+    console.error('game load failed', g.id, e);
+    iframes[i] = null;
+    const ld = arena.querySelector('.arena-loading');
+    if (ld) ld.innerHTML = '<span>⚠️</span>';
+    return;
+  }
+  const iframe = document.createElement('iframe');
+  iframe.allow = 'autoplay';
+  iframe.setAttribute('scrolling', 'no');
+  iframe.addEventListener('load', () => {
+    arena.querySelector('.arena-loading')?.remove();
+    iframe.contentWindow?.postMessage({ type:'init', accent:g.accent, bg:g.bg, scoreLabel:g.score_label }, '*');
+    if (i === currentIdx) iframe.contentWindow?.postMessage({ type:'start' }, '*');
+  });
+  iframe.srcdoc = html;
+  arena.innerHTML = '';
+  arena.appendChild(iframe);
+  iframes[i] = iframe;
+}
 function preload(idx) {
   for (let i = Math.max(0, idx - BEHIND); i <= Math.min(GAMES.length-1, idx + AHEAD); i++) {
-    if (iframes[i]) continue;
-    const arena = document.getElementById(`arena-${i}`);
-    if (!arena) continue;
-    const g = GAMES[i];
-    if (!arena.querySelector('.arena-loading')) {
-      arena.innerHTML = `<div class="arena-loading"><span>${g.emoji}</span></div>`;
-    }
-    const iframe = document.createElement('iframe');
-    iframe.src = g.src;
-    iframe.allow = 'autoplay';
-    iframe.setAttribute('scrolling', 'no');
-    let done = false;
-    const timer = setTimeout(() => {
-      if (done || iframes[i] !== iframe) return;
-      done = true;
-      showArenaError(i);
-    }, 12000);
-    iframe.addEventListener('load', () => {
-      if (done || iframes[i] !== iframe) return;
-      done = true;
-      clearTimeout(timer);
-      arena.querySelector('.arena-loading')?.remove();
-      iframe.contentWindow?.postMessage({ type:'init', accent:g.accent, bg:g.bg, scoreLabel:g.score_label }, '*');
-      if (i === currentIdx) iframe.contentWindow?.postMessage({ type:'start' }, '*');
-    });
-    iframe.addEventListener('error', () => {
-      if (done || iframes[i] !== iframe) return;
-      done = true;
-      clearTimeout(timer);
-      showArenaError(i);
-    });
-    arena.appendChild(iframe); // loader overlays via z-index until load fires
-    iframes[i] = iframe;
+    if (!iframes[i]) mountGame(i);
   }
-}
-
-function showArenaError(i) {
-  const arena = document.getElementById(`arena-${i}`);
-  if (!arena) return;
-  iframes[i] = null; // drop the broken/hanging iframe
-  arena.innerHTML = '';
-  const box = document.createElement('div');
-  box.className = 'arena-error';
-  box.innerHTML = `<div class="arena-error-ico">🔌</div><div class="arena-error-msg">Игра не загрузилась</div>`;
-  const btn = document.createElement('button');
-  btn.className = 'arena-retry';
-  btn.textContent = 'Повторить';
-  btn.addEventListener('click', () => retryGame(i));
-  box.appendChild(btn);
-  arena.appendChild(box);
-}
-
-function retryGame(i) {
-  const arena = document.getElementById(`arena-${i}`);
-  if (!arena) return;
-  iframes[i] = null;
-  arena.innerHTML = `<div class="arena-loading"><span>${GAMES[i].emoji}</span></div>`;
-  tg?.HapticFeedback?.impactOccurred('light');
-  preload(i);
 }
 
 window.addEventListener('message', e => {
@@ -1715,29 +1109,10 @@ document.addEventListener('keydown', e => {
 });
 
 // ══ INIT ══
-let loadWatchdog = null;
-
-function showLoadError(msg) {
-  const ld = document.getElementById('loading');
-  if (!ld || ld.classList.contains('hide')) return;
-  const dots = document.getElementById('ld-dots');
-  if (dots) dots.style.display = 'none';
-  const err = document.getElementById('ld-error');
-  if (err) err.style.display = 'flex';
-  if (msg) document.getElementById('ld-error-msg').textContent = msg;
-}
-
 async function init() {
-  clearTimeout(loadWatchdog);
-  loadWatchdog = setTimeout(() => showLoadError('Загрузка занимает слишком долго. Проверь соединение и попробуй снова.'), 15000);
   try {
     // Load games from Supabase
     const gamesRaw = await loadGames();
-    if (!gamesRaw || !gamesRaw.length) {
-      clearTimeout(loadWatchdog);
-      showLoadError('Пока нет игр для показа. Загляни позже.');
-      return;
-    }
     // Shuffle
     for (let i = gamesRaw.length-1; i>0; i--) {
       const j = Math.floor(Math.random()*(i+1));
@@ -1749,46 +1124,45 @@ async function init() {
     AUTHORS = await loadAuthors(GAMES);
 
     // Init socialData
-    GAMES.forEach(g => { socialData[g.id] = { likes:0, liked:false, saved:false, commentCount:0, shareCount:0 }; });
+    GAMES.forEach(g => { socialData[g.id] = { likes:0, liked:false, saved:false, commentCount:0 }; });
 
     // Load counts from DB
     await loadLikeCounts();
     await loadCommentCounts();
     await loadFollowerCounts();
 
-    // Telegram Mini App: auto-login (create account on first launch)
+    // Check if user is logged in via Telegram (for Mini App)
     const tgUser = tg?.initDataUnsafe?.user;
     if (tgUser) {
-      try {
-        currentUser = await fetchOrCreateTgUser(tgUser);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${tgUser.id}&select=*`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      const users = res.ok ? await res.json() : [];
+      if (users.length > 0) {
+        currentUser = users[0];
         await loadUserSocialData();
-      } catch(e) { console.error('Auto-login error:', e); }
+      }
     }
 
     buildDeck();
-    clearTimeout(loadWatchdog);
     document.getElementById('loading').classList.add('hide');
-    setTimeout(() => document.getElementById('loading')?.remove(), 500);
+    setTimeout(() => document.getElementById('loading').remove(), 500);
     goTo(0);
     updateUserProfileUI();
   } catch(e) {
-    console.error('Init error:', e);
-    clearTimeout(loadWatchdog);
-    showLoadError('Не удалось загрузить Sharky. Проверь соединение и попробуй снова.');
+    console.error('Init error:', JSON.stringify(e), e.message, e);
+    document.querySelector('.ld-logo').textContent = 'Ошибка: ' + (e.message || JSON.stringify(e));
   }
 }
 init();
 
 // ══ EVENT WIRING ══
-document.getElementById('ld-retry').addEventListener('click', () => location.reload());
 document.getElementById('d-close').addEventListener('click', closeComments);
 document.getElementById('d-handle').addEventListener('click', closeComments);
 document.getElementById('drawer-backdrop').addEventListener('click', closeComments);
 document.getElementById('comment-send').addEventListener('click', () => postComment(activeDrawerGame));
 document.getElementById('comment-input').addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();postComment(activeDrawerGame);} });
-document.getElementById('reply-cancel').addEventListener('click', clearReply);
 document.getElementById('prof-back').addEventListener('click', closeProfile);
-document.getElementById('prof-dots').addEventListener('click', openAuthorMenu);
 document.getElementById('prof-follow-btn').addEventListener('click', toggleFollow);
 document.querySelectorAll('.prof-tab').forEach(t => t.addEventListener('click', () => renderProfGrid(t.dataset.tab)));
 document.querySelectorAll('.uprof-tab').forEach(t => t.addEventListener('click', () => renderUGrid(t.dataset.utab)));
@@ -1801,25 +1175,12 @@ document.getElementById('uprof-action-btn').addEventListener('click', () => {
 });
 document.getElementById('edit-cancel').addEventListener('click', closeEditModal);
 document.getElementById('edit-save-btn').addEventListener('click', saveProfile);
-document.getElementById('uprof-avatar-wrap').addEventListener('click', () => {
-  tg?.HapticFeedback?.impactOccurred('light');
-  if (currentUser) openEditModal();
-  else showRegModal();
-});
-document.getElementById('uprof-settings-btn').addEventListener('click', openSettings);
-document.getElementById('settings-cancel').addEventListener('click', closeSettings);
-document.getElementById('settings-modal').addEventListener('touchmove', e => e.stopPropagation(), {passive:true});
 document.getElementById('edit-modal').addEventListener('touchmove', e => e.stopPropagation(), {passive:true});
 document.getElementById('profile-page').addEventListener('touchmove', e => e.stopPropagation(), {passive:true});
 document.getElementById('profile-page').addEventListener('wheel', e => e.stopPropagation(), {passive:true});
 document.getElementById('comments-drawer').addEventListener('touchmove', e => e.stopPropagation(), {passive:true});
 document.getElementById('user-profile-page').addEventListener('touchmove', e => e.stopPropagation(), {passive:true});
 document.getElementById('reg-modal').addEventListener('touchmove', e => e.stopPropagation(), {passive:true});
-document.getElementById('uprof-stat-following').addEventListener('click', () => openConnections('following'));
-document.getElementById('uprof-stat-followers').addEventListener('click', () => openConnections('followers'));
-document.getElementById('conn-back').addEventListener('click', closeConnections);
-document.getElementById('connections-page').addEventListener('touchmove', e => e.stopPropagation(), {passive:true});
-document.getElementById('connections-page').addEventListener('wheel', e => e.stopPropagation(), {passive:true});
 </script>
 </body>
 </html>
