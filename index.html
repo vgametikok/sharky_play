@@ -14,6 +14,9 @@
   --text:#f2f2f4; --sub:rgba(242,242,244,.45);
   --fd:'Space Grotesk',sans-serif; --fm:'Space Mono',monospace;
   --nav:58px;
+  /* Safe areas — overwritten by JS from Telegram insets. Fallback to CSS env(). */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
   --vh: var(--tg-viewport-stable-height, 100dvh);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -30,50 +33,78 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .ld-dot:nth-child(3){animation-delay:.4s;background:var(--a4)}
 @keyframes ldpulse{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
 
-/* ── DECK ── */
-#deck{position:fixed;top:0;left:0;right:0;bottom:var(--nav);height:calc(var(--vh) - var(--nav))}
-.card{position:absolute;inset:0;display:grid;grid-template-columns:1fr 56px;transition:transform .44s cubic-bezier(.77,0,.18,1),opacity .44s;will-change:transform}
+/* ── DECK (full-bleed) ── */
+#deck{position:fixed;inset:0;height:var(--vh);overflow:hidden}
+.card{position:absolute;inset:0;overflow:hidden;background:var(--bg);transition:transform .44s cubic-bezier(.77,0,.18,1),opacity .44s;will-change:transform}
 .card.above{transform:translateY(-100%);opacity:0;pointer-events:none}
 .card.active{transform:translateY(0);opacity:1}
 .card.below{transform:translateY(100%);opacity:0;pointer-events:none}
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;z-index:2;background:var(--card-ac,#ff3c5f)}
 
-/* ── GAME COLUMN ── */
-.game-col{grid-column:1;display:flex;flex-direction:column;justify-content:flex-start;padding:14px 0 14px 14px;gap:9px;min-width:0;height:100%}
-.hud{display:flex;align-items:baseline;justify-content:space-between;padding-right:10px;flex-shrink:0}
-.hud-title{font-family:var(--fd);font-size:clamp(15px,4.5vw,21px);font-weight:700;letter-spacing:-.3px;line-height:1}
-.hud-score{font-family:var(--fm);font-size:clamp(17px,5vw,23px);font-weight:700;line-height:1;min-width:40px;text-align:right}
-.arena{flex:1;min-height:0;width:100%;border-radius:14px;overflow:hidden;position:relative;margin-right:10px}
-.arena iframe{width:100%;height:100%;border:none;display:block;border-radius:14px;background:transparent}
-.arena-loading{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#0f0f14;border-radius:14px}
-.arena-loading span{font-size:32px;animation:ldpulse 1.2s ease-in-out infinite}
+/* ── GAME ARENA (full screen background) ── */
+.arena{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}
+.arena iframe{width:100%;height:100%;border:none;display:block;background:transparent}
+.arena-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0f0f14}
+.arena-loading span{font-size:40px;animation:ldpulse 1.2s ease-in-out infinite}
 
-/* ── SOCIAL SIDEBAR ── */
-.social-col{grid-column:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 8px 0 0;position:relative;z-index:10}
-.av-wrap{display:flex;flex-direction:column;align-items:center;cursor:pointer;margin-bottom:8px;-webkit-tap-highlight-color:transparent;position:relative}
-.av-ring{width:44px;height:44px;border-radius:50%;padding:2px;transition:transform .15s}
+/* ── TOP-LEFT OVERLAY (header + score) ── */
+.card-head{position:absolute;top:calc(var(--safe-top) + 14px);left:16px;right:80px;z-index:6;display:flex;flex-direction:column;gap:9px;pointer-events:none}
+.card-head>*{pointer-events:auto;width:max-content;max-width:100%}
+.ov-author{display:flex;align-items:center;gap:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ov-av{width:42px;height:42px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid rgba(255,255,255,.25)}
+.ov-author-meta{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ov-name{display:flex;align-items:center;gap:5px;font-size:15px;font-weight:700;letter-spacing:-.2px;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+.ov-name svg{flex-shrink:0}
+.ov-time{font-size:12px;color:rgba(255,255,255,.7);text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.ov-title{font-size:clamp(22px,7vw,30px);font-weight:700;letter-spacing:-.6px;line-height:1.04;text-shadow:0 2px 10px rgba(0,0,0,.55)}
+.ov-desc{font-size:13.5px;line-height:1.4;color:rgba(255,255,255,.82);max-width:62vw;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+.ov-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(123,92,255,.85);backdrop-filter:blur(6px);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;letter-spacing:.2px}
+.ov-score-wrap{margin-top:8px}
+.ov-score{font-family:var(--fd);font-size:clamp(40px,13vw,52px);font-weight:700;line-height:.92;letter-spacing:-1.5px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.ov-best{font-family:var(--fd);font-size:14px;font-weight:700;letter-spacing:.6px;color:var(--a3);text-shadow:0 1px 6px rgba(0,0,0,.55)}
+.ov-best b{color:#fff;font-weight:700}
+
+/* ── TOP-RIGHT CONTROLS (hide UI + pause/play) ── */
+#top-controls{position:fixed;top:calc(var(--safe-top) + 12px);right:14px;z-index:660;display:flex;flex-direction:column;align-items:center;gap:20px}
+.tc-btn{width:52px;height:52px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;-webkit-tap-highlight-color:transparent;filter:drop-shadow(0 2px 6px rgba(0,0,0,.55));transition:transform .12s}
+.tc-btn:active{transform:scale(.86)}
+.tc-btn svg{display:block;pointer-events:none}
+
+/* ── SOCIAL SIDEBAR (right, floating) ── */
+.social-col{position:absolute;right:12px;top:54%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:2px}
+.av-wrap{display:flex;flex-direction:column;align-items:center;cursor:pointer;margin-bottom:10px;-webkit-tap-highlight-color:transparent;position:relative}
+.av-ring{width:48px;height:48px;border-radius:50%;padding:2px;transition:transform .15s;box-shadow:0 2px 10px rgba(0,0,0,.4)}
 .av-wrap:active .av-ring{transform:scale(.9)}
-.av-inner{width:100%;height:100%;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:20px}
-.av-plus{position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:18px;height:18px;border-radius:50%;background:var(--a1);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);font-family:var(--fd);line-height:1;transition:background .2s}
+.av-inner{width:100%;height:100%;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:22px}
+.av-plus{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:19px;height:19px;border-radius:50%;background:var(--a1);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);font-family:var(--fd);line-height:1;transition:background .2s}
 .av-wrap.following .av-plus{background:var(--a2);font-size:9px}
-.sb{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;-webkit-tap-highlight-color:transparent;padding:5px 0;user-select:none}
-.sb-icon{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;transition:transform .12s,background .18s;position:relative;overflow:visible}
+.sb-stack{display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(14,11,28,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:34px;padding:10px 6px}
+.sb{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+.sb-icon{width:50px;height:50px;border-radius:50%;background:rgba(0,0,0,.32);display:flex;align-items:center;justify-content:center;transition:transform .12s,background .18s;position:relative;overflow:visible}
 .sb:active .sb-icon{transform:scale(.85)}
 .sb-icon svg{pointer-events:none;display:block}
-.sb-count{font-family:var(--fm);font-size:10px;color:var(--sub);line-height:1;min-height:12px;letter-spacing:.3px}
-.sb.liked .sb-icon{background:rgba(255,60,95,.18);border-color:rgba(255,60,95,.4)}
-.sb.saved .sb-icon{background:rgba(255,228,77,.12);border-color:rgba(255,228,77,.35)}
+.sb-count{font-family:var(--fd);font-size:11px;font-weight:700;color:#fff;line-height:1;min-height:12px;letter-spacing:.2px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.sb.liked .sb-icon{background:rgba(255,60,95,.9)}
+.sb.saved .sb-icon{background:rgba(255,228,77,.85)}
 @keyframes heartPop{0%{transform:scale(1)}30%{transform:scale(1.45)}55%{transform:scale(.88)}80%{transform:scale(1.12)}100%{transform:scale(1)}}
 .sb.pop .sb-icon{animation:heartPop .42s ease forwards}
 .float-plus{position:absolute;top:-10px;right:-2px;font-family:var(--fd);font-size:12px;font-weight:700;color:var(--a1);pointer-events:none;animation:floatUp .65s ease forwards}
 @keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-24px)}}
 
+/* ── NEXT UP CARD ── */
+#next-up{position:fixed;left:14px;right:14px;bottom:calc(var(--nav) + var(--safe-bottom) + 12px);z-index:550;display:flex;align-items:center;gap:13px;background:rgba(13,10,26,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:18px;padding:11px 13px;transition:opacity .25s,transform .25s}
+.nu-icon{width:52px;height:52px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px}
+.nu-meta{flex:1;min-width:0}
+.nu-label{font-size:11px;font-weight:700;color:var(--a4);text-transform:uppercase;letter-spacing:.6px}
+.nu-title{font-size:17px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nu-play{width:62px;height:42px;border-radius:999px;background:var(--a4);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:transform .12s}
+.nu-play:active{transform:scale(.9)}
+
 /* ── SWIPE HINT ── */
-.swipe-hint{position:fixed;bottom:calc(var(--nav) + 12px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;font-family:var(--fm);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--sub);animation:hintPulse 3s ease-in-out infinite}
+.swipe-hint{position:fixed;bottom:calc(var(--nav) + var(--safe-bottom) + 92px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;font-family:var(--fm);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55);animation:hintPulse 3s ease-in-out infinite;z-index:540}
 @keyframes hintPulse{0%,100%{opacity:.3;transform:translateX(-50%) translateY(0)}50%{opacity:.6;transform:translateX(-50%) translateY(-5px)}}
 
 /* ── BOTTOM NAV ── */
-#bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);background:rgba(6,6,8,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);display:flex;z-index:600;padding-bottom:env(safe-area-inset-bottom)}
+#bottom-nav{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav) + var(--safe-bottom));padding-bottom:var(--safe-bottom);background:rgba(6,6,8,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);display:flex;z-index:600}
 .nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;-webkit-tap-highlight-color:transparent;position:relative}
 .nav-tab:active{opacity:.7}
 .nav-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
@@ -81,7 +112,18 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .nav-tab.active .nav-icon svg{transform:scale(1.15)}
 .nav-label{font-family:var(--fd);font-size:10px;font-weight:600;letter-spacing:.4px;color:var(--sub);transition:color .2s}
 .nav-tab.active .nav-label{color:var(--text)}
-.nav-tab.active::after{content:'';position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--a4)}
+.nav-tab.active::after{content:'';position:absolute;bottom:calc(4px + var(--safe-bottom));width:4px;height:4px;border-radius:50%;background:var(--a4)}
+
+/* ── IMMERSIVE (hide UI) mode ── */
+body.immersive .card-head .ov-author,
+body.immersive .card-head .ov-title,
+body.immersive .card-head .ov-desc,
+body.immersive .card-head .ov-badge,
+body.immersive .social-col,
+body.immersive #next-up,
+body.immersive #bottom-nav,
+body.immersive .swipe-hint{opacity:0;pointer-events:none;transition:opacity .25s}
+body.immersive .ov-score-wrap{margin-top:2px}
 
 /* ── COMMENTS DRAWER ── */
 #drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:140;opacity:0;pointer-events:none;transition:opacity .3s}
@@ -101,16 +143,16 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .c-text{font-size:13px;line-height:1.45;color:rgba(255,255,255,.82)}
 .c-like{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;padding:2px 3px}
 .c-like span{font-size:10px;color:var(--sub)}
-.d-input-row{display:flex;gap:8px;padding:10px 14px 18px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;background:#0f0f14}
+.d-input-row{display:flex;gap:8px;padding:10px 14px calc(18px + var(--safe-bottom));border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;background:#0f0f14}
 .d-input{flex:1;background:#1a1a22;border:1.5px solid rgba(255,255,255,.08);border-radius:999px;padding:9px 16px;color:var(--text);font-family:var(--fd);font-size:13px;outline:none;-webkit-appearance:none}
 .d-input:focus{border-color:var(--a4)}
 .d-send{width:40px;height:40px;border-radius:50%;background:var(--a4);border:none;color:#fff;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:transform .12s}
 .d-send:active{transform:scale(.88)}
 
 /* ── AUTHOR PROFILE ── */
-#profile-page{position:fixed;inset:0 0 var(--nav) 0;background:var(--bg);z-index:120;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);overflow:hidden}
+#profile-page{position:fixed;inset:0 0 calc(var(--nav) + var(--safe-bottom)) 0;background:var(--bg);z-index:120;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);overflow:hidden}
 #profile-page.open{transform:translateY(0)}
-.prof-topbar{display:flex;align-items:center;gap:10px;padding:14px 16px 11px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);z-index:2}
+.prof-topbar{display:flex;align-items:center;gap:10px;padding:calc(var(--safe-top) + 14px) 16px 11px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);z-index:2}
 .prof-back-arrow{width:34px;height:34px;border-radius:50%;background:#161620;border:none;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .12s,background .15s;flex-shrink:0}
 .prof-back-arrow:active{transform:scale(.88);background:#222230}
 .prof-topbar-name{font-size:16px;font-weight:700;flex:1}
@@ -143,9 +185,9 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .prof-empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:10px;padding:36px 20px;color:var(--sub);font-size:13px;text-align:center}
 
 /* ── USER PROFILE ── */
-#user-profile-page{position:fixed;inset:0 0 var(--nav) 0;background:var(--bg);z-index:80;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);overflow:hidden}
+#user-profile-page{position:fixed;inset:0 0 calc(var(--nav) + var(--safe-bottom)) 0;background:var(--bg);z-index:80;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);overflow:hidden}
 #user-profile-page.open{transform:translateY(0)}
-.uprof-topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.uprof-topbar{display:flex;align-items:center;justify-content:space-between;padding:calc(var(--safe-top) + 16px) 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
 .uprof-topbar-title{font-size:17px;font-weight:700}
 .uprof-settings{width:34px;height:34px;border-radius:50%;background:#161620;border:none;color:var(--text);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .uprof-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -173,7 +215,7 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 /* ── REGISTRATION MODAL ── */
 #reg-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(12px);z-index:700;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
 #reg-modal.show{opacity:1;pointer-events:all}
-.reg-sheet{width:100%;background:#0f0f14;border-radius:24px 24px 0 0;padding:0 0 env(safe-area-inset-bottom);transform:translateY(40px);transition:transform .35s cubic-bezier(.32,.72,0,1)}
+.reg-sheet{width:100%;background:#0f0f14;border-radius:24px 24px 0 0;padding:0 0 var(--safe-bottom);transform:translateY(40px);transition:transform .35s cubic-bezier(.32,.72,0,1)}
 #reg-modal.show .reg-sheet{transform:translateY(0)}
 .reg-handle{width:36px;height:4px;background:#2a2a34;border-radius:999px;margin:14px auto 0}
 .reg-body{padding:24px 24px 32px}
@@ -189,13 +231,13 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .reg-perk-ico{font-size:20px;width:32px;text-align:center;flex-shrink:0}
 
 /* ── TOAST ── */
-#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--a2);color:#000;padding:9px 22px;border-radius:999px;font-family:var(--fd);font-size:13px;font-weight:700;z-index:800;opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap}
+#toast{position:fixed;top:calc(var(--safe-top) + 16px);left:50%;transform:translateX(-50%);background:var(--a2);color:#000;padding:9px 22px;border-radius:999px;font-family:var(--fd);font-size:13px;font-weight:700;z-index:800;opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap}
 #toast.show{opacity:1}
 
 /* ── EDIT PROFILE MODAL ── */
 #edit-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(12px);z-index:700;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
 #edit-modal.show{opacity:1;pointer-events:all}
-.edit-sheet{width:100%;background:#0f0f14;border-radius:24px 24px 0 0;padding:0 0 env(safe-area-inset-bottom);transform:translateY(40px);transition:transform .35s cubic-bezier(.32,.72,0,1)}
+.edit-sheet{width:100%;background:#0f0f14;border-radius:24px 24px 0 0;padding:0 0 var(--safe-bottom);transform:translateY(40px);transition:transform .35s cubic-bezier(.32,.72,0,1)}
 #edit-modal.show .edit-sheet{transform:translateY(0)}
 .edit-handle{width:36px;height:4px;background:#2a2a34;border-radius:999px;margin:14px auto 0}
 .edit-body{padding:20px 24px 32px}
@@ -223,6 +265,24 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 
 <div id="toast"></div>
 <div id="deck"></div>
+
+<!-- TOP-RIGHT CONTROLS -->
+<div id="top-controls">
+  <div class="tc-btn" id="tc-hide" title="Скрыть интерфейс"></div>
+  <div class="tc-btn" id="tc-pause" title="Пауза"></div>
+</div>
+
+<!-- NEXT UP -->
+<div id="next-up">
+  <div class="nu-icon" id="nu-icon">🎮</div>
+  <div class="nu-meta">
+    <div class="nu-label">Далее</div>
+    <div class="nu-title" id="nu-title">—</div>
+  </div>
+  <button class="nu-play" id="nu-play">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+  </button>
+</div>
 
 <div id="bottom-nav">
   <div class="nav-tab active" id="nav-feed" onclick="switchNav('feed')">
@@ -380,17 +440,33 @@ function updateVH() {
   const h = tg?.viewportStableHeight || tg?.viewportHeight;
   if (h) document.documentElement.style.setProperty('--tg-viewport-stable-height', h + 'px');
 }
+// ── Safe areas: keep Sharky below Telegram's top controls (close / ⋮) and above Android's nav bar ──
+function applySafeAreas() {
+  const sa = tg?.safeAreaInset || {};
+  const ca = tg?.contentSafeAreaInset || {};
+  const top = (sa.top || 0) + (ca.top || 0);
+  const bottom = (sa.bottom || 0) + (ca.bottom || 0);
+  const root = document.documentElement.style;
+  // Use the Telegram inset when available, otherwise keep the CSS env() fallback.
+  if (top > 0) root.setProperty('--safe-top', top + 'px');
+  if (bottom > 0) root.setProperty('--safe-bottom', bottom + 'px');
+}
 tg?.onEvent('viewportChanged', updateVH);
-tg?.onEvent('fullscreenChanged', updateVH);
+tg?.onEvent('fullscreenChanged', () => { updateVH(); applySafeAreas(); });
+tg?.onEvent('safeAreaChanged', applySafeAreas);
+tg?.onEvent('contentSafeAreaChanged', applySafeAreas);
 updateVH();
+applySafeAreas();
 
 // ══ STATE ══
 let GAMES = [], AUTHORS = {};
-let socialData = {}; // { [gameId]: { likes, liked, saved, comments } }
+let socialData = {}; // { [gameId]: { likes, liked, saved, saves, comments } }
 let currentUser = null; // Supabase user row
 let currentIdx = 0, profileOpen = false, currentAuthorId = 'sharky';
 let activeProfTab = 'games', activeNav = 'feed', activeUTab = 'liked', activeDrawerGame = null;
 let swipeCount = 0; // trigger reg modal after 3
+let gamePaused = false; // manual pause toggle
+let immersive = false;  // hide-UI toggle
 
 const deckEl = document.getElementById('deck');
 const cardEls = [];
@@ -402,6 +478,16 @@ function fmt(n) {
   if (n === undefined || n === null) return '0';
   return n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'K' : String(n);
 }
+function timeAgo(ts) {
+  if (!ts) return '';
+  const d = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (isNaN(d) || d < 0) return '';
+  if (d < 60) return 'только что';
+  if (d < 3600) return Math.floor(d/60) + ' мин назад';
+  if (d < 86400) return Math.floor(d/3600) + ' ч назад';
+  if (d < 604800) return Math.floor(d/86400) + ' дн назад';
+  return Math.floor(d/604800) + ' нед назад';
+}
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -409,9 +495,16 @@ function toast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 function hideSocialBars() { document.querySelectorAll('.social-col').forEach(b => b.style.visibility='hidden'); }
-function showSocialBars() { document.querySelectorAll('.social-col').forEach(b => b.style.visibility=''); }
-function heartSVG(a){const c=a?'var(--a1)':'rgba(255,255,255,.7)',f=a?'var(--a1)':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;}
-function bookSVG(a){const c=a?'var(--a3)':'rgba(255,255,255,.7)',f=a?'var(--a3)':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;}
+function showSocialBars() { if (immersive) return; document.querySelectorAll('.social-col').forEach(b => b.style.visibility=''); }
+function heartSVG(a){const c=a?'#fff':'rgba(255,255,255,.92)',f=a?'#fff':'none';return `<svg width="22" height="22" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;}
+function bookSVG(a){const c=a?'#3a2f00':'rgba(255,255,255,.92)',f=a?'#3a2f00':'none';return `<svg width="22" height="22" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;}
+function verifiedSVG(){return `<svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#7b5cff"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
+function padSVG(){return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><rect x="2" y="6" width="20" height="12" rx="3"/></svg>`;}
+
+// ══ BEST SCORES (localStorage) ══
+function bestKey(id){ return 'sharky_best_' + id; }
+function getBest(id){ const v = parseInt(localStorage.getItem(bestKey(id))||'0',10); return isNaN(v)?0:v; }
+function setBest(id,v){ try{ localStorage.setItem(bestKey(id), String(v)); }catch(e){} }
 
 // ══ AUTH ══
 async function loginWithTelegram() {
@@ -517,9 +610,19 @@ async function loadLikeCounts() {
   const counts = {};
   data.forEach(l => { counts[l.game_id] = (counts[l.game_id]||0) + 1; });
   GAMES.forEach(g => {
-    if (!socialData[g.id]) socialData[g.id] = { likes:0, liked:false, saved:false, commentCount:0 };
+    if (!socialData[g.id]) socialData[g.id] = { likes:0, liked:false, saved:false, saves:0, commentCount:0 };
     socialData[g.id].likes = counts[g.id] || 0;
   });
+}
+
+async function loadSaveCounts() {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/saves?select=game_id`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  const data = res.ok ? await res.json() : [];
+  const counts = {};
+  data.forEach(s => { counts[s.game_id] = (counts[s.game_id]||0) + 1; });
+  GAMES.forEach(g => { if (socialData[g.id]) socialData[g.id].saves = counts[g.id] || 0; });
 }
 
 async function loadCommentCounts() {
@@ -534,16 +637,12 @@ async function loadCommentCounts() {
 
 async function loadUserSocialData() {
   if (!currentUser) return;
-  // Load user's likes
   const { data: likes } = await db.from('likes').select('game_id').eq('user_id', currentUser.id);
   (likes||[]).forEach(l => { if(socialData[l.game_id]) socialData[l.game_id].liked = true; });
-  // Load user's saves
   const { data: saves } = await db.from('saves').select('game_id').eq('user_id', currentUser.id);
   (saves||[]).forEach(s => { if(socialData[s.game_id]) socialData[s.game_id].saved = true; });
-  // Load user's follows
   const { data: follows } = await db.from('follows').select('followee_username').eq('follower_id', currentUser.id);
   (follows||[]).forEach(f => { if(AUTHORS[f.followee_username]) AUTHORS[f.followee_username].followed = true; });
-  // Update sidebar buttons
   GAMES.forEach((g, i) => {
     const d = socialData[g.id];
     if (!d) return;
@@ -557,9 +656,8 @@ async function loadUserSocialData() {
     if (saveBtn) {
       saveBtn.classList.toggle('saved', d.saved);
       document.getElementById(`sbicon-save-${i}`).innerHTML = bookSVG(d.saved);
-      document.getElementById(`sbcount-save-${i}`).textContent = d.saved ? '★' : '☆';
+      document.getElementById(`sbcount-save-${i}`).textContent = fmt(d.saves||0);
     }
-    // Update follow badges
     const avWrap = document.getElementById(`avwrap-${i}`);
     const avPlus = document.getElementById(`avplus-${i}`);
     const followed = AUTHORS[g.author_id]?.followed;
@@ -611,10 +709,12 @@ async function toggleSave(i) {
   const g = GAMES[i];
   const d = socialData[g.id];
   d.saved = !d.saved;
+  d.saves = (d.saves||0) + (d.saved ? 1 : -1);
+  if (d.saves < 0) d.saves = 0;
 
   document.getElementById(`sb-save-${i}`).classList.toggle('saved', d.saved);
   document.getElementById(`sbicon-save-${i}`).innerHTML = bookSVG(d.saved);
-  document.getElementById(`sbcount-save-${i}`).textContent = d.saved ? '★' : '☆';
+  document.getElementById(`sbcount-save-${i}`).textContent = fmt(d.saves);
   toast(d.saved ? '⭐ Добавлено в избранное' : 'Убрано из избранного');
 
   if (d.saved) {
@@ -711,10 +811,10 @@ async function renderComments(i) {
     list.appendChild(item);
   });
   list.scrollTop = list.scrollHeight;
-  // Update count
   if (socialData[g.id]) {
     socialData[g.id].commentCount = comments.length;
-    document.getElementById(`sbcount-com-${i}`).textContent = fmt(comments.length);
+    const ce = document.getElementById(`sbcount-com-${i}`);
+    if (ce) ce.textContent = fmt(comments.length);
   }
 }
 
@@ -940,29 +1040,57 @@ async function saveProfile() {
   updateUserProfileUI();
   toast('✅ Профиль обновлён!');
 }
+
+// ══ CARD BUILD ══
 function buildSocialHTML(i, g) {
-  const d = socialData[g.id] || { likes:0, liked:false, saved:false, commentCount:0 };
+  const d = socialData[g.id] || { likes:0, liked:false, saved:false, saves:0, commentCount:0 };
   const a = AUTHORS[g.author_id] || {};
   return `
     <div class="av-wrap ${a.followed?'following':''}" id="avwrap-${i}" onclick="openProfile('${g.author_id}')">
       <div class="av-ring" style="background:${a.ring||'#7b5cff'}"><div class="av-inner">${a.emoji||'🎮'}</div></div>
       <div class="av-plus" id="avplus-${i}">${a.followed?'✓':'+'}</div>
     </div>
-    <div class="sb ${d.liked?'liked':''}" id="sb-like-${i}" onclick="toggleLike(${i})">
-      <div class="sb-icon" id="sbicon-like-${i}">${heartSVG(d.liked)}</div>
-      <span class="sb-count" id="sbcount-like-${i}">${fmt(d.likes)}</span>
+    <div class="sb-stack">
+      <div class="sb ${d.liked?'liked':''}" id="sb-like-${i}" onclick="toggleLike(${i})">
+        <div class="sb-icon" id="sbicon-like-${i}">${heartSVG(d.liked)}</div>
+        <span class="sb-count" id="sbcount-like-${i}">${fmt(d.likes)}</span>
+      </div>
+      <div class="sb" onclick="openComments(${i})">
+        <div class="sb-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.92)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <span class="sb-count" id="sbcount-com-${i}">${fmt(d.commentCount||0)}</span>
+      </div>
+      <div class="sb" onclick="doShare(${i})">
+        <div class="sb-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.92)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div>
+        <span class="sb-count">Поделиться</span>
+      </div>
+      <div class="sb ${d.saved?'saved':''}" id="sb-save-${i}" onclick="toggleSave(${i})">
+        <div class="sb-icon" id="sbicon-save-${i}">${bookSVG(d.saved)}</div>
+        <span class="sb-count" id="sbcount-save-${i}">${fmt(d.saves||0)}</span>
+      </div>
+    </div>`;
+}
+
+function buildHeadHTML(i, g) {
+  const a = AUTHORS[g.author_id] || {};
+  const verified = a.is_virtual ? verifiedSVG() : '';
+  const when = timeAgo(g.created_at);
+  const desc = g.description ? `<div class="ov-desc">${g.description}</div>` : '';
+  const cat = g.category || 'Аркада';
+  const best = getBest(g.id);
+  return `
+    <div class="ov-author" onclick="openProfile('${g.author_id}')">
+      <div class="ov-av" style="background:${a.ring||'#7b5cff'}">${a.emoji||'🎮'}</div>
+      <div class="ov-author-meta">
+        <div class="ov-name">${a.name||'Sharky'} ${verified}</div>
+        ${when ? `<div class="ov-time">${when}</div>` : ''}
+      </div>
     </div>
-    <div class="sb" onclick="openComments(${i})">
-      <div class="sb-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-      <span class="sb-count" id="sbcount-com-${i}">${fmt(d.commentCount||0)}</span>
-    </div>
-    <div class="sb" onclick="doShare(${i})">
-      <div class="sb-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div>
-      <span class="sb-count" id="sbcount-share-${i}">—</span>
-    </div>
-    <div class="sb ${d.saved?'saved':''}" id="sb-save-${i}" onclick="toggleSave(${i})">
-      <div class="sb-icon" id="sbicon-save-${i}">${bookSVG(d.saved)}</div>
-      <span class="sb-count" id="sbcount-save-${i}">${d.saved?'★':'☆'}</span>
+    <div class="ov-title" style="color:#fff">${g.title}</div>
+    ${desc}
+    <div class="ov-badge">${padSVG()} ${cat}</div>
+    <div class="ov-score-wrap">
+      <div class="ov-score" id="score-${i}">0</div>
+      <div class="ov-best">BEST <b id="best-${i}">${best}</b></div>
     </div>`;
 }
 
@@ -971,21 +1099,16 @@ function buildDeck() {
     const card = document.createElement('div');
     card.className = `card ${i===0?'active':'below'}`;
     card.style.background = g.bg;
-    card.style.setProperty('--card-ac', g.accent);
-
-    const gameCol = document.createElement('div');
-    gameCol.className = 'game-col';
-    gameCol.innerHTML = `
-      <div class="hud">
-        <div class="hud-title" style="color:${g.accent}">${g.title}</div>
-        <div class="hud-score" id="score-${i}" style="color:${g.accent}">0</div>
-      </div>`;
 
     const arena = document.createElement('div');
     arena.className = 'arena'; arena.id = `arena-${i}`;
     arena.innerHTML = `<div class="arena-loading"><span>${g.emoji}</span></div>`;
-    gameCol.appendChild(arena);
-    card.appendChild(gameCol);
+    card.appendChild(arena);
+
+    const head = document.createElement('div');
+    head.className = 'card-head';
+    head.innerHTML = buildHeadHTML(i, g);
+    card.appendChild(head);
 
     const socialCol = document.createElement('div');
     socialCol.className = 'social-col'; socialCol.id = `scol-${i}`;
@@ -1003,54 +1126,94 @@ function buildDeck() {
   document.body.appendChild(hint);
 }
 
-// ══ IFRAME MANAGEMENT ══
-// Игру нельзя грузить по URL: Supabase Storage отдаёт HTML как text/plain, и
-// iframe.src показал бы исходный код. Поэтому скачиваем тело файла и
-// вставляем через srcdoc — это рендерит HTML напрямую, минуя тип ответа.
-async function mountGame(i) {
-  const arena = document.getElementById(`arena-${i}`);
-  if (!arena || iframes[i]) return;
-  const g = GAMES[i];
-  iframes[i] = 'loading';
-  let html;
-  try {
-    const r = await fetch(g.src, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    html = await r.text();
-  } catch (e) {
-    console.error('game load failed', g.id, e);
-    iframes[i] = null;
-    const ld = arena.querySelector('.arena-loading');
-    if (ld) ld.innerHTML = '<span>⚠️</span>';
-    return;
-  }
-  const iframe = document.createElement('iframe');
-  iframe.allow = 'autoplay';
-  iframe.setAttribute('scrolling', 'no');
-  iframe.addEventListener('load', () => {
-    arena.querySelector('.arena-loading')?.remove();
-    iframe.contentWindow?.postMessage({ type:'init', accent:g.accent, bg:g.bg, scoreLabel:g.score_label }, '*');
-    if (i === currentIdx) iframe.contentWindow?.postMessage({ type:'start' }, '*');
-  });
-  iframe.srcdoc = html;
-  arena.innerHTML = '';
-  arena.appendChild(iframe);
-  iframes[i] = iframe;
+// ══ NEXT UP CARD ══
+function updateNextUp() {
+  const ni = (currentIdx + 1) % Math.max(1, GAMES.length);
+  const g = GAMES[ni];
+  if (!g) return;
+  document.getElementById('nu-icon').textContent = g.emoji;
+  document.getElementById('nu-icon').style.background = g.bg;
+  document.getElementById('nu-title').textContent = g.title;
+  document.getElementById('nu-play').onclick = () => goTo(ni);
 }
+
+// ══ IFRAME MANAGEMENT ══
 function preload(idx) {
   for (let i = Math.max(0, idx - BEHIND); i <= Math.min(GAMES.length-1, idx + AHEAD); i++) {
-    if (!iframes[i]) mountGame(i);
+    if (iframes[i]) continue;
+    const arena = document.getElementById(`arena-${i}`);
+    if (!arena) continue;
+    const g = GAMES[i];
+    const iframe = document.createElement('iframe');
+    iframe.src = g.src;
+    iframe.allow = 'autoplay';
+    iframe.setAttribute('scrolling', 'no');
+    iframe.addEventListener('load', () => {
+      arena.querySelector('.arena-loading')?.remove();
+      iframe.contentWindow?.postMessage({ type:'init', accent:g.accent, bg:g.bg, scoreLabel:g.score_label }, '*');
+      if (i === currentIdx && !gamePaused) iframe.contentWindow?.postMessage({ type:'start' }, '*');
+      attachSwipe(iframe);
+    });
+    arena.innerHTML = '';
+    arena.appendChild(iframe);
+    iframes[i] = iframe;
   }
 }
 
 window.addEventListener('message', e => {
-  const { type, value } = e.data;
+  const { type, value } = e.data || {};
   const idx = iframes.findIndex(f => f?.contentWindow === e.source);
   if (idx === -1) return;
-  if (type === 'score') { const el = document.getElementById(`score-${idx}`); if(el) el.textContent = value; }
+  if (type === 'score') {
+    const el = document.getElementById(`score-${idx}`);
+    if (el) el.textContent = value;
+    const g = GAMES[idx];
+    if (g && Number(value) > getBest(g.id)) {
+      setBest(g.id, Number(value));
+      const be = document.getElementById(`best-${idx}`);
+      if (be) be.textContent = Number(value);
+    }
+  }
   if (type === 'next') goTo(currentIdx + 1);
-  if (type === 'ready') { if (idx === currentIdx) iframes[idx]?.contentWindow?.postMessage({ type:'start' }, '*'); }
+  if (type === 'ready') { if (idx === currentIdx && !gamePaused) iframes[idx]?.contentWindow?.postMessage({ type:'start' }, '*'); }
 });
+
+// ══ PAUSE / PLAY ══
+function pauseIcon(){
+  return `<svg width="34" height="34" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="#fff"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="#fff"/></svg>`;
+}
+function playIcon(){
+  return `<svg width="34" height="34" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#fff"/></svg>`;
+}
+function renderPauseBtn(){
+  document.getElementById('tc-pause').innerHTML = gamePaused ? playIcon() : pauseIcon();
+  document.getElementById('tc-pause').title = gamePaused ? 'Играть' : 'Пауза';
+}
+function togglePause(){
+  gamePaused = !gamePaused;
+  const f = iframes[currentIdx]?.contentWindow;
+  if (f) f.postMessage({ type: gamePaused ? 'pause' : 'start' }, '*');
+  renderPauseBtn();
+  tg?.HapticFeedback?.impactOccurred('light');
+}
+
+// ══ HIDE UI (immersive) ══
+function hideIcon(active){
+  // outlined square normally, filled when immersive is active
+  return active
+    ? `<svg width="30" height="30" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" fill="#fff"/></svg>`
+    : `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/></svg>`;
+}
+function renderHideBtn(){
+  document.getElementById('tc-hide').innerHTML = hideIcon(immersive);
+  document.getElementById('tc-hide').title = immersive ? 'Показать интерфейс' : 'Скрыть интерфейс';
+}
+function toggleImmersive(){
+  immersive = !immersive;
+  document.body.classList.toggle('immersive', immersive);
+  renderHideBtn();
+  tg?.HapticFeedback?.impactOccurred('light');
+}
 
 // ══ NAVIGATION ══
 function goTo(idx) {
@@ -1071,67 +1234,78 @@ function _goTo(idx) {
     iframes[currentIdx].contentWindow?.postMessage({ type:'pause' }, '*');
   }
   currentIdx = idx;
+  // Reset manual pause when moving to a new game
+  gamePaused = false;
+  renderPauseBtn();
   cardEls.forEach((c,i) => {
     c.classList.remove('above','active','below');
     c.classList.add(i < idx ? 'above' : i === idx ? 'active' : 'below');
   });
   preload(idx);
   if (iframes[idx]) iframes[idx].contentWindow?.postMessage({ type:'start' }, '*');
+  updateNextUp();
   tg?.HapticFeedback?.impactOccurred('light');
 
-  // Registration modal trigger after 3 swipes (for guests)
   if (!currentUser && idx > 0) {
     swipeCount++;
     if (swipeCount === 3) showRegModal();
   }
 
-  // Hide swipe hint after first swipe
   if (idx > 0) document.getElementById('swipe-hint')?.remove();
 }
 
-// Touch / wheel / keyboard
+// ══ SWIPE / WHEEL — works over the full-screen game iframe too ══
 let ty = 0, tx = 0, drag = false;
-document.addEventListener('touchstart', e => { ty=e.touches[0].clientY; tx=e.touches[0].clientX; drag=true; }, {passive:true});
-document.addEventListener('touchend', e => {
+function onTouchStart(e){ ty=e.touches[0].clientY; tx=e.touches[0].clientX; drag=true; }
+function onTouchEnd(e){
   if (!drag) return; drag=false;
   if (profileOpen) return;
   const dy=ty-e.changedTouches[0].clientY, dx=Math.abs(tx-e.changedTouches[0].clientX);
   if (Math.abs(dy)>55 && Math.abs(dy)>dx*1.5) { dy>0 ? goTo(currentIdx+1) : goTo(currentIdx-1); }
-}, {passive:true});
+}
 let wlock=false;
-document.addEventListener('wheel', e => {
+function onWheel(e){
   if (wlock||profileOpen) return;
   if (Math.abs(e.deltaY)>40) { wlock=true; setTimeout(()=>wlock=false,600); e.deltaY>0?goTo(currentIdx+1):goTo(currentIdx-1); }
-}, {passive:true});
+}
+function attachSwipe(iframe){
+  try {
+    const doc = iframe.contentDocument;
+    if (!doc || doc.__sharkySwipe) return;
+    doc.__sharkySwipe = true;
+    doc.addEventListener('touchstart', onTouchStart, {passive:true});
+    doc.addEventListener('touchend', onTouchEnd, {passive:true});
+    doc.addEventListener('wheel', onWheel, {passive:true});
+  } catch(e) { /* cross-origin game — swipe falls back to parent document */ }
+}
+document.addEventListener('touchstart', onTouchStart, {passive:true});
+document.addEventListener('touchend', onTouchEnd, {passive:true});
+document.addEventListener('wheel', onWheel, {passive:true});
 document.addEventListener('keydown', e => {
   if (e.key==='ArrowDown') goTo(currentIdx+1);
   if (e.key==='ArrowUp') goTo(currentIdx-1);
+  if (e.key===' ') { e.preventDefault(); togglePause(); }
 });
 
 // ══ INIT ══
 async function init() {
   try {
-    // Load games from Supabase
     const gamesRaw = await loadGames();
-    // Shuffle
     for (let i = gamesRaw.length-1; i>0; i--) {
       const j = Math.floor(Math.random()*(i+1));
       [gamesRaw[i],gamesRaw[j]] = [gamesRaw[j],gamesRaw[i]];
     }
     GAMES = gamesRaw;
 
-    // Load authors
     AUTHORS = await loadAuthors(GAMES);
 
-    // Init socialData
-    GAMES.forEach(g => { socialData[g.id] = { likes:0, liked:false, saved:false, commentCount:0 }; });
+    GAMES.forEach(g => { socialData[g.id] = { likes:0, liked:false, saved:false, saves:0, commentCount:0 }; });
 
-    // Load counts from DB
     await loadLikeCounts();
+    await loadSaveCounts();
     await loadCommentCounts();
     await loadFollowerCounts();
 
-    // Check if user is logged in via Telegram (for Mini App)
     const tgUser = tg?.initDataUnsafe?.user;
     if (tgUser) {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${tgUser.id}&select=*`, {
@@ -1145,6 +1319,8 @@ async function init() {
     }
 
     buildDeck();
+    renderPauseBtn();
+    renderHideBtn();
     document.getElementById('loading').classList.add('hide');
     setTimeout(() => document.getElementById('loading').remove(), 500);
     goTo(0);
@@ -1157,6 +1333,8 @@ async function init() {
 init();
 
 // ══ EVENT WIRING ══
+document.getElementById('tc-pause').addEventListener('click', togglePause);
+document.getElementById('tc-hide').addEventListener('click', toggleImmersive);
 document.getElementById('d-close').addEventListener('click', closeComments);
 document.getElementById('d-handle').addEventListener('click', closeComments);
 document.getElementById('drawer-backdrop').addEventListener('click', closeComments);
@@ -1173,6 +1351,7 @@ document.getElementById('uprof-action-btn').addEventListener('click', () => {
   if (mode === 'edit') openEditModal();
   else showRegModal();
 });
+document.getElementById('uprof-settings-btn').addEventListener('click', () => { if (currentUser) openEditModal(); });
 document.getElementById('edit-cancel').addEventListener('click', closeEditModal);
 document.getElementById('edit-save-btn').addEventListener('click', saveProfile);
 document.getElementById('edit-modal').addEventListener('touchmove', e => e.stopPropagation(), {passive:true});
