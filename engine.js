@@ -266,14 +266,11 @@ function onWheel(e){
   if (Math.abs(e.deltaY)>40) { wlock=true; setTimeout(()=>wlock=false,600); e.deltaY>0?goTo(currentIdx+1):goTo(currentIdx-1); }
 }
 function attachSwipe(iframe){
-  try {
-    const doc = iframe.contentDocument;
-    if (!doc || doc.__sharkySwipe) return;
-    doc.__sharkySwipe = true;
-    doc.addEventListener('touchstart', onTouchStart, {passive:true});
-    doc.addEventListener('touchend', onTouchEnd, {passive:true});
-    doc.addEventListener('wheel', onWheel, {passive:true});
-  } catch(e) { /* cross-origin game — swipe falls back to the parent document */ }
+  // Намеренно НЕ навешиваем свайп на документ игры. Раньше это давало листание ленты
+  // поверх полноэкранной игры, но из-за этого свайп ПО игре листал ленту и ломал
+  // управление (напр. свайп вверх в «Змейке» уводил на следующую игру вместо хода).
+  // Теперь игра получает свои жесты сама, а лента листается свайпом по UI приложения
+  // (соц-колонка, подвал) — оно лежит вне рамки игры, в родительском документе.
 }
 document.addEventListener('touchstart', onTouchStart, {passive:true});
 document.addEventListener('touchend', onTouchEnd, {passive:true});
