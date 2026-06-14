@@ -38,6 +38,13 @@ function buildHeadHTML(i, g) {
     </div>`;
 }
 
+// Стандартный индикатор загрузки игры — три мигающие точки (как на стартовом экране).
+// Не зависит от данных игры: раньше показывался emoji, которого у части игр в базе нет,
+// и плейсхолдер выглядел как пустой чёрный экран.
+function arenaLoadingHTML() {
+  return '<div class="arena-loading"><div class="ld-dots"><div class="ld-dot"></div><div class="ld-dot"></div><div class="ld-dot"></div></div></div>';
+}
+
 function buildDeck() {
   GAMES.forEach((g, i) => {
     const card = document.createElement('div');
@@ -47,7 +54,7 @@ function buildDeck() {
 
     const arena = document.createElement('div');
     arena.className = 'arena'; arena.id = `arena-${i}`;
-    arena.innerHTML = `<div class="arena-loading"><span>${g.emoji}</span></div>`;
+    arena.innerHTML = arenaLoadingHTML();
     card.appendChild(arena);
 
     const head = document.createElement('div');
@@ -64,11 +71,6 @@ function buildDeck() {
     cardEls.push(card);
     iframes.push(null);
   });
-
-  const hint = document.createElement('div');
-  hint.className = 'swipe-hint'; hint.id = 'swipe-hint';
-  hint.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>свайп вверх`;
-  document.body.appendChild(hint);
 }
 
 // ══ IFRAME MANAGEMENT ══
@@ -93,7 +95,7 @@ function preload(idx) {
     if (!arena) continue;
     const g = GAMES[i];
     if (!arena.querySelector('.arena-loading')) {
-      arena.innerHTML = `<div class="arena-loading"><span>${g.emoji}</span></div>`;
+      arena.innerHTML = arenaLoadingHTML();
     }
     const iframe = document.createElement('iframe');
     iframe.allow = 'autoplay';
@@ -145,7 +147,7 @@ function retryGame(i) {
   const arena = document.getElementById(`arena-${i}`);
   if (!arena) return;
   iframes[i] = null;
-  arena.innerHTML = `<div class="arena-loading"><span>${GAMES[i].emoji}</span></div>`;
+  arena.innerHTML = arenaLoadingHTML();
   tg?.HapticFeedback?.impactOccurred('light');
   preload(i);
 }
@@ -197,15 +199,6 @@ function _goTo(idx) {
   if (iframes[idx]) iframes[idx].contentWindow?.postMessage({ type:'start' }, '*');
   updateNextUp();
   tg?.HapticFeedback?.impactOccurred('light');
-
-  // Registration modal trigger after 3 swipes (for guests)
-  if (!currentUser && idx > 0) {
-    swipeCount++;
-    if (swipeCount === 3) showRegModal();
-  }
-
-  // Hide swipe hint after first swipe
-  if (idx > 0) document.getElementById('swipe-hint')?.remove();
 }
 
 // ══ NEXT UP (shown only while paused) ══
