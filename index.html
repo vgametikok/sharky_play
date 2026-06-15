@@ -543,7 +543,6 @@ const tg = window.Telegram?.WebApp;
 // вести на веб-версию (?g=…), которая откроется в обычном браузере.
 const TG_BOT = 'sharkyplay_bot';   // логин бота без @
 const TG_APP = '';                 // short name из /newapp; ОСТАВЬ ПУСТЫМ, если это Main Mini App
-const DEBUG_DEEPLINK = true;       // ВРЕМЕННО: тост при старте показывает, доехал ли startapp-параметр. Выключить после проверки.
 if (tg) {
   tg.ready(); tg.expand();
   if (typeof tg.requestFullscreen === 'function') tg.requestFullscreen();
@@ -1771,15 +1770,7 @@ async function init() {
 
     // Deep-link: если открыли по ссылке на конкретную игру — ставим её первой в ленте
     // (ДО buildDeck, чтобы карточка построилась на позиции 0).
-    const _dlId = promoteDeepLinkedGame();
-
-    // ВРЕМЕННАЯ ДИАГНОСТИКА (DEBUG_DEEPLINK): показывает, что Telegram передал в startapp.
-    // «startapp пуст» → параметр НЕ доехал (вопрос к настройке Mini App в BotFather).
-    // «startapp=<id> ✓игра» → всё ок. «startapp=<id> ✗нет игры» → игра снята с публикации.
-    if (DEBUG_DEEPLINK) {
-      const _raw = getStartParam();
-      setTimeout(() => toast(_raw ? ('startapp=' + _raw + (_dlId ? ' ✓игра' : ' ✗нет игры')) : 'startapp пуст'), 1400);
-    }
+    promoteDeepLinkedGame();
 
     // Load authors
     AUTHORS = await loadAuthors(GAMES);
