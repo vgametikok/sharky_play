@@ -637,7 +637,7 @@ async function authenticateTelegram() {
   });
   if (!res.ok) throw new Error('tg-auth failed: ' + res.status);
   const { token_hash, email, user_id } = await res.json();
-  const { error } = await db.auth.verifyOtp({ email, token: token_hash, type: 'magiclink' });
+  const { error } = await db.auth.verifyOtp({ email, token_hash, type: 'email' });
   if (error) throw error;
   return user_id;
 }
