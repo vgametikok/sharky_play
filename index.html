@@ -543,6 +543,7 @@ const tg = window.Telegram?.WebApp;
 // вести на веб-версию (?g=…), которая откроется в обычном браузере.
 const TG_BOT = 'sharkyplay_bot';   // логин бота без @
 const TG_APP = '';                 // short name из /newapp; ОСТАВЬ ПУСТЫМ, если это Main Mini App
+const DEBUG_DEEPLINK = true;       // ВРЕМЕННО: тост при старте показывает, доехал ли startapp-параметр. Выключить после проверки.
 if (tg) {
   tg.ready(); tg.expand();
   if (typeof tg.requestFullscreen === 'function') tg.requestFullscreen();
@@ -1718,16 +1719,26 @@ function getStartParam() {
   return '';
 }
 
-// Стартовый индекс ленты: если открыто по ссылке на игру (Telegram startapp или веб ?g=) —
-// открываем её. Игры перемешаны, поэтому ищем по id уже после загрузки GAMES.
-function resolveStartIndex() {
+// id игры из deep-link: Telegram startapp (?startapp=) ИЛИ веб-ссылка ?g=…
+function getDeepLinkGameId() {
   let id = getStartParam();
   if (!id) { try { id = (new URLSearchParams(location.search).get('g') || '').trim(); } catch(e) {} }
-  // Для диагностики на телефоне можно временно раскомментировать:
-  // toast(id ? ('param: ' + id) : 'param не найден');
-  if (!id) return 0;
+  return id || '';
+}
+
+// Если приложение открыто по ссылке на конкретную игру — переносим её в НАЧАЛО ленты,
+// чтобы она показалась первой, а свайп дальше вёл уже в остальную (перемешанную) ленту.
+// Вызывать ДО buildDeck(). Возвращает id игры, если ссылка валидна и игра найдена.
+function promoteDeepLinkedGame() {
+  const id = getDeepLinkGameId();
+  if (!id) return '';
   const idx = GAMES.findIndex(x => String(x.id) === id);
-  return idx >= 0 ? idx : 0;
+  if (idx < 0) return '';            // ссылка есть, но такой игры нет (снята с публикации?)
+  if (idx > 0) {
+    const [g] = GAMES.splice(idx, 1);
+    GAMES.unshift(g);
+  }
+  return id;
 }
 
 function showLoadError(msg) {
@@ -1758,6 +1769,18 @@ async function init() {
     }
     GAMES = gamesRaw;
 
+    // Deep-link: если открыли по ссылке на конкретную игру — ставим её первой в ленте
+    // (ДО buildDeck, чтобы карточка построилась на позиции 0).
+    const _dlId = promoteDeepLinkedGame();
+
+    // ВРЕМЕННАЯ ДИАГНОСТИКА (DEBUG_DEEPLINK): показывает, что Telegram передал в startapp.
+    // «startapp пуст» → параметр НЕ доехал (вопрос к настройке Mini App в BotFather).
+    // «startapp=<id> ✓игра» → всё ок. «startapp=<id> ✗нет игры» → игра снята с публикации.
+    if (DEBUG_DEEPLINK) {
+      const _raw = getStartParam();
+      setTimeout(() => toast(_raw ? ('startapp=' + _raw + (_dlId ? ' ✓игра' : ' ✗нет игры')) : 'startapp пуст'), 1400);
+    }
+
     // Load authors
     AUTHORS = await loadAuthors(GAMES);
 
@@ -1784,7 +1807,7 @@ async function init() {
     clearTimeout(loadWatchdog);
     document.getElementById('loading').classList.add('hide');
     setTimeout(() => document.getElementById('loading')?.remove(), 500);
-    goTo(resolveStartIndex());
+    goTo(0); // игра из ссылки уже перенесена в начало ленты (promoteDeepLinkedGame)
     updateUserProfileUI();
   } catch(e) {
     console.error('Init error:', e);
