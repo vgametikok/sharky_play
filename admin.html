@@ -238,7 +238,7 @@ a{color:var(--a4)}
           <div class="card">
             <h3>Превью</h3>
             <div class="preview-card" id="prev-card" style="background:#0d080f"></div>
-            <iframe class="prev-frame" id="prev-frame"></iframe>
+            <iframe class="prev-frame" id="prev-frame" sandbox="allow-scripts"></iframe>
           </div>
           <div class="card" style="margin-top:18px">
             <h3>Очередь <small class="mono" id="q-author"></small></h3>
@@ -326,7 +326,7 @@ a{color:var(--a4)}
 <div class="modal" id="preview-modal">
   <div class="modal-box">
     <div class="modal-head"><h2 id="pm-title">Превью</h2><button class="x" data-close>✕</button></div>
-    <iframe id="pm-frame" style="width:100%;height:420px;border:1px solid var(--line);border-radius:12px;background:#000"></iframe>
+    <iframe id="pm-frame" sandbox="allow-scripts" style="width:100%;height:420px;border:1px solid var(--line);border-radius:12px;background:#000"></iframe>
     <div class="rowacts" style="margin-top:16px;justify-content:flex-start" id="pm-acts"></div>
   </div>
 </div>

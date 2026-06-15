@@ -23,7 +23,7 @@ function buildHeadHTML(i, g) {
   const best = getBest(g.id);
   return `
     <div class="ov-author" onclick="openProfile('${g.author_id}')">
-      <div class="ov-av" style="background:${a.ring||'#7b5cff'}">${a.emoji||'🎮'}</div>
+      <div class="ov-av" style="background:${escHtml(a.ring||'#7b5cff')}">${escHtml(a.emoji||'🎮')}</div>
       <div class="ov-author-meta">
         <div class="ov-name">${escHtml(a.name||'Sharky')} ${verified}</div>
         ${when ? `<div class="ov-time">${when}</div>` : ''}
@@ -99,6 +99,13 @@ function preload(idx) {
     }
     const iframe = document.createElement('iframe');
     iframe.allow = 'autoplay';
+    // SECURITY: sandbox WITHOUT allow-same-origin → the game runs in an opaque origin
+    // and cannot reach into the parent app (DOM, the Supabase client, the user session,
+    // localStorage). Games only talk to the shell via parent.postMessage, which still
+    // works across origins, so this does not break the postMessage protocol.
+    // Critical for untrusted uploaded/UGC games. Do NOT add allow-same-origin here —
+    // combined with allow-scripts it would let a game remove its own sandbox.
+    iframe.setAttribute('sandbox', 'allow-scripts');
     iframe.setAttribute('scrolling', 'no');
     let done = false;
     const timer = setTimeout(() => {

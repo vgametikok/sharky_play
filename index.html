@@ -626,6 +626,22 @@ function commentHeartSVG(a){const c=a?'var(--a1)':'rgba(255,255,255,.5)',f=a?'va
 function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // ══ AUTH ══
+// Verifies the Telegram session server-side (tg-auth Edge Function) and mints
+// a real Supabase session, so writes are authorized via auth.uid()/app_uid().
+async function authenticateTelegram() {
+  if (!tg?.initData) return null;
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/tg-auth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+    body: JSON.stringify({ initData: tg.initData })
+  });
+  if (!res.ok) throw new Error('tg-auth failed: ' + res.status);
+  const { token_hash, email, user_id } = await res.json();
+  const { error } = await db.auth.verifyOtp({ email, token: token_hash, type: 'magiclink' });
+  if (error) throw error;
+  return user_id;
+}
+
 async function loginWithTelegram() {
   const tgUser = tg?.initDataUnsafe?.user;
   if (!tgUser) {
@@ -637,7 +653,8 @@ async function loginWithTelegram() {
     btn.textContent = 'Входим…';
     btn.disabled = true;
 
-    currentUser = await fetchOrCreateTgUser(tgUser);
+    const userId = await authenticateTelegram();
+    currentUser = await fetchUserById(userId);
 
     await loadUserSocialData();
     hideRegModal();
@@ -653,22 +670,12 @@ async function loginWithTelegram() {
   }
 }
 
-// Fetch the Telegram user's row, or create it on first launch (seamless login)
-async function fetchOrCreateTgUser(tgUser) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${tgUser.id}&select=*`, { headers: REST_HEADERS });
+// Fetch the (now authenticated) user's row by id
+async function fetchUserById(userId) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=*`, { headers: REST_HEADERS });
   const users = res.ok ? await res.json() : [];
-  if (users.length > 0) return users[0];
-  const username = tgUser.username || `user${tgUser.id}`;
-  const { data: newUser, error } = await db.from('users').insert({
-    telegram_id: tgUser.id,
-    username,
-    display_name: tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : ''),
-    avatar_emoji: '🎮',
-    bio: '',
-    is_virtual: false
-  }).select().single();
-  if (error) throw error;
-  return newUser;
+  if (!users.length) throw new Error('user row not found after auth');
+  return users[0];
 }
 
 // ══ LOAD DATA FROM SUPABASE ══
@@ -1246,7 +1253,7 @@ async function openProfile(authorId) {
   document.getElementById('prof-avatar-wrap').style.background = a.gradient;
   document.getElementById('prof-username').textContent = a.name;
   document.getElementById('prof-handle').textContent = a.handle;
-  document.getElementById('prof-bio').innerHTML = (a.bio||'').replace(/\n/g,'<br>');
+  document.getElementById('prof-bio').innerHTML = escHtml(a.bio||'').replace(/\n/g,'<br>');
   document.getElementById('prof-followers-n').textContent = fmt(a.followers);
   // likes = сумма лайков по всем играм автора
   const authorGames = GAMES.filter(g => g.author_id === currentAuthorId);
@@ -1300,7 +1307,7 @@ function makePGC(i) {
   const c = document.createElement('div');
   c.className = 'prof-game-card';
   c.style.background = g.bg;
-  c.innerHTML = `<div class="pgc-emoji">${g.emoji}</div><div class="pgc-title" style="color:${g.accent}">${g.title}</div><div class="pgc-plays">▶ ${fmt(socialData[g.id]?.likes||0)} лайков</div><div class="pgc-tag">${g.score_label}</div>`;
+  c.innerHTML = `<div class="pgc-emoji">${escHtml(g.emoji)}</div><div class="pgc-title" style="color:${escHtml(g.accent)}">${escHtml(g.title)}</div><div class="pgc-plays">▶ ${fmt(socialData[g.id]?.likes||0)} лайков</div><div class="pgc-tag">${escHtml(g.score_label)}</div>`;
   c.addEventListener('click', () => { closeProfile(); setTimeout(() => goTo(i), 380); });
   return c;
 }
@@ -1323,7 +1330,7 @@ async function refreshUserProfile() {
 async function updateUserProfileUI() {
   if (currentUser) {
     const wrap = document.getElementById('uprof-avatar-wrap');
-    wrap.innerHTML = `<span id="uprof-avatar-emoji">${currentUser.avatar_emoji||'🎮'}</span><div class="uprof-edit-badge">✏️</div>`;
+    wrap.innerHTML = `<span id="uprof-avatar-emoji">${escHtml(currentUser.avatar_emoji||'🎮')}</span><div class="uprof-edit-badge">✏️</div>`;
     wrap.style.background = 'linear-gradient(135deg,#3a2a6a,#6a1a3a)';
     document.getElementById('uprof-name').textContent = currentUser.display_name;
     document.getElementById('uprof-handle').textContent = '@' + currentUser.username + ' · Sharky';
@@ -1422,10 +1429,10 @@ function renderConnList(type, users) {
     const item = document.createElement('div');
     item.className = 'conn-item';
     item.innerHTML = `
-      <div class="conn-av" style="background:${u.gradient || 'linear-gradient(135deg,#7b5cff,#ff3c5f)'}">${u.avatar_emoji || '🎮'}</div>
+      <div class="conn-av" style="background:${escHtml(u.gradient || 'linear-gradient(135deg,#7b5cff,#ff3c5f)')}">${escHtml(u.avatar_emoji || '🎮')}</div>
       <div class="conn-info">
-        <div class="conn-name">${u.display_name}</div>
-        <div class="conn-handle">@${u.username}</div>
+        <div class="conn-name">${escHtml(u.display_name)}</div>
+        <div class="conn-handle">@${escHtml(u.username)}</div>
       </div>`;
     item.addEventListener('click', () => {
       closeConnections();
@@ -1527,7 +1534,7 @@ function makeUCard(i) {
   const c = document.createElement('div');
   c.className = 'prof-game-card';
   c.style.background = g.bg;
-  c.innerHTML = `<div class="pgc-emoji">${g.emoji}</div><div class="pgc-title" style="color:${g.accent}">${g.title}</div><div class="pgc-plays">▶ ${fmt(socialData[g.id]?.likes||0)} лайков</div><div class="pgc-tag">${g.score_label}</div>`;
+  c.innerHTML = `<div class="pgc-emoji">${escHtml(g.emoji)}</div><div class="pgc-title" style="color:${escHtml(g.accent)}">${escHtml(g.title)}</div><div class="pgc-plays">▶ ${fmt(socialData[g.id]?.likes||0)} лайков</div><div class="pgc-tag">${escHtml(g.score_label)}</div>`;
   c.addEventListener('click', () => { switchNav('feed'); setTimeout(() => goTo(i), 380); });
   return c;
 }
@@ -1566,6 +1573,7 @@ function closeSettings() {
 }
 
 function logout() {
+  db.auth.signOut();
   currentUser = null;
   swipeCount = 0;
   likedComments.clear();
@@ -1664,7 +1672,7 @@ function buildSocialHTML(i, g) {
   const a = AUTHORS[g.author_id] || {};
   return `
     <div class="av-wrap ${a.followed?'following':''}" id="avwrap-${i}" onclick="openProfile('${g.author_id}')">
-      <div class="av-ring" style="background:${a.ring||'#7b5cff'}"><div class="av-inner">${a.emoji||'🎮'}</div></div>
+      <div class="av-ring" style="background:${escHtml(a.ring||'#7b5cff')}"><div class="av-inner">${escHtml(a.emoji||'🎮')}</div></div>
       <div class="av-plus" id="avplus-${i}">${a.followed?'✓':'+'}</div>
     </div>
     <div class="sb-stack">
@@ -1787,7 +1795,8 @@ async function init() {
     const tgUser = tg?.initDataUnsafe?.user;
     if (tgUser) {
       try {
-        currentUser = await fetchOrCreateTgUser(tgUser);
+        const userId = await authenticateTelegram();
+        currentUser = await fetchUserById(userId);
         await loadUserSocialData();
       } catch(e) { console.error('Auto-login error:', e); }
     }
