@@ -989,12 +989,19 @@ async function renderComments(i) {
   // build caches
   commentsCache = {};
   repliesByParent = {};
-  const isAuthorViewer = currentUser && currentUser.username === g.author_id;
   comments.forEach(c => {
     commentsCache[c.id] = c;
     if (c.parent_id) (repliesByParent[c.parent_id] = repliesByParent[c.parent_id] || []).push(c);
-    if (isAuthorViewer && c.author_liked) likedComments.add(c.id);
   });
+  // Какие из этих комментов лайкнул текущий юзер (персистентно из comment_likes)
+  if (currentUser && comments.length) {
+    try {
+      const ids = comments.map(c => c.id);
+      const { data: myLikes } = await db.from('comment_likes')
+        .select('comment_id').eq('user_id', currentUser.id).in('comment_id', ids);
+      (myLikes || []).forEach(l => likedComments.add(l.comment_id));
+    } catch(e) { console.error('comment likes load error', e); }
+  }
 
   list.innerHTML = '';
   const top = comments.filter(c => !c.parent_id);
@@ -1129,12 +1136,16 @@ async function toggleCommentLike(cid, gameIdx, el) {
   el.innerHTML = commentHeartSVG(!liked) + `<span>${c.like_count > 0 ? fmt(c.like_count) : ''}</span>`;
   tg?.HapticFeedback?.impactOccurred('light');
 
+  // Источник истины — comment_likes; like_count/author_liked поддерживает триггер.
+  // (Прямой UPDATE comments тут больше нельзя: RLS пускает только автора коммента.)
   const g = GAMES[gameIdx];
   const isAuthor = currentUser.username === g.author_id;
-  const patch = { like_count: c.like_count };
-  if (isAuthor) { c.author_liked = !liked; patch.author_liked = !liked; }
   try {
-    await db.from('comments').update(patch).eq('id', cid);
+    if (liked) {
+      await db.from('comment_likes').delete().eq('user_id', currentUser.id).eq('comment_id', cid);
+    } else {
+      await db.from('comment_likes').insert({ user_id: currentUser.id, comment_id: cid });
+    }
     if (isAuthor) renderComments(gameIdx); // refresh "понравилось автору" badge
   } catch(e) { console.error('comment like error', e); }
 }

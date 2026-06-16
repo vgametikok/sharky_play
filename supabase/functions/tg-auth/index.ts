@@ -30,16 +30,30 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // Сколько секунд initData считается свежей (защита от replay старых строк).
 const MAX_AUTH_AGE_SEC = 24 * 60 * 60;
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*", // при желании сузить до домена GitHub Pages
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// Разрешённые origins. Добавляй сюда свои домены (свой сайт, прод) — по строке.
+// Нативные приложения (Android/iOS) CORS не проверяют, им этот список не мешает:
+// заголовок нужен только браузерам. Telegram Mini App грузится с твоего домена,
+// поэтому его origin попадёт в список после переноса на свой домен.
+const ALLOWED_ORIGINS = [
+  "https://vgametikok.github.io",
+  // "https://your-domain.com",  // ← раскомментируй и впиши при переносе
+];
 
-function json(body: unknown, status = 200) {
+function corsHeaders(origin: string | null) {
+  // Если origin в allowlist — отражаем его; иначе отдаём первый (дефолтный).
+  const allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
+
+function json(body: unknown, status: number, cors: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS, "Content-Type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 }
 
@@ -92,27 +106,28 @@ async function verifyInitData(initData: string): Promise<Record<string, string> 
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+  const cors = corsHeaders(req.headers.get("Origin"));
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return json({ error: "method not allowed" }, 405, cors);
 
   let initData = "";
   try {
     ({ initData } = await req.json());
   } catch {
-    return json({ error: "bad request" }, 400);
+    return json({ error: "bad request" }, 400, cors);
   }
-  if (!initData) return json({ error: "initData required" }, 400);
+  if (!initData) return json({ error: "initData required" }, 400, cors);
 
   const verified = await verifyInitData(initData);
-  if (!verified) return json({ error: "invalid initData" }, 401);
+  if (!verified) return json({ error: "invalid initData" }, 401, cors);
 
   let tgUser: { id: number; username?: string; first_name?: string; last_name?: string };
   try {
     tgUser = JSON.parse(verified.user);
   } catch {
-    return json({ error: "no user in initData" }, 401);
+    return json({ error: "no user in initData" }, 401, cors);
   }
-  if (!tgUser?.id) return json({ error: "no user id" }, 401);
+  if (!tgUser?.id) return json({ error: "no user id" }, 401, cors);
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -143,7 +158,7 @@ Deno.serve(async (req) => {
       if (!list.data?.users?.length) break;
     }
   }
-  if (!authUid) return json({ error: "auth user resolution failed" }, 500);
+  if (!authUid) return json({ error: "auth user resolution failed" }, 500, cors);
 
   // 2) Найти/создать строку public.users и связать её с auth_uid.
   const existing = await admin
@@ -166,14 +181,14 @@ Deno.serve(async (req) => {
       is_virtual: false,
       auth_uid: authUid,
     }).select("id").single();
-    if (!inserted.data?.id) return json({ error: "user creation failed" }, 500);
+    if (!inserted.data?.id) return json({ error: "user creation failed" }, 500, cors);
     userId = inserted.data.id;
   }
 
   // 3) Выдать сессию без пароля: magiclink → token_hash, фронт зовёт verifyOtp.
   const link = await admin.auth.admin.generateLink({ type: "magiclink", email });
   const tokenHash = link.data?.properties?.hashed_token;
-  if (!tokenHash) return json({ error: "session mint failed" }, 500);
+  if (!tokenHash) return json({ error: "session mint failed" }, 500, cors);
 
-  return json({ token_hash: tokenHash, email, user_id: userId });
+  return json({ token_hash: tokenHash, email, user_id: userId }, 200, cors);
 });

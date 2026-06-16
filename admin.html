@@ -420,9 +420,12 @@ async function loadAll(){
   renderAddForm();
 }
 async function loadUsers(){
-  const {data,error}=await db.from('users').select('*').order('created_at',{ascending:true});
+  // SECURITY: полный список юзеров доступен только админу — читаем через
+  // SECURITY DEFINER RPC admin_list_users() (gated by is_admin()), а не прямым
+  // select по таблице (там колоночные гранты урезаны для роли authenticated).
+  const {data,error}=await db.rpc('admin_list_users');
   if(error){toast('Ошибка загрузки профилей');return;}
-  USERS = data||[];
+  USERS = (data||[]).sort((a,b)=>(a.created_at||'').localeCompare(b.created_at||''));
 }
 async function loadGames(){
   const {data,error}=await db.from('games').select('*').order('created_at',{ascending:false});
@@ -840,11 +843,12 @@ $('#am-save').addEventListener('click', async ()=>{
   const payload={display_name:name, avatar_emoji:$('#am-emoji').value||'🎮', gradient:$('#am-gradient').value, bio:$('#am-bio').value.trim()};
   let error;
   if(editingAuthor){
-    ({error}=await db.from('users').update(payload).eq('id',editingAuthor.id));
+    ({error}=await db.rpc('admin_update_user',{p_id:editingAuthor.id, p_patch:payload}));
   }else{
-    payload.username=username; payload.is_virtual=true; payload.role='user';
-    payload.status='active';
-    ({error}=await db.from('users').insert(payload));
+    ({error}=await db.rpc('admin_create_author',{
+      p_username:username, p_display_name:name,
+      p_avatar_emoji:payload.avatar_emoji, p_gradient:payload.gradient, p_bio:payload.bio
+    }));
   }
   if(error){toast('Ошибка: '+error.message);return;}
   toast(editingAuthor?'Автор обновлён':'Автор создан');
@@ -923,7 +927,7 @@ async function onProfAct(act,id){
   if(act==='delete'){if(!confirm(`Удалить профиль @${u.username}? Мягкое удаление, восстановить можно.`))return;patch={status:'deleted'};msg='Профиль удалён';}
   if(act==='adult'){patch={is_adult:!u.is_adult};msg=u.is_adult?'Снята метка 18+':'Помечено 18+';}
   if(!patch) return;
-  const {error}=await db.from('users').update(patch).eq('id',id);
+  const {error}=await db.rpc('admin_update_user',{p_id:id, p_patch:patch});
   if(error){toast('Ошибка: '+error.message);return;}
   Object.assign(u,patch);
   renderProfiles();
