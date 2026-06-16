@@ -118,6 +118,20 @@ Deno.serve(async (req) => {
   }
   if (!initData) return json({ error: "initData required" }, 400, cors);
 
+  const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  // Rate limit по IP ДО тяжёлых Auth-вызовов: не более 30 запросов за 60 сек.
+  // Защита от флуда (валидного или мусорного). Не валит при сбое самого лимитера.
+  const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown";
+  try {
+    const { data: allowed } = await admin.rpc("rate_limit_hit", {
+      p_key: `tgauth:${ip}`, p_max: 30, p_window_sec: 60,
+    });
+    if (allowed === false) return json({ error: "too many requests" }, 429, cors);
+  } catch (_e) { /* лимитер недоступен — не блокируем вход */ }
+
   const verified = await verifyInitData(initData);
   if (!verified) return json({ error: "invalid initData" }, 401, cors);
 
@@ -128,10 +142,6 @@ Deno.serve(async (req) => {
     return json({ error: "no user in initData" }, 401, cors);
   }
   if (!tgUser?.id) return json({ error: "no user id" }, 401, cors);
-
-  const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
 
   // Детерминированный e-mail на основе telegram_id — НЕ показывается пользователю,
   // нужен только как ключ записи в auth.users.
