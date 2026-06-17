@@ -292,22 +292,37 @@ document.addEventListener('keydown', e => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════
-//  АНАЛИТИКА СЕССИЙ (dwell-time)
-//  Меряем время, пока карточка игры активна, видима и НЕ на паузе — ПОСЛЕ её
-//  загрузки. Это аналог «просмотра»: один «вид» (импрешн) = игра стала активной
-//  и догрузилась; сессия = вид с active_ms >= 3000; hook = вид >= 10000 мс.
-//  Пишем строки в public.game_stats (RLS: только своя строка, user_id=app_uid()).
-//  Читает их только админ-дашборд через definer-RPC (агрегаты). Анонимов
-//  (вне Telegram, без логина) не пишем. Использует глобали index.html:
-//  GAMES, iframes, currentIdx, gamePaused, currentUser, db, SUPABASE_URL/KEY.
+//  АНАЛИТИКА СЕССИЙ (dwell-time) — устойчивый сбор для Telegram Mini App
+//  Меряем время, пока карточка игры активна, видима и НЕ на паузе, ПОСЛЕ загрузки.
+//  Один «вид» (импрешн) = игра стала активной и догрузилась; сессия = вид с
+//  active_ms >= 3000; hook = вид >= 10000 мс.
+//
+//  СТРАТЕГИЯ ЗАПИСИ устойчива к тому, что в Telegram Web «закрытие» мини-аппа НЕ
+//  даёт надёжных pagehide/visibilitychange (вкладка остаётся видимой):
+//    1) как только вид догрузился — СРАЗУ вставляем строку в game_stats (active_ms=0);
+//    2) каждые 10с и при паузе/уходе — ОБНОВЛЯЕМ active_ms той же строки (по id).
+//  Поэтому даже долгая сессия в одной игре без свайпов фиксируется. id строки
+//  генерим на клиенте (на game_stats нет select-политики, читать его нельзя).
+//  Анонимов (без логина) не пишем. Глобали из index.html: GAMES, currentIdx,
+//  gamePaused, currentUser, db, SUPABASE_URL/KEY.
 // ══════════════════════════════════════════════════════════════════════════
 const _sessLoaded = new Set();  // индексы iframes, у которых сработал load
-let _sessView = null;           // текущий вид {idx,gameId,startIso,accumMs,running,t0,loaded}
-let _sessPending = [];          // буфер строк на флаш
+let _sessView = null;           // текущий вид
 
+function _sessUser(){ return (typeof currentUser !== 'undefined' && currentUser && currentUser.id) ? currentUser : null; }
 function _sessCanRun(){
   return !!_sessView && _sessView.loaded && _sessView.idx === currentIdx
     && !gamePaused && document.visibilityState === 'visible';
+}
+function _sessTotalMs(){
+  if (!_sessView) return 0;
+  return _sessView.accumMs + (_sessView.running ? (Date.now() - _sessView.t0) : 0);
+}
+function _sessUuid(){
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16);
+  });
 }
 function sessResume(){
   if (!_sessView || _sessView.running) return;
@@ -317,76 +332,83 @@ function sessPause(){
   if (!_sessView || !_sessView.running) return;
   _sessView.accumMs += Date.now() - _sessView.t0;
   _sessView.running = false;
+  _sessCheckpoint(false);  // фиксируем накопленное при каждой паузе
 }
 function _sessStart(idx){
   const g = GAMES[idx];
   if (!g) { _sessView = null; return; }
-  _sessView = { idx, gameId:g.id, startIso:new Date().toISOString(),
-                accumMs:0, running:false, t0:0, loaded:_sessLoaded.has(idx) };
+  _sessView = { idx, gameId:g.id, id:null, rowReady:false,
+                startIso:new Date().toISOString(), accumMs:0, running:false, t0:0,
+                loaded:_sessLoaded.has(idx) };
+  if (_sessView.loaded) _sessInsertRow();
   sessResume();
 }
-function _sessFinalize(){
-  if (!_sessView) return;
-  sessPause();
-  if (_sessView.loaded) {          // импрешн засчитываем только для догрузившихся видов
-    _sessPending.push({
-      game_id: _sessView.gameId,
-      session_start: _sessView.startIso,
-      session_end: new Date().toISOString(),
-      active_ms: Math.max(0, Math.round(_sessView.accumMs)),
-      active_seconds: Math.max(0, Math.round(_sessView.accumMs / 1000)),
-      loaded: true,
+// Вставляем строку «вида» сразу при загрузке (active_ms=0); потом только UPDATE.
+function _sessInsertRow(){
+  const u = _sessUser(), v = _sessView;
+  if (!u || !v || v.id || typeof db === 'undefined') return;
+  v.id = _sessUuid();
+  const row = { id:v.id, game_id:v.gameId, user_id:u.id, session_start:v.startIso,
+                session_end:new Date().toISOString(), active_ms:0, active_seconds:0, loaded:true };
+  try {
+    db.from('game_stats').insert(row).then(({ error }) => {
+      if (error) { console.warn('sess insert:', error.message); if (v.id===row.id) v.id=null; }
+      else if (_sessView === v) v.rowReady = true;
     });
-  }
-  _sessView = null;
+  } catch (e) { console.warn('sess insert ex:', e); }
+}
+// Обновляем active_ms текущей строки (периодически, при паузе и при уходе).
+function _sessCheckpoint(useBeacon){
+  const v = _sessView;
+  if (!v || !v.id || !v.rowReady) return;
+  const ms = Math.max(0, Math.round(_sessTotalMs()));
+  const patch = { active_ms: ms, active_seconds: Math.round(ms/1000), session_end: new Date().toISOString() };
+  if (useBeacon) { _sessBeacon(v.id, patch); return; }
+  try { db.from('game_stats').update(patch).eq('id', v.id).then(({ error }) => {
+    if (error) console.warn('sess update:', error.message);
+  }); } catch (e) { console.warn('sess update ex:', e); }
 }
 // Вызывается из preload() когда iframe игры догрузился.
 function sessMarkLoaded(idx){
   _sessLoaded.add(idx);
   if (_sessView && _sessView.idx === idx && !_sessView.loaded) {
     _sessView.loaded = true;
+    _sessInsertRow();
     sessResume();
   }
+}
+// Финализируем вид: дописываем active_ms и забываем его.
+function _sessFinalize(){
+  if (!_sessView) return;
+  sessPause();             // accumMs += сегмент + checkpoint
+  _sessCheckpoint(false);  // на случай, если таймер не шёл
+  _sessView = null;
 }
 // Вызывается из _goTo() при смене активной игры.
 function sessOnNavigate(idx){
   if (_sessView && _sessView.idx === idx) { sessResume(); return; }
   _sessFinalize();
-  _sessFlush(false);
   _sessStart(idx);
 }
-function _sessFlush(useBeacon){
-  if (!_sessPending.length) return;
-  const u = (typeof currentUser !== 'undefined') ? currentUser : null;
-  if (!u || !u.id || typeof db === 'undefined') { _sessPending = []; return; }
-  const rows = _sessPending.map(r => ({ ...r, user_id: u.id }));
-  _sessPending = [];
-  if (useBeacon) { _sessBeacon(rows); return; }
-  try {
-    db.from('game_stats').insert(rows).then(({ error }) => {
-      if (error) console.warn('sess flush:', error.message);
-    });
-  } catch (e) { console.warn('sess flush ex:', e); }
-}
-// Финальный флаш при закрытии — keepalive-fetch напрямую в PostgREST с токеном
-// сессии (RLS пропустит строки, где user_id = свой app_uid()).
-function _sessBeacon(rows){
+// Финальный апдейт при закрытии — keepalive-PATCH с токеном сессии.
+function _sessBeacon(id, patch){
   try {
     db.auth.getSession().then(({ data }) => {
       const token = (data && data.session && data.session.access_token) || SUPABASE_KEY;
-      fetch(`${SUPABASE_URL}/rest/v1/game_stats`, {
-        method: 'POST', keepalive: true,
+      fetch(`${SUPABASE_URL}/rest/v1/game_stats?id=eq.${id}`, {
+        method: 'PATCH', keepalive: true,
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token,
                    'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify(rows),
+        body: JSON.stringify(patch),
       }).catch(() => {});
     }).catch(() => {});
   } catch (e) { /* best-effort */ }
 }
-// Сворачивание мини-аппа = конец текущего вида (надёжный сигнал в Telegram).
-// Возврат = начинаем свежий вид для текущей игры.
+// Периодический чекпоинт — ОСНОВНОЙ механизм фиксации (надёжнее, чем события
+// закрытия, которых в Telegram Web может не быть).
+setInterval(() => { if (_sessView && _sessView.running) _sessCheckpoint(false); }, 10000);
+// Сворачивание/возврат мини-аппа: пауза/продолжение того же вида (строка уже есть).
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') { _sessFinalize(); _sessFlush(false); }
-  else { _sessStart(currentIdx); }
+  if (document.visibilityState === 'hidden') sessPause(); else sessResume();
 });
-window.addEventListener('pagehide', () => { _sessFinalize(); _sessFlush(true); });
+window.addEventListener('pagehide', () => { sessPause(); _sessCheckpoint(true); });

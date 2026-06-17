@@ -526,7 +526,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
 </div>
 
 <!-- Игровой движок: загрузка и отображение игр (engine.js). Грузится ПЕРЕД основным скриптом. -->
-<script src="engine.js"></script>
+<script src="engine.js?v=2"></script>
 <script>
 // ══ SUPABASE ══
 const SUPABASE_URL = 'https://safjqsofdrxdmvnfgvjf.supabase.co';
@@ -671,9 +671,13 @@ async function loginWithTelegram() {
   }
 }
 
-// Fetch the (now authenticated) user's row by id
+// Fetch the (now authenticated) user's row by id.
+// ВАЖНО: только колонки, на которые есть колоночный GRANT (после lockdown_rls).
+// select=* падает с 401 (нет прав на telegram_id и пр.) → currentUser остаётся
+// null → не пишутся ни сессии (game_stats), ни лайки/сейвы/шеры. Поэтому явный список.
 async function fetchUserById(userId) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=*`, { headers: REST_HEADERS });
+  const cols = 'id,username,display_name,avatar_emoji,gradient,bio,is_virtual,role,status,created_at';
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=${cols}`, { headers: REST_HEADERS });
   const users = res.ok ? await res.json() : [];
   if (!users.length) throw new Error('user row not found after auth');
   return users[0];
