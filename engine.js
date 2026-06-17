@@ -118,6 +118,7 @@ function preload(idx) {
       done = true;
       clearTimeout(timer);
       arena.querySelector('.arena-loading')?.remove();
+      sessMarkLoaded(i); // аналитика: игра догрузилась → импрешн засчитывается
       iframe.contentWindow?.postMessage({ type:'init', accent:g.accent, bg:g.bg, scoreLabel:g.score_label }, '*');
       if (i === currentIdx && !gamePaused) iframe.contentWindow?.postMessage({ type:'start' }, '*');
       attachSwipe(iframe);
@@ -203,6 +204,7 @@ function _goTo(idx) {
     c.classList.add(i < idx ? 'above' : i === idx ? 'active' : 'below');
   });
   preload(idx);
+  sessOnNavigate(idx); // аналитика: закрыть предыдущий вид, открыть новый
   if (iframes[idx]) iframes[idx].contentWindow?.postMessage({ type:'start' }, '*');
   updateNextUp();
   tg?.HapticFeedback?.impactOccurred('light');
@@ -233,6 +235,7 @@ function togglePause(){
   gamePaused = !gamePaused;
   const f = iframes[currentIdx]?.contentWindow;
   if (f) f.postMessage({ type: gamePaused ? 'pause' : 'start' }, '*');
+  if (gamePaused) sessPause(); else sessResume(); // аналитика: пауза замораживает таймер вида
   document.body.classList.toggle('paused', gamePaused);
   if (gamePaused) updateNextUp();
   renderPauseBtn();
@@ -287,3 +290,103 @@ document.addEventListener('keydown', e => {
   if (e.key==='ArrowUp') goTo(currentIdx-1);
   if (e.key===' ') { e.preventDefault(); togglePause(); }
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+//  АНАЛИТИКА СЕССИЙ (dwell-time)
+//  Меряем время, пока карточка игры активна, видима и НЕ на паузе — ПОСЛЕ её
+//  загрузки. Это аналог «просмотра»: один «вид» (импрешн) = игра стала активной
+//  и догрузилась; сессия = вид с active_ms >= 3000; hook = вид >= 10000 мс.
+//  Пишем строки в public.game_stats (RLS: только своя строка, user_id=app_uid()).
+//  Читает их только админ-дашборд через definer-RPC (агрегаты). Анонимов
+//  (вне Telegram, без логина) не пишем. Использует глобали index.html:
+//  GAMES, iframes, currentIdx, gamePaused, currentUser, db, SUPABASE_URL/KEY.
+// ══════════════════════════════════════════════════════════════════════════
+const _sessLoaded = new Set();  // индексы iframes, у которых сработал load
+let _sessView = null;           // текущий вид {idx,gameId,startIso,accumMs,running,t0,loaded}
+let _sessPending = [];          // буфер строк на флаш
+
+function _sessCanRun(){
+  return !!_sessView && _sessView.loaded && _sessView.idx === currentIdx
+    && !gamePaused && document.visibilityState === 'visible';
+}
+function sessResume(){
+  if (!_sessView || _sessView.running) return;
+  if (_sessCanRun()) { _sessView.running = true; _sessView.t0 = Date.now(); }
+}
+function sessPause(){
+  if (!_sessView || !_sessView.running) return;
+  _sessView.accumMs += Date.now() - _sessView.t0;
+  _sessView.running = false;
+}
+function _sessStart(idx){
+  const g = GAMES[idx];
+  if (!g) { _sessView = null; return; }
+  _sessView = { idx, gameId:g.id, startIso:new Date().toISOString(),
+                accumMs:0, running:false, t0:0, loaded:_sessLoaded.has(idx) };
+  sessResume();
+}
+function _sessFinalize(){
+  if (!_sessView) return;
+  sessPause();
+  if (_sessView.loaded) {          // импрешн засчитываем только для догрузившихся видов
+    _sessPending.push({
+      game_id: _sessView.gameId,
+      session_start: _sessView.startIso,
+      session_end: new Date().toISOString(),
+      active_ms: Math.max(0, Math.round(_sessView.accumMs)),
+      active_seconds: Math.max(0, Math.round(_sessView.accumMs / 1000)),
+      loaded: true,
+    });
+  }
+  _sessView = null;
+}
+// Вызывается из preload() когда iframe игры догрузился.
+function sessMarkLoaded(idx){
+  _sessLoaded.add(idx);
+  if (_sessView && _sessView.idx === idx && !_sessView.loaded) {
+    _sessView.loaded = true;
+    sessResume();
+  }
+}
+// Вызывается из _goTo() при смене активной игры.
+function sessOnNavigate(idx){
+  if (_sessView && _sessView.idx === idx) { sessResume(); return; }
+  _sessFinalize();
+  _sessFlush(false);
+  _sessStart(idx);
+}
+function _sessFlush(useBeacon){
+  if (!_sessPending.length) return;
+  const u = (typeof currentUser !== 'undefined') ? currentUser : null;
+  if (!u || !u.id || typeof db === 'undefined') { _sessPending = []; return; }
+  const rows = _sessPending.map(r => ({ ...r, user_id: u.id }));
+  _sessPending = [];
+  if (useBeacon) { _sessBeacon(rows); return; }
+  try {
+    db.from('game_stats').insert(rows).then(({ error }) => {
+      if (error) console.warn('sess flush:', error.message);
+    });
+  } catch (e) { console.warn('sess flush ex:', e); }
+}
+// Финальный флаш при закрытии — keepalive-fetch напрямую в PostgREST с токеном
+// сессии (RLS пропустит строки, где user_id = свой app_uid()).
+function _sessBeacon(rows){
+  try {
+    db.auth.getSession().then(({ data }) => {
+      const token = (data && data.session && data.session.access_token) || SUPABASE_KEY;
+      fetch(`${SUPABASE_URL}/rest/v1/game_stats`, {
+        method: 'POST', keepalive: true,
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token,
+                   'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(rows),
+      }).catch(() => {});
+    }).catch(() => {});
+  } catch (e) { /* best-effort */ }
+}
+// Сворачивание мини-аппа = конец текущего вида (надёжный сигнал в Telegram).
+// Возврат = начинаем свежий вид для текущей игры.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { _sessFinalize(); _sessFlush(false); }
+  else { _sessStart(currentIdx); }
+});
+window.addEventListener('pagehide', () => { _sessFinalize(); _sessFlush(true); });

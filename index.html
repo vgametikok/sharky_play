@@ -633,7 +633,8 @@ async function authenticateTelegram() {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/tg-auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
-    body: JSON.stringify({ initData: tg.initData })
+    // platform нет в подписанном initData — отдаём отдельно (для аналитики аудитории)
+    body: JSON.stringify({ initData: tg.initData, platform: tg.platform || '' })
   });
   if (!res.ok) throw new Error('tg-auth failed: ' + res.status);
   const { token_hash, user_id } = await res.json();
@@ -749,6 +750,17 @@ async function loadCommentCounts() {
   const counts = {};
   data.forEach(c => { counts[c.game_id] = (counts[c.game_id]||0) + 1; });
   GAMES.forEach(g => { if (socialData[g.id]) socialData[g.id].commentCount = counts[g.id] || 0; });
+}
+
+async function loadShareCounts() {
+  // shares — реальная таблица (public read). Раньше счётчик жил только в памяти.
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/shares?select=game_id`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  const data = res.ok ? await res.json() : [];
+  const counts = {};
+  data.forEach(s => { counts[s.game_id] = (counts[s.game_id]||0) + 1; });
+  GAMES.forEach(g => { if (socialData[g.id]) socialData[g.id].shareCount = counts[g.id] || 0; });
 }
 
 async function loadUserSocialData() {
@@ -885,6 +897,12 @@ async function doShare(i) {
   const d = socialData[g.id];
   const link = buildGameLink(g.id);
   const bump = () => {
+    // Пишем реальный шер в БД (для дашборда). Только залогиненный пользователь —
+    // RLS пропускает строку, где user_id = свой app_uid(). Аноним — пропуск.
+    if (currentUser) {
+      try { db.from('shares').insert({ game_id: g.id, user_id: currentUser.id }).then(({error})=>{ if(error) console.warn('share insert:', error.message); }); }
+      catch(e) { console.warn('share insert ex:', e); }
+    }
     if (!d) return;
     d.shareCount = (d.shareCount||0) + 1;
     const el = document.getElementById(`sbcount-share-${i}`);
@@ -1800,6 +1818,7 @@ async function init() {
     // Load counts from DB
     await loadLikeCounts();
     await loadCommentCounts();
+    await loadShareCounts();
     await loadFollowerCounts();
 
     // Telegram Mini App: auto-login (create account on first launch)

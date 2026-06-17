@@ -164,6 +164,38 @@ a{color:var(--a4)}
 .pgbtn:hover:not(:disabled){color:var(--text);border-color:var(--a4)}
 .pgbtn.active{background:var(--a4);color:#fff;border-color:var(--a4)}
 .pgbtn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── DASHBOARD ── */
+.seg{display:inline-flex;background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{background:none;border:none;color:var(--sub2);font-size:12px;font-weight:700;padding:7px 13px;border-radius:7px;font-family:var(--fm);letter-spacing:.3px;transition:background .15s,color .15s}
+.seg button:hover{color:var(--text)}
+.seg button.active{background:var(--a4);color:#fff}
+.dash-section{margin-bottom:26px}
+.dash-h{display:flex;align-items:center;gap:9px;margin:4px 0 14px;font-size:16px;font-weight:700}
+.dash-h .dot{width:9px;height:9px;border-radius:50%}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tile .tv{font-size:25px;font-weight:700;letter-spacing:-.5px;line-height:1.05}
+.tile .tl{font-size:11px;color:var(--sub);font-family:var(--fm);text-transform:uppercase;letter-spacing:.5px;margin-top:5px}
+.tile .ts{font-size:11px;color:var(--sub2);margin-top:5px}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
+@media(max-width:1000px){.dash-grid{grid-template-columns:1fr}}
+.dash-grid .card h3,.dash-section .card h3{margin-bottom:12px}
+.barlist{display:flex;flex-direction:column;gap:9px}
+.barrow{display:grid;grid-template-columns:96px 1fr 44px;gap:10px;align-items:center;font-size:12px}
+.barrow .bk{color:var(--sub2);font-family:var(--fm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bartrack{height:8px;background:var(--panel2);border-radius:5px;overflow:hidden}
+.barfill{height:100%;border-radius:5px;min-width:2px}
+.barrow .bn{text-align:right;font-family:var(--fm);color:var(--sub2)}
+.ret{display:flex;gap:10px}
+.ret .rc{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px 10px;text-align:center}
+.ret .rv{font-size:22px;font-weight:700}
+.ret .rl{font-size:10px;color:var(--sub);font-family:var(--fm);margin-top:4px;letter-spacing:.4px}
+.spark{width:100%;height:92px;display:block}
+.dash-note{font-size:11px;color:var(--sub);margin-top:10px;line-height:1.55}
+.dash-loading{padding:40px;text-align:center;color:var(--sub);font-size:14px}
+.tbl td.num,.tbl th.num{text-align:right;font-family:var(--fm);white-space:nowrap}
+.mini{font-size:10px;color:var(--sub);font-family:var(--fm);margin-top:7px}
 </style>
 </head>
 <body>
@@ -185,7 +217,8 @@ a{color:var(--a4)}
   <!-- sidebar -->
   <aside class="side">
     <div class="side-logo">Shar<span>ky</span></div>
-    <button class="navbtn active" data-page="games"><span class="ic">🎮</span>Игры</button>
+    <button class="navbtn active" data-page="dashboard"><span class="ic">📊</span>Дашборд</button>
+    <button class="navbtn" data-page="games"><span class="ic">🎮</span>Игры</button>
     <button class="navbtn" data-page="add"><span class="ic">＋</span>Добавить</button>
     <button class="navbtn" data-page="authors"><span class="ic">👤</span>Авторы</button>
     <button class="navbtn" data-page="profiles"><span class="ic">🛡️</span>Профили</button>
@@ -197,8 +230,22 @@ a{color:var(--a4)}
 
   <main class="main">
 
+    <!-- ── PAGE: DASHBOARD ── -->
+    <section class="page on" data-page="dashboard">
+      <div class="page-head">
+        <div class="page-title">Дашборд <small id="dash-range"></small></div>
+        <div class="seg" id="dash-period">
+          <button data-p="day">День</button>
+          <button data-p="7d" class="active">7 дней</button>
+          <button data-p="30d">30 дней</button>
+          <button data-p="all">Всё время</button>
+        </div>
+      </div>
+      <div id="dash-body"><div class="dash-loading">Загрузка статистики…</div></div>
+    </section>
+
     <!-- ── PAGE: GAMES ── -->
-    <section class="page on" data-page="games">
+    <section class="page" data-page="games">
       <div class="page-head">
         <div class="page-title">Игры <small id="games-count"></small></div>
         <div class="toolbar">
@@ -406,6 +453,7 @@ document.querySelectorAll('.navbtn').forEach(b=>{
     const p = b.dataset.page;
     document.querySelectorAll('.page').forEach(x=>x.classList.toggle('on', x.dataset.page===p));
     if(p==='profiles'){showProfList();}
+    if(p==='dashboard'){loadDashboard();}   // обновляем статистику при заходе
   });
 });
 
@@ -418,6 +466,7 @@ async function loadAll(){
   renderAuthors();
   renderProfiles();
   renderAddForm();
+  loadDashboard();
 }
 async function loadUsers(){
   // SECURITY: полный список юзеров доступен только админу — читаем через
@@ -442,6 +491,168 @@ function fillAuthorSelects(){
   $('#add-author').innerHTML = opts;
   $('#f-author').innerHTML = '<option value="">Все авторы</option>'+opts;
 }
+
+// ════════ DASHBOARD ════════
+// Две панели — Аудитория и Игры — по периодам (день / 7д / 30д / всё время).
+// Все цифры считаются на сервере админ-RPC (SECURITY DEFINER + is_admin()),
+// клиент получает только агрегаты. Графики — инлайновый SVG, без внешних либ.
+let dashPeriod = '7d';
+let dashLoading = false;
+
+function dashRange(p){
+  const to = new Date();
+  let from = null;
+  if(p==='day')      from = new Date(Date.now()-24*3600*1000);
+  else if(p==='7d')  from = new Date(Date.now()-7*24*3600*1000);
+  else if(p==='30d') from = new Date(Date.now()-30*24*3600*1000);
+  // p==='all' → from остаётся null (без нижней границы)
+  return { from: from ? from.toISOString() : null, to: to.toISOString() };
+}
+const DASH_LABEL = { day:'за 24 часа', '7d':'за 7 дней', '30d':'за 30 дней', all:'за всё время' };
+
+function dashNf(n){ n=Number(n)||0; if(n>=1000){const k=n/1000; return (k>=100?Math.round(k):(Math.round(k*10)/10))+'k';} return String(n); }
+function dashFmtDur(s){ s=Math.round(Number(s)||0); if(!s) return '0с'; if(s<60) return s+'с'; const m=Math.floor(s/60),r=s%60; return m+'м'+(r?(' '+r+'с'):''); }
+function dashPctCell(v){ return (v===null||v===undefined||v==='') ? '—' : (v+'%'); }
+function dashGemoji(id){ const g=GAMES.find(x=>x.id===id); return g&&g.emoji?g.emoji:'🎮'; }
+function dashTile(v,l,s){ return `<div class="tile"><div class="tv">${esc(String(v))}</div><div class="tl">${esc(l)}</div>${s?`<div class="ts">${esc(s)}</div>`:''}</div>`; }
+function dashRetCard(label,v,n){ return `<div class="rc"><div class="rv">${(v===null||v===undefined)?'—':(v+'%')}</div><div class="rl">${esc(label)}${(n!=null)?(' · n='+n):''}</div></div>`; }
+
+function dashBarlist(arr,color){
+  arr = Array.isArray(arr)?arr:[];
+  if(!arr.length) return '<div class="mini">нет данных</div>';
+  const max = Math.max.apply(null, arr.map(x=>Number(x.users)||0).concat([1]));
+  return `<div class="barlist">${arr.map(x=>{
+    const u = Number(x.users)||0, w = Math.round(100*u/max);
+    return `<div class="barrow"><span class="bk" title="${esc(String(x.key))}">${esc(String(x.key))}</span><div class="bartrack"><div class="barfill" style="width:${w}%;background:${color}"></div></div><span class="bn">${dashNf(u)}</span></div>`;
+  }).join('')}</div>`;
+}
+
+function dashSpark(ts, field, color){
+  ts = Array.isArray(ts)?ts:[];
+  if(ts.length<2) return '<div class="mini">недостаточно данных за период</div>';
+  const vals = ts.map(r=>Number(r[field])||0);
+  const max = Math.max.apply(null, vals.concat([1]));
+  const W=620, H=92, pad=7, n=vals.length;
+  const X = i => pad + i*(W-2*pad)/(n-1);
+  const Y = v => H-pad - (v/max)*(H-2*pad);
+  const pts = vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  const area = `${pad.toFixed(1)},${(H-pad).toFixed(1)} ${pts} ${(W-pad).toFixed(1)},${(H-pad).toFixed(1)}`;
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <polygon points="${area}" fill="${color}" opacity="0.12"></polygon>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></polyline>
+  </svg><div class="mini">${esc(ts[0].bucket)} → ${esc(ts[ts.length-1].bucket)} · пик ${dashNf(max)}</div>`;
+}
+
+function dashRenderAudience(ov, ts, ret){
+  ov = ov||{}; ret = ret||{};
+  const totAud = Number(ov.total_audience)||0, prem = Number(ov.premium_users)||0;
+  const premShare = totAud ? Math.round(1000*prem/totAud)/10 : 0;
+  const tiles = [
+    dashTile(dashNf(ov.total_users), 'Всего юзеров', 'аудитория Telegram'),
+    dashTile(dashNf(ov.new_users), 'Новые', DASH_LABEL[dashPeriod]),
+    dashTile(dashNf(ov.active_users), 'Активные', 'заходили (DAU/период)'),
+    dashTile(dashNf(ov.returning_users), 'Вернувшиеся', 'не новые'),
+    dashTile(premShare+'%', 'Premium', dashNf(prem)+' польз.'),
+    dashTile(dashNf(ov.opens), 'Запусков', DASH_LABEL[dashPeriod]),
+  ].join('');
+  const retBlock = `<div class="ret">
+      ${dashRetCard('D1', ret.d1, ret.cohort_d1)}
+      ${dashRetCard('D7', ret.d7, ret.cohort_d7)}
+      ${dashRetCard('D30', ret.d30, ret.cohort_d30)}
+    </div>
+    <div class="dash-note">Доля новых пользователей, вернувшихся на след. день (D1) и хотя бы раз в течение 7 / 30 дней. По логу запусков; n — размер когорты.</div>`;
+  return `<div class="dash-section">
+    <div class="dash-h"><span class="dot" style="background:var(--a4)"></span>Аудитория</div>
+    <div class="tiles">${tiles}</div>
+    <div class="dash-grid">
+      <div class="card"><h3>Активные по дням</h3>${dashSpark(ts,'active_users','var(--a4)')}</div>
+      <div class="card"><h3>Удержание</h3>${retBlock}</div>
+      <div class="card"><h3>Платформы</h3>${dashBarlist(ov.platforms,'var(--a2)')}</div>
+      <div class="card"><h3>Языки</h3>${dashBarlist(ov.languages,'var(--a3)')}</div>
+    </div>
+    <div class="card" style="margin-top:16px"><h3>Источники переходов</h3>${dashBarlist(ov.referrals,'var(--a1)')}</div>
+  </div>`;
+}
+
+function dashRenderGames(games, gts){
+  games = Array.isArray(games)?games:[];
+  let tImp=0,t3=0,t10=0,tLk=0,tCm=0,tSh=0,tSv=0,wTime=0,wN=0;
+  games.forEach(g=>{
+    tImp+=Number(g.impressions)||0; t3+=Number(g.sessions_3s)||0; t10+=Number(g.sessions_10s)||0;
+    tLk+=Number(g.likes)||0; tCm+=Number(g.comments)||0; tSh+=Number(g.shares)||0; tSv+=Number(g.saves)||0;
+    const a=Number(g.avg_session_sec)||0, s=Number(g.sessions_3s)||0;
+    if(a&&s){ wTime+=a*s; wN+=s; }
+  });
+  const avgT = wN? wTime/wN : 0;
+  const hook = tImp? Math.round(1000*t10/tImp)/10 : 0;
+  const tiles = [
+    dashTile(dashNf(tImp),'Показы','загрузок игр'),
+    dashTile(dashNf(t3),'Сессии >3с','просмотры'),
+    dashTile(dashFmtDur(avgT),'Ср. время','сессии >3с'),
+    dashTile(hook+'%','Hook >10с','из показов'),
+    dashTile(dashNf(tLk),'Лайки',''),
+    dashTile(dashNf(tCm),'Комменты',''),
+    dashTile(dashNf(tSh),'Шеры',''),
+    dashTile(dashNf(tSv),'Избранное',''),
+  ].join('');
+  const rows = games.map(g=>`<tr>
+    <td><div class="cellflex"><div class="thumb" style="width:30px;height:30px;font-size:14px;background:${esc(g.bg||'#1a1a24')}">${esc(dashGemoji(g.game_id))}</div><div style="font-weight:700">${esc(g.title)}</div></div></td>
+    <td class="num">${dashNf(g.impressions)}</td>
+    <td class="num">${dashNf(g.sessions_3s)}</td>
+    <td class="num">${dashPctCell(g.hook_rate)}</td>
+    <td class="num">${dashFmtDur(g.avg_session_sec)}</td>
+    <td class="num">${dashPctCell(g.retention_d1)}</td>
+    <td class="num">${dashPctCell(g.retention_d7)}</td>
+    <td class="num">${dashNf(g.likes)}</td>
+    <td class="num">${dashNf(g.comments)}</td>
+    <td class="num">${dashNf(g.shares)}</td>
+    <td class="num">${dashNf(g.saves)}</td>
+  </tr>`).join('');
+  const table = `<table class="tbl"><thead><tr>
+      <th>Игра</th><th class="num">Показы</th><th class="num">Сессии&nbsp;&gt;3с</th><th class="num">Hook&nbsp;&gt;10с</th><th class="num">Ср.&nbsp;время</th><th class="num">D1</th><th class="num">D7</th><th class="num" title="Лайки">♥</th><th class="num" title="Комменты">💬</th><th class="num" title="Шеры">↗</th><th class="num" title="Избранное">★</th>
+    </tr></thead><tbody>${rows || '<tr><td colspan="11" class="empty">Нет данных за период</td></tr>'}</tbody></table>`;
+  return `<div class="dash-section">
+    <div class="dash-h"><span class="dot" style="background:var(--a1)"></span>Игры</div>
+    <div class="tiles">${tiles}</div>
+    <div class="card" style="margin-top:14px"><h3>Сессии &gt;3с по дням</h3>${dashSpark(gts,'sessions_3s','var(--a1)')}</div>
+    <div style="margin-top:14px">${table}</div>
+    <div class="dash-note">Сессия = показ игры дольше 3с после загрузки (аналог просмотра на YouTube). Hook = доля показов, где игрок остаётся &gt;10с. D1/D7 — возврат игрока к этой игре в течение 1 / 7 дней. Среднее время — по сессиям &gt;3с.</div>
+  </div>`;
+}
+
+async function loadDashboard(){
+  if(dashLoading) return;
+  dashLoading = true;
+  const body = $('#dash-body');
+  body.innerHTML = '<div class="dash-loading">Загрузка статистики…</div>';
+  $('#dash-range').textContent = DASH_LABEL[dashPeriod] || '';
+  const { from, to } = dashRange(dashPeriod);
+  try{
+    const [ov, ts, ret, games, gts] = await Promise.all([
+      db.rpc('admin_audience_overview',   { p_from: from, p_to: to }),
+      db.rpc('admin_audience_timeseries', { p_from: from, p_to: to, p_bucket: 'day' }),
+      db.rpc('admin_audience_retention'),
+      db.rpc('admin_games_overview',      { p_from: from, p_to: to }),
+      db.rpc('admin_games_timeseries',    { p_from: from, p_to: to, p_bucket: 'day', p_game_id: null }),
+    ]);
+    const err = ov.error||ts.error||ret.error||games.error||gts.error;
+    if(err){ body.innerHTML = `<div class="empty">Ошибка загрузки статистики: ${esc(err.message)}</div>`; return; }
+    body.innerHTML = dashRenderAudience(ov.data, ts.data, ret.data) + dashRenderGames(games.data, gts.data);
+  }catch(e){
+    console.error('dashboard', e);
+    body.innerHTML = `<div class="empty">Ошибка: ${esc(e.message||String(e))}</div>`;
+  }finally{ dashLoading = false; }
+}
+
+document.querySelectorAll('#dash-period button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    if(b.dataset.p===dashPeriod) return;
+    document.querySelectorAll('#dash-period button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    dashPeriod = b.dataset.p;
+    loadDashboard();
+  });
+});
 
 // ════════ GAME FORM (reusable) ════════
 function gameFormHTML(p){

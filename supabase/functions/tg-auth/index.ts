@@ -111,8 +111,13 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405, cors);
 
   let initData = "";
+  let platform = "";
   try {
-    ({ initData } = await req.json());
+    const body = await req.json();
+    initData = body?.initData ?? "";
+    // platform приходит из tg.platform (ios/android/tdesktop/weba/…) — в initData
+    // его нет, поэтому фронт передаёт отдельно. Не подписан, но для аналитики ок.
+    platform = (body?.platform ?? "").toString().slice(0, 32);
   } catch {
     return json({ error: "bad request" }, 400, cors);
   }
@@ -135,13 +140,23 @@ Deno.serve(async (req) => {
   const verified = await verifyInitData(initData);
   if (!verified) return json({ error: "invalid initData" }, 401, cors);
 
-  let tgUser: { id: number; username?: string; first_name?: string; last_name?: string };
+  let tgUser: {
+    id: number; username?: string; first_name?: string; last_name?: string;
+    language_code?: string; is_premium?: boolean;
+  };
   try {
     tgUser = JSON.parse(verified.user);
   } catch {
     return json({ error: "no user in initData" }, 401, cors);
   }
   if (!tgUser?.id) return json({ error: "no user id" }, 401, cors);
+
+  // Аудиторные атрибуты (подписаны внутри initData, кроме platform).
+  const langCode = (tgUser.language_code || "").toString().slice(0, 12) || null;
+  const isPremium = tgUser.is_premium === true;
+  const startParam = (verified.start_param || "").toString().slice(0, 128) || null;
+  const platformVal = platform || null;
+  const nowIso = new Date().toISOString();
 
   // Детерминированный e-mail на основе telegram_id — НЕ показывается пользователю,
   // нужен только как ключ записи в auth.users.
@@ -170,17 +185,26 @@ Deno.serve(async (req) => {
   }
   if (!authUid) return json({ error: "auth user resolution failed" }, 500, cors);
 
-  // 2) Найти/создать строку public.users и связать её с auth_uid.
+  // 2) Найти/создать строку public.users, связать с auth_uid и обновить
+  //    аудиторные атрибуты (язык/премиум/платформа/last_seen). referral_source —
+  //    first-touch: пишем только при первом касании, потом не перетираем.
   const existing = await admin
     .from("users")
-    .select("id")
+    .select("id, referral_source")
     .eq("telegram_id", tgUser.id)
     .maybeSingle();
 
   let userId: string;
   if (existing.data?.id) {
     userId = existing.data.id;
-    await admin.from("users").update({ auth_uid: authUid }).eq("id", userId);
+    await admin.from("users").update({
+      auth_uid: authUid,
+      language_code: langCode,
+      is_premium: isPremium,
+      platform: platformVal,
+      last_seen_at: nowIso,
+      referral_source: existing.data.referral_source ?? startParam,
+    }).eq("id", userId);
   } else {
     const inserted = await admin.from("users").insert({
       telegram_id: tgUser.id,
@@ -190,10 +214,27 @@ Deno.serve(async (req) => {
       bio: "",
       is_virtual: false,
       auth_uid: authUid,
+      language_code: langCode,
+      is_premium: isPremium,
+      platform: platformVal,
+      last_seen_at: nowIso,
+      referral_source: startParam,
     }).select("id").single();
     if (!inserted.data?.id) return json({ error: "user creation failed" }, 500, cors);
     userId = inserted.data.id;
   }
+
+  // 2b) Лог запуска приложения → DAU/WAU/MAU и когортное удержание.
+  //     Один вызов tg-auth = один запуск. Сбой лога не должен ломать вход.
+  try {
+    await admin.from("app_opens").insert({
+      user_id: userId,
+      platform: platformVal,
+      language_code: langCode,
+      is_premium: isPremium,
+      referral: startParam,
+    });
+  } catch (_e) { /* лог не критичен */ }
 
   // 3) Выдать сессию без пароля: magiclink → token_hash, фронт зовёт verifyOtp.
   const link = await admin.auth.admin.generateLink({ type: "magiclink", email });
