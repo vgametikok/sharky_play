@@ -349,7 +349,10 @@ function _sessInsertRow(){
   if (!u || !v || v.id || typeof db === 'undefined') return;
   v.id = _sessUuid();
   const row = { id:v.id, game_id:v.gameId, user_id:u.id, session_start:v.startIso,
-                session_end:new Date().toISOString(), active_ms:0, active_seconds:0, loaded:true };
+                session_end:new Date().toISOString(), active_ms:0, active_seconds:0, loaded:true,
+                // происхождение показа (слой 1 рекомендаций): чем выбрана лента и на каком слоте.
+                feed_source: (typeof FEED_SOURCE !== 'undefined' ? FEED_SOURCE : 'shuffle'),
+                feed_position: v.idx };
   try {
     db.from('game_stats').insert(row).then(({ error }) => {
       if (error) { console.warn('sess insert:', error.message); if (v.id===row.id) v.id=null; }

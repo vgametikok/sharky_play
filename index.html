@@ -526,7 +526,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
 </div>
 
 <!-- Игровой движок: загрузка и отображение игр (engine.js). Грузится ПЕРЕД основным скриптом. -->
-<script src="engine.js?v=2"></script>
+<script src="engine.js?v=3"></script>
 <script>
 // ══ SUPABASE ══
 const SUPABASE_URL = 'https://safjqsofdrxdmvnfgvjf.supabase.co';
@@ -579,6 +579,7 @@ let currentUser = null; // Supabase user row
 let currentIdx = 0, profileOpen = false, currentAuthorId = 'sharky';
 let activeProfTab = 'games', activeNav = 'feed', activeUTab = 'liked', activeDrawerGame = null;
 let swipeCount = 0; // trigger reg modal after 3
+let FEED_SOURCE = 'shuffle'; // какой алгоритм строит ленту (для аналитики рекомендаций; engine.js пишет это в game_stats.feed_source)
 let gamePaused = false; // manual pause toggle
 let immersive = false;  // hide-UI toggle
 let connType = 'following'; // 'following' | 'followers'
