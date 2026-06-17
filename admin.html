@@ -453,7 +453,7 @@ document.querySelectorAll('.navbtn').forEach(b=>{
     const p = b.dataset.page;
     document.querySelectorAll('.page').forEach(x=>x.classList.toggle('on', x.dataset.page===p));
     if(p==='profiles'){showProfList();}
-    if(p==='dashboard'){loadDashboard();}   // обновляем статистику при заходе
+    if(p==='dashboard'){dashView={mode:'list',gameId:null};loadDashboard();}   // всегда список при заходе
   });
 });
 
@@ -498,6 +498,8 @@ function fillAuthorSelects(){
 // клиент получает только агрегаты. Графики — инлайновый SVG, без внешних либ.
 let dashPeriod = '7d';
 let dashLoading = false;
+let dashView = { mode:'list', gameId:null };  // list | game (drill-in)
+let dashLastGames = [];                         // последний снимок таблицы игр (для CSV)
 
 function dashRange(p){
   const to = new Date();
@@ -595,7 +597,7 @@ function dashRenderGames(games, gts){
     dashTile(dashNf(tSh),'Шеры',''),
     dashTile(dashNf(tSv),'Избранное',''),
   ].join('');
-  const rows = games.map(g=>`<tr>
+  const rows = games.map(g=>`<tr class="clickable" data-game="${esc(g.game_id)}">
     <td><div class="cellflex"><div class="thumb" style="width:30px;height:30px;font-size:14px;background:${esc(g.bg||'#1a1a24')}">${esc(dashGemoji(g.game_id))}</div><div style="font-weight:700">${esc(g.title)}</div></div></td>
     <td class="num">${dashNf(g.impressions)}</td>
     <td class="num">${dashNf(g.sessions_3s)}</td>
@@ -612,15 +614,22 @@ function dashRenderGames(games, gts){
       <th>Игра</th><th class="num">Показы</th><th class="num">Сессии&nbsp;&gt;3с</th><th class="num">Hook&nbsp;&gt;10с</th><th class="num">Ср.&nbsp;время</th><th class="num">D1</th><th class="num">D7</th><th class="num" title="Лайки">♥</th><th class="num" title="Комменты">💬</th><th class="num" title="Шеры">↗</th><th class="num" title="Избранное">★</th>
     </tr></thead><tbody>${rows || '<tr><td colspan="11" class="empty">Нет данных за период</td></tr>'}</tbody></table>`;
   return `<div class="dash-section">
-    <div class="dash-h"><span class="dot" style="background:var(--a1)"></span>Игры</div>
+    <div class="dash-h"><span class="dot" style="background:var(--a1)"></span>Игры
+      <button class="btn ghost sm" id="dash-csv" style="margin-left:auto">⬇ CSV</button></div>
     <div class="tiles">${tiles}</div>
     <div class="card" style="margin-top:14px"><h3>Сессии &gt;3с по дням</h3>${dashSpark(gts,'sessions_3s','var(--a1)')}</div>
     <div style="margin-top:14px">${table}</div>
-    <div class="dash-note">Сессия = показ игры дольше 3с после загрузки (аналог просмотра на YouTube). Hook = доля показов, где игрок остаётся &gt;10с. D1/D7 — возврат игрока к этой игре в течение 1 / 7 дней. Среднее время — по сессиям &gt;3с.</div>
+    <div class="dash-note">Клик по игре — детальная статистика. Сессия = показ игры дольше 3с после загрузки (аналог просмотра на YouTube). Hook = доля показов, где игрок остаётся &gt;10с. D1/D7 — возврат игрока к этой игре в течение 1 / 7 дней. Среднее время — по сессиям &gt;3с.</div>
   </div>`;
 }
 
+// Диспетчер: общий дашборд или детальная страница одной игры.
 async function loadDashboard(){
+  if(dashView.mode==='game') return loadGameDetail(dashView.gameId);
+  return loadDashList();
+}
+
+async function loadDashList(){
   if(dashLoading) return;
   dashLoading = true;
   const body = $('#dash-body');
@@ -637,11 +646,118 @@ async function loadDashboard(){
     ]);
     const err = ov.error||ts.error||ret.error||games.error||gts.error;
     if(err){ body.innerHTML = `<div class="empty">Ошибка загрузки статистики: ${esc(err.message)}</div>`; return; }
+    dashLastGames = Array.isArray(games.data) ? games.data : [];
     body.innerHTML = dashRenderAudience(ov.data, ts.data, ret.data) + dashRenderGames(games.data, gts.data);
+    body.querySelectorAll('tr[data-game]').forEach(tr=>tr.addEventListener('click', ()=>openGameDetail(tr.dataset.game)));
+    const csv = $('#dash-csv'); if(csv) csv.addEventListener('click', dashExportCsv);
   }catch(e){
     console.error('dashboard', e);
     body.innerHTML = `<div class="empty">Ошибка: ${esc(e.message||String(e))}</div>`;
   }finally{ dashLoading = false; }
+}
+
+function openGameDetail(id){ dashView = { mode:'game', gameId:id }; window.scrollTo(0,0); loadDashboard(); }
+function backToDashList(){ dashView = { mode:'list', gameId:null }; window.scrollTo(0,0); loadDashboard(); }
+function dashBackBtn(){ return `<button class="btn ghost sm" id="dash-back" style="margin-bottom:16px">← К дашборду</button>`; }
+
+async function loadGameDetail(id){
+  if(dashLoading) return;
+  dashLoading = true;
+  const body = $('#dash-body');
+  const wireBack = ()=>{ const b=$('#dash-back'); if(b) b.addEventListener('click', backToDashList); };
+  body.innerHTML = '<div class="dash-loading">Загрузка статистики игры…</div>';
+  $('#dash-range').textContent = DASH_LABEL[dashPeriod] || '';
+  const { from, to } = dashRange(dashPeriod);
+  try{
+    const [det, gts] = await Promise.all([
+      db.rpc('admin_game_detail',      { p_game_id:id, p_from:from, p_to:to }),
+      db.rpc('admin_games_timeseries', { p_from:from, p_to:to, p_bucket:'day', p_game_id:id }),
+    ]);
+    const err = det.error||gts.error;
+    if(err){ body.innerHTML = dashBackBtn() + `<div class="empty">Ошибка: ${esc(err.message)}</div>`; wireBack(); return; }
+    body.innerHTML = dashRenderGameDetail(det.data, gts.data);
+    wireBack();
+  }catch(e){
+    console.error('game detail', e);
+    body.innerHTML = dashBackBtn() + `<div class="empty">Ошибка: ${esc(e.message||String(e))}</div>`;
+    wireBack();
+  }finally{ dashLoading = false; }
+}
+
+function dashRenderGameDetail(d, gts){
+  d = d||{}; const g = d.game||{}; const tt = d.totals||{};
+  const head = `<div class="prof-head">
+      <div class="prof-av" style="background:${esc(g.bg||'#222')};border-radius:14px;font-size:28px">${esc(g.emoji||'🎮')}</div>
+      <div class="prof-meta">
+        <h2>${esc(g.title||g.id||'—')}</h2>
+        <div class="ph">${esc(g.id||'')} · @${esc(g.author_id||'—')}</div>
+        <div class="prof-badges">${g.status?statusBadge(g.status):''}${g.genre?`<span class="tag">${esc(g.genre)}</span>`:''}${g.difficulty?`<span class="tag">${esc(g.difficulty)}</span>`:''}</div>
+      </div>
+    </div>`;
+  const tiles = [
+    dashTile(dashNf(tt.impressions),'Показы','загрузок'),
+    dashTile(dashNf(tt.sessions_3s),'Сессии >3с','просмотры'),
+    dashTile(dashNf(tt.sessions_10s),'Досмотры >10с',''),
+    dashTile(dashPctCell(tt.hook_rate),'Hook >10с','из показов'),
+    dashTile(dashFmtDur(tt.avg_session_sec),'Ср. время','сессии >3с'),
+    dashTile(dashFmtDur(tt.median_session_sec),'Медиана','сессии >3с'),
+    dashTile(dashNf(tt.players),'Игроки','уникальных'),
+    dashTile(dashNf(tt.likes),'Лайки',''),
+    dashTile(dashNf(tt.comments),'Комменты',''),
+    dashTile(dashNf(tt.shares),'Шеры',''),
+    dashTile(dashNf(tt.saves),'Избранное',''),
+  ].join('');
+  const ret = `<div class="ret">
+      ${dashRetCard('D1', tt.retention_d1, tt.cohort_d1)}
+      ${dashRetCard('D7', tt.retention_d7, tt.cohort_d7)}
+      ${dashRetCard('D30', tt.retention_d30, tt.cohort_d30)}
+    </div><div class="dash-note">Возврат игрока к этой игре: на след. день (D1) и хотя бы раз в течение 7 / 30 дней. n — размер когорты.</div>`;
+  const hist = dashBarlist((d.histogram||[]).map(x=>({ key:x.key, users:x.n })), 'var(--a3)');
+  const plats = dashBarlist(d.platforms, 'var(--a2)');
+  return dashBackBtn() + `<div class="dash-section">
+    ${head}
+    <div class="tiles">${tiles}</div>
+    <div class="card" style="margin-top:16px"><h3>Показы и сессии &gt;3с по дням</h3>${dashSpark2(gts)}</div>
+    <div class="dash-grid">
+      <div class="card"><h3>Длительность просмотра</h3>${hist}</div>
+      <div class="card"><h3>Удержание</h3>${ret}</div>
+      <div class="card"><h3>Платформы игроков</h3>${plats}</div>
+    </div>
+  </div>`;
+}
+
+// Двухлинейный график: показы (пунктир) + сессии>3с (акцент).
+function dashSpark2(ts){
+  ts = Array.isArray(ts)?ts:[];
+  if(ts.length<2) return '<div class="mini">недостаточно данных за период</div>';
+  const imp = ts.map(r=>Number(r.impressions)||0), ses = ts.map(r=>Number(r.sessions_3s)||0);
+  const max = Math.max.apply(null, imp.concat(ses).concat([1]));
+  const W=620,H=110,pad=8,n=ts.length;
+  const X=i=>pad+i*(W-2*pad)/(n-1), Y=v=>H-pad-(v/max)*(H-2*pad);
+  const line=a=>a.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  const impPts=line(imp), area=`${pad.toFixed(1)},${(H-pad).toFixed(1)} ${impPts} ${(W-pad).toFixed(1)},${(H-pad).toFixed(1)}`;
+  return `<svg class="spark" style="height:110px" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <polygon points="${area}" fill="var(--a1)" opacity="0.10"></polygon>
+    <polyline points="${impPts}" fill="none" stroke="var(--sub2)" stroke-width="1.6" stroke-dasharray="4 3" stroke-linejoin="round"></polyline>
+    <polyline points="${line(ses)}" fill="none" stroke="var(--a1)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"></polyline>
+  </svg><div class="mini">пунктир — показы · линия — сессии &gt;3с · ${esc(ts[0].bucket)} → ${esc(ts[ts.length-1].bucket)} · пик ${dashNf(max)}</div>`;
+}
+
+// ── CSV экспорт таблицы игр за выбранный период ──
+function dashCsvCell(v){ v = (v===null||v===undefined)?'':String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function dashExportCsv(){
+  const cols = ['game_id','title','status','impressions','sessions_3s','sessions_10s','hook_rate','avg_session_sec','retention_d1','retention_d7','players','likes','comments','shares','saves'];
+  const head = ['id','название','статус','показы','сессии>3с','сессии>10с','hook%','ср.время_с','D1%','D7%','игроки','лайки','комменты','шеры','избранное'];
+  const lines = [head.map(dashCsvCell).join(',')].concat(
+    (dashLastGames||[]).map(g=>cols.map(k=>dashCsvCell(g[k])).join(','))
+  );
+  const blob = new Blob(['﻿'+lines.join('\r\n')], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `sharky_games_${dashPeriod}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+  toast('CSV выгружен');
 }
 
 document.querySelectorAll('#dash-period button').forEach(b=>{
