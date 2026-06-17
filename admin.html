@@ -220,8 +220,7 @@ a{color:var(--a4)}
     <button class="navbtn active" data-page="dashboard"><span class="ic">📊</span>Дашборд</button>
     <button class="navbtn" data-page="games"><span class="ic">🎮</span>Игры</button>
     <button class="navbtn" data-page="add"><span class="ic">＋</span>Добавить</button>
-    <button class="navbtn" data-page="authors"><span class="ic">👤</span>Авторы</button>
-    <button class="navbtn" data-page="profiles"><span class="ic">🛡️</span>Профили</button>
+    <button class="navbtn" data-page="profiles"><span class="ic">👤</span>Профили</button>
     <div class="side-foot">
       <div class="side-who" id="who">—<small id="who-id"></small></div>
       <button class="btn ghost" id="logout">Выйти</button>
@@ -296,25 +295,16 @@ a{color:var(--a4)}
       </div>
     </section>
 
-    <!-- ── PAGE: AUTHORS ── -->
-    <section class="page" data-page="authors">
-      <div class="page-head">
-        <div class="page-title">Авторы <small id="authors-count"></small></div>
-        <button class="btn" id="create-author-btn">＋ Создать автора</button>
-      </div>
-      <div id="authors-table"></div>
-    </section>
-
-    <!-- ── PAGE: PROFILES (list) ── -->
+    <!-- ── PAGE: PROFILES (list) — авторы и обычные пользователи вместе ── -->
     <section class="page" data-page="profiles">
       <div id="prof-list-view">
         <div class="page-head">
           <div class="page-title">Профили <small id="profiles-count"></small></div>
           <div class="toolbar">
-            <select id="pf-games">
+            <select id="pf-type">
               <option value="all">Все</option>
-              <option value="with">С играми</option>
-              <option value="without">Без игр</option>
+              <option value="authors">Авторы</option>
+              <option value="notauthors">Не авторы</option>
             </select>
             <select id="pf-status">
               <option value="">Любой статус</option>
@@ -323,6 +313,7 @@ a{color:var(--a4)}
               <option value="deleted">Удалённые</option>
             </select>
             <input type="search" id="pf-search" placeholder="Поиск по @ / имени…">
+            <button class="btn" id="create-author-btn">＋ Создать автора</button>
           </div>
         </div>
         <div id="profiles-table"></div>
@@ -463,7 +454,6 @@ async function loadAll(){
   buildIndexes();
   fillAuthorSelects();
   renderGames();
-  renderAuthors();
   renderProfiles();
   renderAddForm();
   loadDashboard();
@@ -675,7 +665,7 @@ async function loadGameDetail(id){
     ]);
     const err = det.error||gts.error;
     if(err){ body.innerHTML = dashBackBtn() + `<div class="empty">Ошибка: ${esc(err.message)}</div>`; wireBack(); return; }
-    body.innerHTML = dashRenderGameDetail(det.data, gts.data);
+    body.innerHTML = dashBackBtn() + dashRenderGameDetail(det.data, gts.data);
     wireBack();
   }catch(e){
     console.error('game detail', e);
@@ -714,7 +704,7 @@ function dashRenderGameDetail(d, gts){
     </div><div class="dash-note">Возврат игрока к этой игре: на след. день (D1) и хотя бы раз в течение 7 / 30 дней. n — размер когорты.</div>`;
   const hist = dashBarlist((d.histogram||[]).map(x=>({ key:x.key, users:x.n })), 'var(--a3)');
   const plats = dashBarlist(d.platforms, 'var(--a2)');
-  return dashBackBtn() + `<div class="dash-section">
+  return `<div class="dash-section">
     ${head}
     <div class="tiles">${tiles}</div>
     <div class="card" style="margin-top:16px"><h3>Показы и сессии &gt;3с по дням</h3>${dashSpark2(gts)}</div>
@@ -968,7 +958,7 @@ async function insertGames(list){
   const {error}=await db.from('games').insert(rows);
   if(error){toast('Ошибка: '+error.message);return;}
   toast(`Сохранено игр: ${rows.length}`);
-  await loadGames(); buildIndexes(); renderGames(); renderAuthors();
+  await loadGames(); buildIndexes(); renderGames(); renderProfiles();
   renderAddForm();
 }
 
@@ -1067,7 +1057,7 @@ async function updateGame(id, patch, msg){
   const {error}=await db.from('games').update(patch).eq('id',id);
   if(error){toast('Ошибка: '+error.message);return;}
   Object.assign(GAMES.find(x=>x.id===id), patch);
-  buildIndexes(); renderGames(); renderAuthors();
+  buildIndexes(); renderGames(); renderProfiles();
   if($('#prof-detail-view').style.display!=='none') renderProfDetail(currentProfId);
   toast(msg||'Готово');
 }
@@ -1095,7 +1085,7 @@ async function hardDeleteGame(g){
   await deleteStorageByUrl(g.src);
   await deleteStorageByUrl(g.thumbnail_url);
   GAMES = GAMES.filter(x=>x.id!==g.id);
-  buildIndexes(); renderGames(); renderAuthors();
+  buildIndexes(); renderGames(); renderProfiles();
   if($('#prof-detail-view').style.display!=='none') renderProfDetail(currentProfId);
   toast('Удалено навсегда');
 }
@@ -1154,7 +1144,7 @@ $('#create-author-btn').addEventListener('click', ()=>openAuthorModal());
 let editingAuthor=null;
 function openAuthorModal(user){
   editingAuthor = user||null;
-  $('#am-title').textContent = user?'Редактировать автора':'Новый автор';
+  $('#am-title').textContent = user?'Редактировать профиль':'Новый автор';
   $('#am-username').value = user?user.username:''; $('#am-username').disabled=!!user;
   $('#am-name').value = user?user.display_name:'';
   $('#am-emoji').value = user?(user.avatar_emoji||'🎮'):'🎮';
@@ -1178,42 +1168,31 @@ $('#am-save').addEventListener('click', async ()=>{
     }));
   }
   if(error){toast('Ошибка: '+error.message);return;}
-  toast(editingAuthor?'Автор обновлён':'Автор создан');
+  const wasEditing = editingAuthor;
+  toast(wasEditing?'Профиль обновлён':'Автор создан');
   closeModal('author-modal');
-  await loadUsers(); buildIndexes(); fillAuthorSelects(); renderAuthors(); renderProfiles();
-  if(!editingAuthor) $('#add-author').value = username;
+  await loadUsers(); buildIndexes(); fillAuthorSelects(); renderProfiles();
+  if(!wasEditing) $('#add-author').value = username;
+  // если открыта карточка этого профиля — обновим её
+  if(wasEditing && currentProfId===wasEditing.id && $('#prof-detail-view').style.display!=='none') renderProfDetail(currentProfId);
 });
-function renderAuthors(){
-  const list = USERS.filter(u=>u.is_virtual || u.managed_by);
-  $('#authors-count').textContent = `${list.length}`;
-  if(!list.length){$('#authors-table').innerHTML='<div class="empty">Пока нет авторов</div>';return;}
-  $('#authors-table').innerHTML = `<table class="tbl"><thead><tr>
-    <th>Автор</th><th>@username</th><th>id</th><th>Игр</th><th>Принадлежит</th><th></th></tr></thead><tbody>${
-    list.map(u=>{
-      const owner = u.managed_by?usersById[u.managed_by]:null;
-      return `<tr>
-        <td><div class="cellflex"><div class="thumb" style="background:${esc(u.gradient||'#222')}">${esc(u.avatar_emoji||'🎮')}</div><div style="font-weight:700">${esc(u.display_name)}${u.is_virtual?' <span class="tag">virtual</span>':''}</div></div></td>
-        <td class="mono">@${esc(u.username)}</td>
-        <td class="mono">${esc(u.id.slice(0,8))}…</td>
-        <td>${gameCountByAuthor[u.username]||0}</td>
-        <td class="mono">${owner?('@'+esc(owner.username)):'—'}</td>
-        <td><div class="rowacts"><button class="btn ghost sm" data-edit="${esc(u.id)}">Изм.</button></div></td></tr>`;
-    }).join('')}</tbody></table>`;
-  $('#authors-table').querySelectorAll('button[data-edit]').forEach(b=>b.addEventListener('click',()=>openAuthorModal(usersById[b.dataset.edit])));
-}
+// Автор = есть опубликованные/любые игры, либо это виртуальный/управляемый аккаунт-автор.
+function isAuthor(u){ return !!(u.is_virtual || u.managed_by || (gameCountByAuthor[u.username]||0) > 0); }
 
 // ════════ PROFILES ════════
-['#pf-games','#pf-status','#pf-search'].forEach(s=>$(s).addEventListener('input', renderProfiles));
+['#pf-type','#pf-status','#pf-search'].forEach(s=>$(s).addEventListener('input', renderProfiles));
 let currentProfId=null;
-function showProfList(){ $('#prof-list-view').style.display='block'; $('#prof-detail-view').style.display='none'; }
+let profPeriod='all';     // период для статистики автора (день/7д/30д/всё)
+let profGameView=null;    // id игры для drill-in внутри карточки автора
+function showProfList(){ profGameView=null; $('#prof-list-view').style.display='block'; $('#prof-detail-view').style.display='none'; }
 $('#prof-back').addEventListener('click', showProfList);
 
 function renderProfiles(){
-  const g=$('#pf-games').value, st=$('#pf-status').value, q=$('#pf-search').value.toLowerCase().trim();
+  const ty=$('#pf-type').value, st=$('#pf-status').value, q=$('#pf-search').value.toLowerCase().trim();
   let rows = USERS.filter(u=>{
-    const cnt=gameCountByAuthor[u.username]||0;
-    if(g==='with' && cnt===0) return false;
-    if(g==='without' && cnt>0) return false;
+    const author=isAuthor(u);
+    if(ty==='authors' && !author) return false;
+    if(ty==='notauthors' && author) return false;
     if(st && (u.status||'active')!==st) return false;
     if(q && !(u.username.toLowerCase().includes(q)||(u.display_name||'').toLowerCase().includes(q))) return false;
     return true;
@@ -1221,12 +1200,13 @@ function renderProfiles(){
   $('#profiles-count').textContent = `${rows.length} / ${USERS.length}`;
   if(!rows.length){$('#profiles-table').innerHTML='<div class="empty">Ничего не найдено</div>';return;}
   $('#profiles-table').innerHTML = `<table class="tbl"><thead><tr>
-    <th>Профиль</th><th>id</th><th>Роль</th><th>Статус</th><th>18+</th><th>Игр</th><th></th></tr></thead><tbody>${
+    <th>Профиль</th><th>Тип</th><th>Роль</th><th>Статус</th><th>18+</th><th>Игр</th><th></th></tr></thead><tbody>${
     rows.map(u=>{
       const status=u.status||'active';
+      const author=isAuthor(u);
       return `<tr class="clickable" data-open="${esc(u.id)}">
         <td><div class="cellflex"><div class="thumb" style="background:${esc(u.gradient||'#222')}">${esc(u.avatar_emoji||'👤')}</div><div><div style="font-weight:700">${esc(u.display_name)}</div><div class="mono">@${esc(u.username)}</div></div></div></td>
-        <td class="mono">${esc(u.id.slice(0,8))}…</td>
+        <td>${author?'<span class="badge b-admin">автор</span>':'<span class="mono">юзер</span>'}${u.is_virtual?' <span class="tag">virtual</span>':''}</td>
         <td><span class="badge b-${u.role}">${esc(u.role)}</span></td>
         <td>${statusBadge(status)}</td>
         <td>${u.is_adult?'<span class="badge b-adult">18+</span>':'<span class="mono">—</span>'}</td>
@@ -1263,32 +1243,65 @@ async function onProfAct(act,id){
 }
 
 function openProfDetail(id){
-  currentProfId=id;
+  currentProfId=id; profGameView=null;
   $('#prof-list-view').style.display='none';
   $('#prof-detail-view').style.display='block';
   renderProfDetail(id);
 }
 function renderProfDetail(id){
   const u=usersById[id]; if(!u){showProfList();return;}
+  // drill-in внутри профиля: статистика конкретной игры автора
+  if(profGameView){ renderProfGameDetail(u, profGameView); return; }
   const status=u.status||'active';
+  const author=isAuthor(u);
   const games = GAMES.filter(g=>g.author_id===u.username);
   const head = `<div class="prof-head">
     <div class="prof-av" style="background:${esc(u.gradient||'#222')}">${esc(u.avatar_emoji||'👤')}</div>
     <div class="prof-meta">
       <h2>${esc(u.display_name)}</h2>
-      <div class="ph">@${esc(u.username)} · ${esc(u.role)}</div>
+      <div class="ph">@${esc(u.username)} · ${esc(u.role)}${author?' · автор':''}</div>
       <div class="pid">id: ${esc(u.id)}</div>
       <div class="prof-badges">${statusBadge(status)}${u.is_adult?'<span class="badge b-adult">18+</span>':''}${u.is_virtual?'<span class="tag">virtual</span>':''}</div>
     </div>
-    <div class="prof-acts">${profActions(u)}</div>
+    <div class="prof-acts"><button class="btn ghost sm" data-edit-prof="1">Изменить</button>${profActions(u)}</div>
   </div>`;
 
-  const gamesHtml = games.length ? games.map(g=>{
+  // Карточка профиля: bio + подписки/подписчики (грузятся из основной базы) + игр.
+  const info = `<div class="card" style="margin-bottom:16px">
+    <h3>Профиль</h3>
+    <div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">
+      <div class="tile"><div class="tv" id="pf-following">…</div><div class="tl">Подписки</div></div>
+      <div class="tile"><div class="tv" id="pf-followers">…</div><div class="tl">Подписчики</div></div>
+      <div class="tile"><div class="tv">${gameCountByAuthor[u.username]||0}</div><div class="tl">Игр</div></div>
+    </div>
+    <div style="margin-top:14px"><div class="gm-label" style="margin-bottom:5px">Bio</div>
+      <div style="font-size:13px;color:var(--sub2);line-height:1.5">${u.bio?esc(u.bio):'<span class="mono">—</span>'}</div></div>
+  </div>`;
+
+  let html = head + info;
+  if(author){
+    html += `<div class="dash-section" id="prof-stats"></div>`;
+    html += `<h3 style="margin:10px 0 12px;font-size:15px">Игры автора (${games.length}) — модерация</h3>` + gamesModerationHTML(games);
+  }
+  $('#prof-detail').innerHTML = html;
+
+  // wire статичные элементы
+  $('#prof-detail').querySelector('button[data-edit-prof]')?.addEventListener('click',()=>openAuthorModal(u));
+  wireProfModeration();
+
+  // асинхронные части
+  loadProfFollowCounts(u);
+  if(author) renderAuthorStats(u, profPeriod);
+}
+
+// Карточки модерации игр автора (статус игры/обложки + действия).
+function gamesModerationHTML(games){
+  if(!games.length) return '<div class="empty">У автора нет игр</div>';
+  return games.map(g=>{
     const ts=g.thumbnail_status||'active';
     const cover = g.thumbnail_url
       ? `<div class="thumb" style="width:48px;height:48px;background:${esc(g.bg)};${ts!=='active'?'opacity:.4':''}"><img src="${esc(g.thumbnail_url)}"></div>`
       : `<div class="thumb" style="width:48px;height:48px;background:${esc(g.bg)}">${esc(g.emoji)}</div>`;
-    // game moderation buttons
     const gbtn=(l,c,a)=>`<button class="btn ${c} sm" data-gact="${a}" data-id="${esc(g.id)}">${l}</button>`;
     const gacts=[];
     if(g.status==='published'||g.status==='draft'||g.status==='rejected') gacts.push(gbtn('Скрыть','yellow','hide'));
@@ -1296,7 +1309,6 @@ function renderProfDetail(id){
     if(g.status==='deleted') gacts.push(gbtn('Восстановить','green','publish'));
     if(g.status==='deleted') gacts.push(gbtn('Удалить навсегда','red','purge'));
     if(g.status!=='deleted') gacts.push(gbtn('Удалить','red','delete'));
-    // cover moderation buttons
     let cacts='';
     if(g.thumbnail_url){
       const cbtn=(l,c,a)=>`<button class="btn ${c} sm" data-cact="${a}" data-id="${esc(g.id)}">${l}</button>`;
@@ -1317,15 +1329,106 @@ function renderProfDetail(id){
       </div>
       <button class="btn ghost sm" data-preview="${esc(g.id)}">Превью</button>
     </div>`;
-  }).join('') : '<div class="empty">У автора нет игр</div>';
-
-  $('#prof-detail').innerHTML = head + `<h3 style="margin:6px 0 12px;font-size:15px">Игры автора (${games.length})</h3>` + gamesHtml;
-
-  // wire
+  }).join('');
+}
+function wireProfModeration(){
   $('#prof-detail').querySelectorAll('button[data-pact]').forEach(b=>b.addEventListener('click',()=>onProfAct(b.dataset.pact,b.dataset.id)));
   $('#prof-detail').querySelectorAll('button[data-gact]').forEach(b=>b.addEventListener('click',()=>onGameAct(b.dataset.gact,b.dataset.id)));
   $('#prof-detail').querySelectorAll('button[data-cact]').forEach(b=>b.addEventListener('click',()=>onCoverAct(b.dataset.cact,b.dataset.id)));
   $('#prof-detail').querySelectorAll('button[data-preview]').forEach(b=>b.addEventListener('click',()=>openPreview(GAMES.find(g=>g.id===b.dataset.preview))));
+}
+
+// Подписки/подписчики берём напрямую из таблицы follows (публичное чтение).
+async function loadProfFollowCounts(u){
+  try{
+    const [fg, fr] = await Promise.all([
+      db.from('follows').select('*',{count:'exact',head:true}).eq('follower_id', u.id),
+      db.from('follows').select('*',{count:'exact',head:true}).eq('followee_username', u.username),
+    ]);
+    const set=(sel,c)=>{ const el=$(sel); if(el) el.textContent = dashNf(c||0); };
+    set('#pf-following', fg.count);
+    set('#pf-followers', fr.count);
+  }catch(e){ console.warn('follow counts', e); }
+}
+
+// Статистика автора: агрегат по всем его играм + таблица с переходом в каждую игру.
+async function renderAuthorStats(u, period){
+  const el = $('#prof-stats'); if(!el) return;
+  const segs = ['day','7d','30d','all'].map(p=>`<button data-p="${p}"${p===period?' class="active"':''}>${({day:'День','7d':'7д','30d':'30д',all:'Всё'})[p]}</button>`).join('');
+  el.innerHTML = `<div class="dash-h"><span class="dot" style="background:var(--a1)"></span>Статистика автора
+      <span class="mini" style="margin:0 0 0 10px;align-self:center">${DASH_LABEL[period]}</span>
+      <div class="seg" id="prof-period" style="margin-left:auto">${segs}</div></div>
+    <div id="prof-stats-body"><div class="dash-loading">Загрузка статистики…</div></div>`;
+  el.querySelectorAll('#prof-period button').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.p===profPeriod) return; profPeriod=b.dataset.p; renderAuthorStats(u, profPeriod);
+  }));
+  const { from, to } = dashRange(period);
+  const res = await db.rpc('admin_games_overview', { p_from:from, p_to:to });
+  const body = $('#prof-stats-body'); if(!body) return;
+  if(res.error){ body.innerHTML = `<div class="empty">Ошибка: ${esc(res.error.message)}</div>`; return; }
+  const myIds = new Set(GAMES.filter(g=>g.author_id===u.username).map(g=>g.id));
+  const rows = (res.data||[]).filter(r=>myIds.has(r.game_id));
+  if(!rows.length){ body.innerHTML = '<div class="empty">Нет данных за период</div>'; return; }
+  let tImp=0,t3=0,t10=0,tLk=0,tCm=0,tSh=0,tSv=0,tPl=0,wTime=0,wN=0;
+  rows.forEach(g=>{
+    tImp+=Number(g.impressions)||0; t3+=Number(g.sessions_3s)||0; t10+=Number(g.sessions_10s)||0;
+    tLk+=Number(g.likes)||0; tCm+=Number(g.comments)||0; tSh+=Number(g.shares)||0; tSv+=Number(g.saves)||0;
+    tPl+=Number(g.players)||0;
+    const a=Number(g.avg_session_sec)||0, s=Number(g.sessions_3s)||0; if(a&&s){ wTime+=a*s; wN+=s; }
+  });
+  const hook = tImp? Math.round(1000*t10/tImp)/10 : 0;
+  const tiles = [
+    dashTile(rows.length,'Игр',''),
+    dashTile(dashNf(tImp),'Показы','загрузок'),
+    dashTile(dashNf(t3),'Сессии >3с','просмотры'),
+    dashTile(hook+'%','Hook >10с','из показов'),
+    dashTile(dashFmtDur(wN?wTime/wN:0),'Ср. время','сессии >3с'),
+    dashTile(dashNf(tLk),'Лайки',''),
+    dashTile(dashNf(tCm),'Комменты',''),
+    dashTile(dashNf(tSh),'Шеры',''),
+    dashTile(dashNf(tSv),'Избранное',''),
+  ].join('');
+  const trs = rows.map(g=>`<tr class="clickable" data-pgame="${esc(g.game_id)}">
+    <td><div class="cellflex"><div class="thumb" style="width:28px;height:28px;font-size:13px;background:${esc(g.bg||'#1a1a24')}">${esc(dashGemoji(g.game_id))}</div><div style="font-weight:700">${esc(g.title)}</div></div></td>
+    <td class="num">${dashNf(g.impressions)}</td>
+    <td class="num">${dashNf(g.sessions_3s)}</td>
+    <td class="num">${dashPctCell(g.hook_rate)}</td>
+    <td class="num">${dashFmtDur(g.avg_session_sec)}</td>
+    <td class="num">${dashPctCell(g.retention_d1)}</td>
+    <td class="num">${dashPctCell(g.retention_d7)}</td>
+    <td class="num">${dashNf(g.likes)}</td>
+    <td class="num">${dashNf(g.shares)}</td>
+  </tr>`).join('');
+  const table = `<table class="tbl"><thead><tr>
+      <th>Игра</th><th class="num">Показы</th><th class="num">Сессии&nbsp;&gt;3с</th><th class="num">Hook</th><th class="num">Ср.&nbsp;время</th><th class="num">D1</th><th class="num">D7</th><th class="num" title="Лайки">♥</th><th class="num" title="Шеры">↗</th>
+    </tr></thead><tbody>${trs}</tbody></table>`;
+  body.innerHTML = `<div class="tiles">${tiles}</div>
+    <div style="margin-top:14px">${table}</div>
+    <div class="dash-note">Клик по игре — подробная статистика этой игры. Метрики считаются за выбранный период.</div>`;
+  body.querySelectorAll('tr[data-pgame]').forEach(tr=>tr.addEventListener('click',()=>{
+    profGameView = tr.dataset.pgame; window.scrollTo(0,0); renderProfDetail(currentProfId);
+  }));
+}
+
+// Детальная страница игры внутри карточки автора (та же, что в разделе «Игры»).
+async function renderProfGameDetail(u, gameId){
+  const el = $('#prof-detail');
+  const backHtml = `<button class="btn ghost sm" id="prof-game-back" style="margin-bottom:16px">← К автору @${esc(u.username)}</button>`;
+  const wireBack = ()=>{ const b=$('#prof-game-back'); if(b) b.addEventListener('click',()=>{ profGameView=null; window.scrollTo(0,0); renderProfDetail(currentProfId); }); };
+  el.innerHTML = backHtml + '<div class="dash-loading">Загрузка статистики игры…</div>';
+  wireBack();
+  const { from, to } = dashRange(profPeriod);
+  try{
+    const [det, gts] = await Promise.all([
+      db.rpc('admin_game_detail',      { p_game_id:gameId, p_from:from, p_to:to }),
+      db.rpc('admin_games_timeseries', { p_from:from, p_to:to, p_bucket:'day', p_game_id:gameId }),
+    ]);
+    const err = det.error||gts.error;
+    el.innerHTML = backHtml + (err ? `<div class="empty">Ошибка: ${esc(err.message)}</div>` : dashRenderGameDetail(det.data, gts.data));
+  }catch(e){
+    el.innerHTML = backHtml + `<div class="empty">Ошибка: ${esc(e.message||String(e))}</div>`;
+  }
+  wireBack();
 }
 async function onCoverAct(act,id){
   let patch=null,msg='';
