@@ -28,7 +28,7 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .ld-logo{font-family:var(--fd);font-size:42px;font-weight:700;letter-spacing:-2px}
 .ld-logo span{color:var(--a1)}
 .ld-tagline{font-family:var(--fd);font-size:34px;font-weight:700;letter-spacing:-1px;color:#fff;text-align:center;line-height:1.1}
-.ld-version{position:absolute;bottom:calc(var(--safe-bottom) + 22px);left:0;right:0;text-align:center;font-family:var(--fm);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.4)}
+.ld-version{font-family:var(--fm);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.45);text-align:center}
 .ld-dots{display:flex;gap:8px}
 .ld-dot{width:8px;height:8px;border-radius:50%;background:var(--a1);animation:ldpulse 1.2s ease-in-out infinite}
 .ld-dot:nth-child(2){animation-delay:.2s;background:var(--a2)}
@@ -341,7 +341,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
   <div class="ld-tagline">Swipe and play</div>
   <div class="ld-dots" id="ld-dots"><div class="ld-dot"></div><div class="ld-dot"></div><div class="ld-dot"></div></div>
   <!-- Sharky version — bump here on each release; keep in sync with CHANGELOG.txt -->
-  <div class="ld-version" id="ld-version">Sharky v0.1.0</div>
+  <div class="ld-version" id="ld-version">Sharky v0.1.1</div>
   <div class="ld-error" id="ld-error">
     <div class="ld-error-msg" id="ld-error-msg">Не удалось загрузить. Проверь соединение и попробуй снова.</div>
     <button class="ld-retry" id="ld-retry">Повторить</button>
