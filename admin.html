@@ -519,6 +519,27 @@ function dashBarlist(arr,color){
   }).join('')}</div>`;
 }
 
+// Платформы: бакеты из platform_group() (SQL) → фиксированный порядок + подписи.
+// Последние два (Android/iOS) — будущие нативные приложения, пока всегда 0
+// (placeholder), наполнятся, когда приложения начнут слать platform='app_*'.
+const DASH_PLATFORMS = [
+  ['tma_android', '📱 TMA Android'],
+  ['tma_ios',     '🍎 TMA iOS'],
+  ['tg_web',      '🌐 Telegram Web'],
+  ['desktop',     '🖥 Desktop'],
+  ['android_app', '🤖 Android'],
+  ['ios_app',     '📲 iOS'],
+];
+function dashPlatformList(arr, color){
+  arr = Array.isArray(arr)?arr:[];
+  const m = {}; let total = 0;
+  arr.forEach(x=>{ const u = Number(x.users)||0; m[x.key] = (m[x.key]||0)+u; total += u; });
+  if(!total) return '<div class="mini">нет данных</div>';
+  const rows = DASH_PLATFORMS.map(([k,label])=>({ key: label, users: m[k]||0 }));
+  if(m.other) rows.push({ key:'❓ Другое', users:m.other });
+  return dashBarlist(rows, color);
+}
+
 function dashSpark(ts, field, color){
   ts = Array.isArray(ts)?ts:[];
   if(ts.length<2) return '<div class="mini">недостаточно данных за период</div>';
@@ -559,7 +580,7 @@ function dashRenderAudience(ov, ts, ret){
     <div class="dash-grid">
       <div class="card"><h3>Активные по дням</h3>${dashSpark(ts,'active_users','var(--a4)')}</div>
       <div class="card"><h3>Удержание</h3>${retBlock}</div>
-      <div class="card"><h3>Платформы</h3>${dashBarlist(ov.platforms,'var(--a2)')}</div>
+      <div class="card"><h3>Платформы</h3>${dashPlatformList(ov.platforms,'var(--a2)')}</div>
       <div class="card"><h3>Языки</h3>${dashBarlist(ov.languages,'var(--a3)')}</div>
     </div>
     <div class="card" style="margin-top:16px"><h3>Источники переходов</h3>${dashBarlist(ov.referrals,'var(--a1)')}</div>
@@ -703,7 +724,7 @@ function dashRenderGameDetail(d, gts){
       ${dashRetCard('D30', tt.retention_d30, tt.cohort_d30)}
     </div><div class="dash-note">Возврат игрока к этой игре: на след. день (D1) и хотя бы раз в течение 7 / 30 дней. n — размер когорты.</div>`;
   const hist = dashBarlist((d.histogram||[]).map(x=>({ key:x.key, users:x.n })), 'var(--a3)');
-  const plats = dashBarlist(d.platforms, 'var(--a2)');
+  const plats = dashPlatformList(d.platforms, 'var(--a2)');
   return `<div class="dash-section">
     ${head}
     <div class="tiles">${tiles}</div>
