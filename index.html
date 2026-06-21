@@ -58,44 +58,50 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .arena-retry:active{transform:scale(.94)}
 
 /* ── TOP-LEFT OVERLAY (header + score) ── */
-.card-head{position:absolute;top:calc(var(--safe-top) + 14px);left:16px;right:80px;z-index:6;display:flex;flex-direction:column;gap:9px;pointer-events:none}
+.card-head{position:absolute;top:calc(var(--safe-top) + 14px);left:16px;right:80px;z-index:6;display:flex;flex-direction:column;gap:11px;pointer-events:none}
 .card-head>*{pointer-events:auto;width:max-content;max-width:100%}
-.ov-author{display:flex;align-items:center;gap:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.ov-av{width:42px;height:42px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid rgba(255,255,255,.25)}
-.ov-author-meta{display:flex;flex-direction:column;gap:1px;min-width:0}
-.ov-name{display:flex;align-items:center;gap:5px;font-size:15px;font-weight:700;letter-spacing:-.2px;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+/* author = glassy pill (cleaner UI) */
+.ov-author{display:inline-flex;align-items:center;gap:9px;cursor:pointer;-webkit-tap-highlight-color:transparent;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.34);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:999px;padding:5px 14px 5px 5px}
+.ov-av{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;border:1.5px solid rgba(255,255,255,.4)}
+.ov-author-meta{display:flex;flex-direction:column;gap:0;min-width:0}
+.ov-name{display:flex;align-items:center;gap:5px;font-size:14.5px;font-weight:700;letter-spacing:-.2px}
 .ov-name svg{flex-shrink:0}
-.ov-time{font-size:12px;color:rgba(255,255,255,.7);text-shadow:0 1px 4px rgba(0,0,0,.5)}
-.ov-title{font-size:clamp(22px,7vw,30px);font-weight:700;letter-spacing:-.6px;line-height:1.04;text-shadow:0 2px 10px rgba(0,0,0,.55)}
-.ov-desc{font-size:13.5px;line-height:1.4;color:rgba(255,255,255,.82);max-width:62vw;text-shadow:0 1px 6px rgba(0,0,0,.5)}
-.ov-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(123,92,255,.85);backdrop-filter:blur(6px);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;letter-spacing:.2px}
-.ov-score-wrap{margin-top:8px}
-.ov-score{font-family:var(--fd);font-size:clamp(40px,13vw,52px);font-weight:700;line-height:.92;letter-spacing:-1.5px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
-.ov-best{font-family:var(--fd);font-size:14px;font-weight:700;letter-spacing:.6px;color:var(--a3);text-shadow:0 1px 6px rgba(0,0,0,.55)}
+.ov-time{font-size:11px;color:rgba(255,255,255,.75);line-height:1.15}
+.ov-title{font-size:clamp(23px,7vw,30px);font-weight:700;letter-spacing:-.8px;line-height:1.02;text-shadow:0 2px 14px rgba(0,0,0,.34)}
+.ov-desc{font-size:13.5px;line-height:1.4;color:rgba(255,255,255,.86);max-width:62vw;text-shadow:0 1px 6px rgba(0,0,0,.45)}
+/* genre tag + «играли» plate (views, YouTube-style) */
+.ov-tags{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.ov-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.2);color:#fff;font-size:12.5px;font-weight:600;letter-spacing:.1px;padding:5px 12px;border-radius:999px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);text-shadow:0 1px 4px rgba(0,0,0,.3)}
+.ov-live-dot{width:7px;height:7px;border-radius:50%;background:#23d18b;box-shadow:0 0 0 3px rgba(35,209,139,.2);flex-shrink:0}
+.ov-score-wrap{margin-top:8px;display:flex;flex-direction:column;gap:2px}
+.ov-score-label{font-family:var(--fd);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.72);text-shadow:0 1px 6px rgba(0,0,0,.5)}
+.ov-score-row{display:flex;align-items:baseline;gap:12px}
+.ov-score{font-family:var(--fd);font-size:clamp(40px,13vw,48px);font-weight:700;line-height:.92;letter-spacing:-1.8px;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+.ov-best{font-family:var(--fd);font-size:13px;font-weight:700;letter-spacing:.2px;color:var(--a1);text-shadow:0 1px 6px rgba(0,0,0,.5)}
 .ov-best b{color:#fff;font-weight:700}
 
 /* ── TOP-RIGHT CONTROLS (hide UI + pause/play) ── */
-#top-controls{position:fixed;top:calc(var(--safe-top) + 12px);right:14px;z-index:660;display:flex;flex-direction:column;align-items:center;gap:20px}
-.tc-btn{width:52px;height:52px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;-webkit-tap-highlight-color:transparent;filter:drop-shadow(0 2px 6px rgba(0,0,0,.55));transition:transform .12s}
+#top-controls{position:fixed;top:calc(var(--safe-top) + 12px);right:14px;z-index:660;display:flex;flex-direction:column;align-items:center;gap:12px}
+.tc-btn{width:44px;height:44px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.38);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 8px 22px rgba(0,0,0,.18);-webkit-tap-highlight-color:transparent;transition:transform .12s}
 .tc-btn:active{transform:scale(.86)}
-.tc-btn svg{display:block;pointer-events:none}
+.tc-btn svg{display:block;pointer-events:none;width:24px;height:24px}
 
 /* ── SOCIAL SIDEBAR (floating overlay) ── */
-.social-col{position:absolute;right:12px;top:54%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:2px}
-.av-wrap{display:flex;flex-direction:column;align-items:center;cursor:pointer;margin-bottom:10px;-webkit-tap-highlight-color:transparent;position:relative}
-.av-ring{width:48px;height:48px;border-radius:50%;padding:2px;transition:transform .15s;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.social-col{position:absolute;right:14px;top:50%;transform:translateY(-46%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:14px}
+.av-wrap{display:flex;flex-direction:column;align-items:center;cursor:pointer;margin-bottom:2px;-webkit-tap-highlight-color:transparent;position:relative}
+.av-ring{width:44px;height:44px;border-radius:50%;padding:2px;transition:transform .15s;box-shadow:0 8px 22px rgba(0,0,0,.18)}
 .av-wrap:active .av-ring{transform:scale(.9)}
-.av-inner{width:100%;height:100%;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:22px}
-.av-plus{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:19px;height:19px;border-radius:50%;background:var(--a1);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);font-family:var(--fd);line-height:1;transition:background .2s}
-.av-wrap.following .av-plus{background:var(--a2);font-size:9px}
-.sb-stack{display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(14,11,28,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:34px;padding:10px 6px}
-.sb{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
-.sb-icon{width:50px;height:50px;border-radius:50%;background:rgba(0,0,0,.32);display:flex;align-items:center;justify-content:center;transition:transform .12s,background .18s;position:relative;overflow:visible}
-.sb:active .sb-icon{transform:scale(.85)}
+.av-inner{width:100%;height:100%;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:20px}
+.av-plus{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:20px;height:20px;border-radius:50%;background:var(--a1);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);font-family:var(--fd);line-height:1;transition:background .2s}
+.av-wrap.following .av-plus{background:var(--a2);font-size:10px}
+.sb-stack{display:flex;flex-direction:column;align-items:center;gap:14px}
+.sb{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+.sb-icon{width:44px;height:44px;border-radius:16px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.38);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;transition:transform .12s,background .18s,border-color .18s;position:relative;overflow:visible;box-shadow:0 8px 22px rgba(0,0,0,.18)}
+.sb:active .sb-icon{transform:scale(.86)}
 .sb-icon svg{pointer-events:none;display:block}
-.sb-count{font-family:var(--fd);font-size:11px;font-weight:700;color:#fff;line-height:1;min-height:12px;letter-spacing:.2px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
-.sb.liked .sb-icon{background:rgba(255,60,95,.9)}
-.sb.saved .sb-icon{background:rgba(255,228,77,.85)}
+.sb-count{font-family:var(--fd);font-size:12px;font-weight:700;color:#fff;line-height:1;min-height:12px;letter-spacing:.2px;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+.sb.liked .sb-icon{background:var(--a1);border-color:transparent}
+.sb.saved .sb-icon{background:var(--a3);border-color:transparent}
 @keyframes heartPop{0%{transform:scale(1)}30%{transform:scale(1.45)}55%{transform:scale(.88)}80%{transform:scale(1.12)}100%{transform:scale(1)}}
 .sb.pop .sb-icon{animation:heartPop .42s ease forwards}
 .float-plus{position:absolute;top:-10px;right:-2px;font-family:var(--fd);font-size:12px;font-weight:700;color:var(--a1);pointer-events:none;animation:floatUp .65s ease forwards}
@@ -115,7 +121,7 @@ body.paused:not(.immersive) #next-up{opacity:1;pointer-events:auto;transform:non
 body.immersive .card-head .ov-author,
 body.immersive .card-head .ov-title,
 body.immersive .card-head .ov-desc,
-body.immersive .card-head .ov-badge,
+body.immersive .card-head .ov-tags,
 body.immersive .social-col,
 body.immersive #next-up,
 body.immersive #bottom-nav,
@@ -341,7 +347,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
   <div class="ld-tagline">Swipe and play</div>
   <div class="ld-dots" id="ld-dots"><div class="ld-dot"></div><div class="ld-dot"></div><div class="ld-dot"></div></div>
   <!-- Sharky version — bump here on each release; keep in sync with CHANGELOG.txt -->
-  <div class="ld-version" id="ld-version">Sharky v0.1.1</div>
+  <div class="ld-version" id="ld-version">Sharky v0.2.0</div>
   <div class="ld-error" id="ld-error">
     <div class="ld-error-msg" id="ld-error-msg">Не удалось загрузить. Проверь соединение и попробуй снова.</div>
     <button class="ld-retry" id="ld-retry">Повторить</button>
@@ -531,7 +537,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
 </div>
 
 <!-- Игровой движок: загрузка и отображение игр (engine.js). Грузится ПЕРЕД основным скриптом. -->
-<script src="engine.js?v=3"></script>
+<script src="engine.js?v=4"></script>
 <script>
 // ══ SUPABASE ══
 const SUPABASE_URL = 'https://safjqsofdrxdmvnfgvjf.supabase.co';
@@ -622,12 +628,13 @@ function timeAgo(ts) {
   return Math.floor(d/604800) + ' нед назад';
 }
 function verifiedSVG(){return `<svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#7b5cff"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
-function padSVG(){return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><rect x="2" y="6" width="20" height="12" rx="3"/></svg>`;}
 function bestKey(id){ return 'sharky_best_' + id; }
 function getBest(id){ const v = parseInt(localStorage.getItem(bestKey(id))||'0',10); return isNaN(v)?0:v; }
 function setBest(id,v){ try{ localStorage.setItem(bestKey(id), String(v)); }catch(e){} }
-function heartSVG(a){const c=a?'var(--a1)':'rgba(255,255,255,.7)',f=a?'var(--a1)':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;}
-function bookSVG(a){const c=a?'var(--a3)':'rgba(255,255,255,.7)',f=a?'var(--a3)':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;}
+// liked → белое сердце на красной (--a1) кнопке; иначе — контур на стекле.
+function heartSVG(a){const c=a?'#fff':'rgba(255,255,255,.9)',f=a?'#fff':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;}
+// saved → тёмная закладка на жёлтой (--a3) кнопке; иначе — контур на стекле.
+function bookSVG(a){const c=a?'#15151c':'rgba(255,255,255,.9)',f=a?'#15151c':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;}
 function commentHeartSVG(a){const c=a?'var(--a1)':'rgba(255,255,255,.5)',f=a?'var(--a1)':'none';return `<svg width="16" height="16" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;}
 function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
@@ -771,6 +778,20 @@ async function loadShareCounts() {
   const counts = {};
   data.forEach(s => { counts[s.game_id] = (counts[s.game_id]||0) + 1; });
   GAMES.forEach(g => { if (socialData[g.id]) socialData[g.id].shareCount = counts[g.id] || 0; });
+}
+
+async function loadPlayCounts() {
+  // «играли» = число сессий dwell>=3с по каждой игре (как просмотры на YouTube).
+  // game_stats закрыта RLS, поэтому агрегат отдаёт публичный SECURITY DEFINER RPC
+  // public_play_counts(). Если миграция ещё не применена (RPC нет) — тихо
+  // оставляем 0; плашка тогда просто не показывается. Это не ломает загрузку.
+  try {
+    const { data, error } = await db.rpc('public_play_counts');
+    if (error) { console.warn('play counts:', error.message); return; }
+    const counts = {};
+    (data || []).forEach(r => { counts[r.game_id] = r.plays || 0; });
+    GAMES.forEach(g => { if (socialData[g.id]) socialData[g.id].plays = counts[g.id] || 0; });
+  } catch (e) { console.warn('play counts ex:', e); }
 }
 
 async function loadUserSocialData() {
@@ -1823,12 +1844,13 @@ async function init() {
     AUTHORS = await loadAuthors(GAMES);
 
     // Init socialData
-    GAMES.forEach(g => { socialData[g.id] = { likes:0, liked:false, saved:false, commentCount:0, shareCount:0 }; });
+    GAMES.forEach(g => { socialData[g.id] = { likes:0, liked:false, saved:false, commentCount:0, shareCount:0, plays:0 }; });
 
     // Load counts from DB
     await loadLikeCounts();
     await loadCommentCounts();
     await loadShareCounts();
+    await loadPlayCounts();
     await loadFollowerCounts();
 
     // Telegram Mini App: auto-login (create account on first launch)

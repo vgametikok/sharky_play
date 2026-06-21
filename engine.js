@@ -21,6 +21,13 @@ function buildHeadHTML(i, g) {
   const desc = g.description ? `<div class="ov-desc">${escHtml(g.description)}</div>` : '';
   const cat = g.category || 'Аркада';
   const best = getBest(g.id);
+  // «играли» = число сессий dwell>=3с (как просмотры на YouTube). Считаем в
+  // socialData[g.id].plays (loadPlayCounts). Плашку рисуем ТОЛЬКО когда есть
+  // данные (>0); счётчики загружаются до buildDeck, так что значение уже готово.
+  const plays = ((typeof socialData !== 'undefined' && socialData[g.id]) ? socialData[g.id].plays : 0) || 0;
+  const playsTag = plays > 0
+    ? `<span class="ov-tag ov-plays" id="plays-${i}"><span class="ov-live-dot"></span>${fmt(plays)} играли</span>`
+    : '';
   return `
     <div class="ov-author" onclick="openProfile('${g.author_id}')">
       <div class="ov-av" style="background:${escHtml(a.ring||'#7b5cff')}">${escHtml(a.emoji||'🎮')}</div>
@@ -31,10 +38,16 @@ function buildHeadHTML(i, g) {
     </div>
     <div class="ov-title">${escHtml(g.title)}</div>
     ${desc}
-    <div class="ov-badge">${padSVG()} ${escHtml(cat)}</div>
+    <div class="ov-tags">
+      <span class="ov-tag">${escHtml(cat)}</span>
+      ${playsTag}
+    </div>
     <div class="ov-score-wrap">
-      <div class="ov-score" id="score-${i}">0</div>
-      <div class="ov-best">BEST <b id="best-${i}">${best}</b></div>
+      <div class="ov-score-label">Счёт</div>
+      <div class="ov-score-row">
+        <div class="ov-score" id="score-${i}">0</div>
+        <div class="ov-best">Рекорд <b id="best-${i}">${best}</b></div>
+      </div>
     </div>`;
 }
 
