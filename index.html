@@ -87,7 +87,9 @@ html,body{height:100%;width:100%;max-height:var(--vh);background:var(--bg);font-
 .tc-btn svg{display:block;pointer-events:none;width:24px;height:24px}
 
 /* ── SOCIAL SIDEBAR (floating overlay) ── */
-.social-col{position:absolute;right:14px;top:50%;transform:translateY(-46%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:14px}
+/* поднята вверх и выровнена по той же правой линии, что пауза/скрыть (#top-controls):
+   те стоят на safe-top+12, высота блока 44+12+44=100 → колонка идёт сразу под ними. */
+.social-col{position:absolute;right:14px;top:calc(var(--safe-top) + 130px);z-index:6;display:flex;flex-direction:column;align-items:center;gap:14px}
 .av-wrap{display:flex;flex-direction:column;align-items:center;cursor:pointer;margin-bottom:2px;-webkit-tap-highlight-color:transparent;position:relative}
 .av-ring{width:44px;height:44px;border-radius:50%;padding:2px;transition:transform .15s;box-shadow:0 8px 22px rgba(0,0,0,.18)}
 .av-wrap:active .av-ring{transform:scale(.9)}
@@ -347,7 +349,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
   <div class="ld-tagline">Swipe and play</div>
   <div class="ld-dots" id="ld-dots"><div class="ld-dot"></div><div class="ld-dot"></div><div class="ld-dot"></div></div>
   <!-- Sharky version — bump here on each release; keep in sync with CHANGELOG.txt -->
-  <div class="ld-version" id="ld-version">Sharky v0.2.0</div>
+  <div class="ld-version" id="ld-version">Sharky v0.2.1</div>
   <div class="ld-error" id="ld-error">
     <div class="ld-error-msg" id="ld-error-msg">Не удалось загрузить. Проверь соединение и попробуй снова.</div>
     <button class="ld-retry" id="ld-retry">Повторить</button>
@@ -537,7 +539,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
 </div>
 
 <!-- Игровой движок: загрузка и отображение игр (engine.js). Грузится ПЕРЕД основным скриптом. -->
-<script src="engine.js?v=4"></script>
+<script src="engine.js?v=5"></script>
 <script>
 // ══ SUPABASE ══
 const SUPABASE_URL = 'https://safjqsofdrxdmvnfgvjf.supabase.co';

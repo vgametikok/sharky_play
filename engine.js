@@ -257,9 +257,11 @@ function togglePause(){
 
 // ══ HIDE UI (immersive) ══
 function hideIcon(active){
+  // active = immersive (интерфейс скрыт). Скрыто → перечёркнутый глаз;
+  // всё видно → обычный открытый глаз.
   return active
-    ? `<svg width="30" height="30" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" fill="#fff"/></svg>`
-    : `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/></svg>`;
+    ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c5 0 9 4.5 10 8a13 13 0 0 1-2.16 3.3M6.06 6.06C3.83 7.62 2.21 9.93 2 12c1 3.5 5 8 10 8a9.4 9.4 0 0 0 4.94-1.4"/><path d="M3 3l18 18"/></svg>`
+    : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`;
 }
 function renderHideBtn(){
   const b = document.getElementById('tc-hide');
