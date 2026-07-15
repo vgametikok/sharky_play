@@ -360,6 +360,21 @@ a{color:var(--a4)}
   </div>
 </div>
 
+<!-- ════ MODAL: update game (новая версия html / сброс прогресса) ════ -->
+<div class="modal" id="update-modal">
+  <div class="modal-box">
+    <div class="modal-head"><h2 id="um-title">Обновить игру</h2><button class="x" data-close>✕</button></div>
+    <div class="fld"><label>Новый HTML-файл игры (пусто — только сброс прогресса)</label><input type="file" id="um-file" accept=".html,text/html"></div>
+    <div class="fld"><label>Что нового (заметка к версии)</label><input type="text" id="um-note" maxlength="300" placeholder="исправлен баг, добавлены уровни…"></div>
+    <div class="fld"><label>Прогресс игроков (облачные сейвы)</label>
+      <label style="display:flex;gap:8px;align-items:center;font-weight:400;cursor:pointer"><input type="radio" name="um-prog" id="um-keep" checked> сохранить</label>
+      <label style="display:flex;gap:8px;align-items:center;font-weight:400;cursor:pointer"><input type="radio" name="um-prog" id="um-wipe"> стереть безвозвратно (сломан формат сейвов)</label>
+    </div>
+    <button class="btn full green" id="um-go" style="margin-top:8px">Выпустить обновление</button>
+    <div id="um-history" style="margin-top:14px"></div>
+  </div>
+</div>
+
 <!-- ════ MODAL: game preview ════ -->
 <div class="modal" id="preview-modal">
   <div class="modal-box">
@@ -993,6 +1008,7 @@ function gameActions(g){
   const btn=(label,cls,fn)=>`<button class="btn ${cls} sm" data-act="${fn}" data-id="${esc(g.id)}">${label}</button>`;
   a.push(btn('🔗','ghost','share'));
   a.push(btn('Превью','ghost','preview'));
+  if(g.status!=='deleted') a.push(btn('⬆ Обнов.','ghost','update'));
   if(g.status==='draft'||g.status==='rejected') a.push(btn('Опубликовать','green','publish'));
   if(g.status==='draft') a.push(btn('Отклонить','yellow','reject'));
   if(g.status==='published') a.push(btn('Скрыть','yellow','hide'));
@@ -1026,7 +1042,7 @@ function renderGames(){
         ? `<div class="thumb" style="background:${esc(g.bg)}"><img src="${esc(g.thumbnail_url)}"></div>`
         : `<div class="thumb" style="background:${esc(g.bg)}">${esc(g.emoji)}</div>`;
       return `<tr>
-        <td><div class="cellflex">${thumb}<div style="font-weight:700">${esc(g.title)}</div></div></td>
+        <td><div class="cellflex">${thumb}<div><div style="font-weight:700">${esc(g.title)}</div><div class="mono" style="opacity:.55;font-size:11px">v${g.version||1}</div></div></div></td>
         <td><code class="idchip">${esc(g.id)}</code></td>
         <td>${au?esc(au.display_name):'—'}<div class="mono">@${esc(g.author_id)}</div></td>
         <td><div class="tags"><span class="tag">${esc(g.genre)}</span><span class="tag">${esc(g.setting)}</span><span class="tag">${esc(g.difficulty)}</span></div></td>
@@ -1061,6 +1077,7 @@ async function onGameAct(act,id){
   const g = GAMES.find(x=>x.id===id); if(!g) return;
   if(act==='preview'){ openPreview(g); return; }
   if(act==='edit'){ openEditGame(g); return; }
+  if(act==='update'){ openUpdateModal(g); return; }
   if(act==='share'){ shareLink(g.id); return; }
   if(act==='purge'){
     if(!confirm(`Удалить «${g.title}» НАВСЕГДА?\n\nИгра и её файл будут стёрты безвозвратно — восстановить будет нельзя.`)) return;
@@ -1082,6 +1099,67 @@ async function updateGame(id, patch, msg){
   if($('#prof-detail-view').style.display!=='none') renderProfDetail(currentProfId);
   toast(msg||'Готово');
 }
+
+// ════════ ОБНОВЛЕНИЕ ВЕРСИИ ИГРЫ / СБРОС ПРОГРЕССА ════════
+// Через edge-функцию game-update: новая версия html кладётся отдельным
+// объектом Storage (<id>-v<N>.html), games.src/version обновляются, запись
+// уходит в журнал game_versions. Сброс прогресса = удаление облачных сейвов
+// игры во втором проекте (функция progress, action wipe_game) — право
+// проверяется независимо по JWT вызывающего (админ или автор игры).
+let updGame=null;
+function openUpdateModal(g){
+  updGame=g;
+  $('#um-title').textContent=`Обновить «${g.title}» · сейчас v${g.version||1}`;
+  $('#um-file').value=''; $('#um-note').value=''; $('#um-keep').checked=true;
+  renderUpdateHistory(g.id);
+  openModal('update-modal');
+}
+async function renderUpdateHistory(id){
+  const box=$('#um-history'); box.innerHTML='<span class="mono">история…</span>';
+  const {data,error}=await db.from('game_versions')
+    .select('version,note,wiped_progress,created_by,created_at')
+    .eq('game_id',id).order('created_at',{ascending:false}).limit(10);
+  if(error){ box.innerHTML='<span class="mono">история недоступна: '+esc(error.message)+'</span>'; return; }
+  if(!data||!data.length){ box.innerHTML='<span class="mono">обновлений ещё не было</span>'; return; }
+  box.innerHTML='<h3 style="margin:0 0 8px;font-size:13px">Журнал обновлений</h3>'+data.map(v=>
+    `<div class="mono" style="padding:4px 0;border-top:1px solid var(--line)">v${v.version} · ${fmtDate(v.created_at)} · @${esc(v.created_by)}${v.wiped_progress?' · 🧹 прогресс стёрт':''}${v.note?' — '+esc(v.note):''}</div>`
+  ).join('');
+}
+$('#um-go').addEventListener('click', async ()=>{
+  if(!updGame) return;
+  const f=$('#um-file').files[0]||null;
+  const wipe=$('#um-wipe').checked;
+  if(!f && !wipe){ toast('Выбери файл или отметь сброс прогресса'); return; }
+  const warn = f
+    ? (wipe?`Выпустить обновление «${updGame.title}» и БЕЗВОЗВРАТНО стереть облачный прогресс всех игроков?`
+           :`Выпустить обновление «${updGame.title}»? Прогресс игроков сохранится.`)
+    : `БЕЗВОЗВРАТНО стереть облачный прогресс всех игроков «${updGame.title}» (файл игры не меняется)?`;
+  if(!confirm(warn)) return;
+  const btn=$('#um-go'); btn.disabled=true; btn.textContent='Обновляю…';
+  try{
+    const body={game_id:updGame.id, note:$('#um-note').value.trim()||null, wipe_progress:wipe};
+    if(f) body.html = await f.text();
+    const {data:{session}}=await db.auth.getSession();
+    const token=session&&session.access_token;
+    if(!token) throw new Error('сессия истекла — войдите заново');
+    const res=await fetch(`${SUPABASE_URL}/functions/v1/game-update`,{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token,'apikey':SUPABASE_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    const d=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(d.error||('HTTP '+res.status));
+    const gg=GAMES.find(x=>x.id===updGame.id);
+    if(gg) Object.assign(gg,{version:d.version, src:d.src});
+    let msg = f?`Обновление вышло: v${d.version}`:'Готово';
+    if(wipe && d.wiped) msg+=` · прогресс стёрт (${d.deleted??0} сейвов)`;
+    toast(msg);
+    if(wipe && !d.wiped) toast('Прогресс стереть не удалось: '+(d.wipe_error||'?')+' — повтори сброс');
+    renderUpdateHistory(updGame.id); renderGames();
+    $('#um-file').value=''; $('#um-note').value='';
+  }catch(e){ toast('Ошибка: '+(e.message||e)); }
+  btn.disabled=false; btn.textContent='Выпустить обновление';
+});
 async function deleteStorageByUrl(url){
   if(!url) return;
   const m = String(url).match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);

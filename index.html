@@ -349,7 +349,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
   <div class="ld-tagline">Swipe and play</div>
   <div class="ld-dots" id="ld-dots"><div class="ld-dot"></div><div class="ld-dot"></div><div class="ld-dot"></div></div>
   <!-- Sharky version — bump here on each release; keep in sync with CHANGELOG.txt -->
-  <div class="ld-version" id="ld-version">Sharky v0.2.1</div>
+  <div class="ld-version" id="ld-version">Sharky v0.3.0</div>
   <div class="ld-error" id="ld-error">
     <div class="ld-error-msg" id="ld-error-msg">Не удалось загрузить. Проверь соединение и попробуй снова.</div>
     <button class="ld-retry" id="ld-retry">Повторить</button>
@@ -539,7 +539,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
 </div>
 
 <!-- Игровой движок: загрузка и отображение игр (engine.js). Грузится ПЕРЕД основным скриптом. -->
-<script src="engine.js?v=5"></script>
+<script src="engine.js?v=6"></script>
 <script>
 // ══ SUPABASE ══
 const SUPABASE_URL = 'https://safjqsofdrxdmvnfgvjf.supabase.co';
@@ -635,8 +635,21 @@ function getBest(id){ const v = parseInt(localStorage.getItem(bestKey(id))||'0',
 function setBest(id,v){ try{ localStorage.setItem(bestKey(id), String(v)); }catch(e){} }
 // сохранение прогресса игры (уровень/апгрейды) — игра шлёт {type:'save'}, лента хранит тут
 function saveKey(id){ return 'sharky_save_' + id; }
-function getSave(id){ try{ const s = localStorage.getItem(saveKey(id)); return s ? JSON.parse(s) : null; }catch(e){ return null; } }
-function setSave(id,v){ try{ localStorage.setItem(saveKey(id), JSON.stringify(v)); }catch(e){} }
+// Сейв хранится с «эпохой прогресса» игры (games.progress_epoch): когда автор
+// стирает прогресс игроков, эпоха растёт и локальный сейв старой эпохи
+// выбрасывается. Старый формат (без обёртки) читается как эпоха 0.
+function getSave(g){
+  try{
+    const s = localStorage.getItem(saveKey(g.id)); if(!s) return null;
+    const parsed = JSON.parse(s);
+    const epoch = Number(g.progress_epoch||0);
+    if(parsed && typeof parsed==='object' && '__e' in parsed){
+      return Number(parsed.__e)===epoch ? parsed.v : null;
+    }
+    return epoch===0 ? parsed : null;   // сейв до введения эпох
+  }catch(e){ return null; }
+}
+function setSave(g,v){ try{ localStorage.setItem(saveKey(g.id), JSON.stringify({__e:Number(g.progress_epoch||0), v:v})); }catch(e){} }
 // liked → белое сердце на красной (--a1) кнопке; иначе — контур на стекле.
 function heartSVG(a){const c=a?'#fff':'rgba(255,255,255,.9)',f=a?'#fff':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;}
 // saved → тёмная закладка на жёлтой (--a3) кнопке; иначе — контур на стекле.

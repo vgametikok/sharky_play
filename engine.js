@@ -92,13 +92,16 @@ function buildDeck() {
 // HTML and inject it via srcdoc, which always renders as a real page. Same-origin
 // games (GitHub Pages, served as text/html) keep using src unchanged.
 function loadGameInto(iframe, g) {
+  // Cache-busting по версии игры: после обновления (games.version++) игроки
+  // получают свежий файл, а не закешированный HTTP-кешем старый.
+  const url = g.src + (g.src.includes('?') ? '&' : '?') + 'v=' + (g.version || 1);
   let cross = false;
   try { cross = new URL(g.src, location.href).origin !== location.origin; } catch(e) { cross = true; }
-  if (!cross) { iframe.src = g.src; return; }
-  fetch(g.src)
+  if (!cross) { iframe.src = url; return; }
+  fetch(url)
     .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.text(); })
     .then(html => { iframe.srcdoc = html; })
-    .catch(() => { iframe.src = g.src; }); // fallback (e.g. CORS blocked)
+    .catch(() => { iframe.src = url; }); // fallback (e.g. CORS blocked)
 }
 
 function preload(idx) {
@@ -132,7 +135,7 @@ function preload(idx) {
       clearTimeout(timer);
       arena.querySelector('.arena-loading')?.remove();
       sessMarkLoaded(i); // аналитика: игра догрузилась → импрешн засчитывается
-      iframe.contentWindow?.postMessage({ type:'init', accent:g.accent, bg:g.bg, scoreLabel:g.score_label, save:getSave(g.id) }, '*');
+      iframe.contentWindow?.postMessage({ type:'init', accent:g.accent, bg:g.bg, scoreLabel:g.score_label, save:getSave(g) }, '*');
       if (i === currentIdx && !gamePaused) iframe.contentWindow?.postMessage({ type:'start' }, '*');
       attachSwipe(iframe);
     });
@@ -185,7 +188,7 @@ window.addEventListener('message', e => {
       const be = document.getElementById(`best-${idx}`); if (be) be.textContent = Number(value);
     }
   }
-  if (type === 'save') { const g = GAMES[idx]; if (g && value != null) setSave(g.id, value); }
+  if (type === 'save') { const g = GAMES[idx]; if (g && value != null) setSave(g, value); }
   if (type === 'next') goTo(currentIdx + 1);
   if (type === 'ready') { if (idx === currentIdx && !gamePaused) iframes[idx]?.contentWindow?.postMessage({ type:'start' }, '*'); }
 });
