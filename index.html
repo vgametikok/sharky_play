@@ -633,6 +633,10 @@ function verifiedSVG(){return `<svg width="15" height="15" viewBox="0 0 24 24"><
 function bestKey(id){ return 'sharky_best_' + id; }
 function getBest(id){ const v = parseInt(localStorage.getItem(bestKey(id))||'0',10); return isNaN(v)?0:v; }
 function setBest(id,v){ try{ localStorage.setItem(bestKey(id), String(v)); }catch(e){} }
+// сохранение прогресса игры (уровень/апгрейды) — игра шлёт {type:'save'}, лента хранит тут
+function saveKey(id){ return 'sharky_save_' + id; }
+function getSave(id){ try{ const s = localStorage.getItem(saveKey(id)); return s ? JSON.parse(s) : null; }catch(e){ return null; } }
+function setSave(id,v){ try{ localStorage.setItem(saveKey(id), JSON.stringify(v)); }catch(e){} }
 // liked → белое сердце на красной (--a1) кнопке; иначе — контур на стекле.
 function heartSVG(a){const c=a?'#fff':'rgba(255,255,255,.9)',f=a?'#fff':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;}
 // saved → тёмная закладка на жёлтой (--a3) кнопке; иначе — контур на стекле.

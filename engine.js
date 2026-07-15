@@ -132,7 +132,7 @@ function preload(idx) {
       clearTimeout(timer);
       arena.querySelector('.arena-loading')?.remove();
       sessMarkLoaded(i); // аналитика: игра догрузилась → импрешн засчитывается
-      iframe.contentWindow?.postMessage({ type:'init', accent:g.accent, bg:g.bg, scoreLabel:g.score_label }, '*');
+      iframe.contentWindow?.postMessage({ type:'init', accent:g.accent, bg:g.bg, scoreLabel:g.score_label, save:getSave(g.id) }, '*');
       if (i === currentIdx && !gamePaused) iframe.contentWindow?.postMessage({ type:'start' }, '*');
       attachSwipe(iframe);
     });
@@ -185,6 +185,7 @@ window.addEventListener('message', e => {
       const be = document.getElementById(`best-${idx}`); if (be) be.textContent = Number(value);
     }
   }
+  if (type === 'save') { const g = GAMES[idx]; if (g && value != null) setSave(g.id, value); }
   if (type === 'next') goTo(currentIdx + 1);
   if (type === 'ready') { if (idx === currentIdx && !gamePaused) iframes[idx]?.contentWindow?.postMessage({ type:'start' }, '*'); }
 });

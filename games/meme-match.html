@@ -1,0 +1,1240 @@
+<!DOCTYPE html><html lang="ru"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Мем-матч</title>
+<style>
+  :root { --ac:#e7b44c; }
+  html,body{margin:0;width:100vw;height:100vh;overflow:hidden;touch-action:none;background:#000;}
+  canvas{display:block;width:100%;height:100%;}
+</style></head><body>
+<canvas id="c"></canvas>
+<script>
+'use strict';
+const CONFIG = {"genre":"match3","meta":{"title":"Мем-матч"},"assets":{"m_grin":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAABcElEQVR42u3aOQ4CMQwF0Kmp6eFcXIpzUdBwAK4SFCQklNmS+H/HBlty68nDgSzMNEVERERE7Ed6nNJPonrTDfJ2nZIEWmau9xdQ03Am1NRU14QOh4/EqqMtYNXQlrB0tEUsDd08iOfl7hZdtcZm4F6SwbC1WgxVhHO724Mlo0Vd3p3KBsEiNK27Frss+aE6Hw8JgX3X0UL3gPMAy+wBL9Zhg5vW2xXsKroR24umnm1ng0tpDpbWYXW5FbzVlZbBourQwcipiJzSAUbfTyEGiaxDByPWT2SdarDlcy98acqfCvvKVSs/luF3zJpgE5fqAQ6wA3DNtlCaAUaCGQcITXD1ksQ8MWmDm288LKGp3ZXuuEZ+b7vBFtCqWNS+WgsKAaMPEywkDOtt5wX7M83DkRHWXQ9oONYymoa1iKZjLaHVsCVaG/793CHvV2rBy2cNf7GUBTcF3UJL4Uv1zL5GXJNrKDdQCd41suXDmCIi4PEC0XYotKMl0wUAAAAASUVORK5CYII=","m_lol":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAABuElEQVR42u3aO27DMAwGYM+dc4CcoAfqnsVL7pNz5BBdCvRGCjSkEAwp5usn6UYEuAWmPzOWLFvLMmPGjBkz9qPcPsu/REnzMMjvdSka6Dbr8d4CmhqOhKb6q3tCw+GRWHd0BqwbOhMWjs6IhaHZJ3G//BwWTZpjK3AvwWCzuVoNdYRjuyvBgtGqLu/+lROCVWhYdzN2mTNQnU8fpSYS+1cDhaaCnyfSpiW4e3wEmDPf9k7qJVwI5XSYNWKL1rYUuBOU3WXtYl56wlZQd/AIYPXbEPD1t7Dglr+j1jcD12LPjFgZUeubgNtiEWhOfTLYqmA0mDQ11avi0WHpwMTtMKnLI3CvGBU9ml85IzO3fsg9PMR9rSI45B62Arc4au6h04IlWAraHUydB6XYFp1iHqY+6aA6DHvS0jxP9wYoLlb7TE2ekpArJuoo7bpSQnVZkm7dfUtwNNodawGWorX3rvplvMUbEDTUBIvcsGL1GgfyMc2qy+jPK6Y7fTKjzbGZ0TBsRjQcmwntht2iveFt3ZD9lV7wba3wjaUoeCroK7QW3jte2m3ElByhDgPV4A+N5FyMZcYM83gARdqwL7OPvX8AAAAASUVORK5CYII=","m_cool":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAABUklEQVR42u3aOw7CMAwG4M5MDB3Y4BhcijNwBK7BUVhYmTv2FkUdkKqqjyT27wexJa9JvjpqmjRNExERERGxH9dXN/wlqjTdIM+P50CBznNsrwqoaTgSamqqS0LV4ZpYcbQFrBjaEhaOtoiFoXMHcPv0b7folDV2BO4lGsy2VlOhknBodUuwaDSpyntT2SKYhEZV12SVU15Ux/akkhB0deCURnMHujaVEeCsN3bq3nY6iHs3FA+Uq53iKpeArU3pAGuA0e0EOMAO973sm4nxqaCPXKXyZ1E/Y5YEmzhUD3CAAxxgdrAG+tIeFhO6JGlWmRucfeJBQa8NfivFPziqBnv9zCzGVgn2hiZjva3LbD/TPFSZrboe0OxYy2gY1iIajrWEFsPO0dLwab8q9yul4PO+1C+WouCmoFtoKnypPbPXiFNyDeUGSsG7RuY8jCYigj2+C2W4E2u2RzwAAAAASUVORK5CYII=","m_shock":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAABmUlEQVR42u3ayw3CMAwG4J45MwCbMBIrsARrsARnDkxUVCQkFKVN/Phth9pSDqjIzVfnUUqnKSMjIyOjHfPlPv8lituGQb7O11kCLduSbxfQ0HAkNNRQt4S6wz2x5ugIWDN0JCwcHRELQ5M7cXs8h0V37bELsNXAYLW9Wgw1hGOry8GC0aIqN4dyQLAIza3u6XhQmdOfPFZg6kK1dG6tUbCbeZBoCnirk6toIpaKJoN7E7cqWT3eysM4LlqxKb9ta9ja51ZHa9+pfYZUmQXeqAQHzM0DBZedWptz1OHKzZMVtgBz595wc1i6uiJW6W4w9c5Ga//U3Ie7t6blqnAeuWp1UhP7tcCfMXPvgbXzQOaw90UJD9YYqsOANedneDBiBU6wBKyNtgZ3b0moKnuAyU88tNA9WE00ubqIYW1ZYRbYo8qu2F2CNdEWYDFWe8W2qK7av4dIdIihbLFqu6/KHndgYbER0XBsJLQZtkRbw3/P6/J+pRW8PJf7i6UoeCjoFloKr+UL+xpxT1tDDQOV4IdGUi7GlJGhHm8Pk23r1+mPPgAAAABJRU5ErkJggg==","m_angry":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAABeUlEQVR42u3aOw7CMAwG4M7MHKAzR+AC3IaZi3EM7sLAXpShUlWVJn78jk1tySNNvrpymtBhyMjIyMiox/t2nf4Sxc0wyOdlnCTQdZbrHQLqGo6EunrULaHd4T2x5mgPWDO0Jywc7RELQ1Mn8HncX2HRLWtsAdYSDVZbq6VQSzi0uhwsGi2qcu1RLhMfz6eppAV4HguGrlV3nsAyEeitcdTBrY1qazIteA6ytcIsNLUzU+EoKBtMWW+pcCSU1bE5e9tWOAVr1rElm3lupRAV7ga2/L0pWFol7SpnhROsuO+VdlmNLt20NJW7gj5ytcrZ0v2M2RLs4lA9wQlOcFwwYpOgAtZE770yovDNS5J2lSlYTTTrxAO1TUTDydWVgjWw0l0S+yAvWsdmYw8JjoYWY6O9iKj9mRahymrVjYBWx3pGw7Ae0XCsJ7QZdo22hi/H7fJ9pRV8PVb3D0tRcFfQPbQUvnU9t58Rt+QvVBioBB8aSbkZQ0aGenwB0ZcXeuiygOMAAAAASUVORK5CYII=","m_sleep":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAABYElEQVR42u3auxHCMAwG4NTUDMAMzMEETMIEtCzAQDS0DEHFBuHScbngyJb0S3KkO7UOnxW/gochIyMjI2M9zo/L2CWqNcMgj7fTyIHOc2pvE1DXcE2oq1cdCTWHW2LhaA9YGNoTVh1tgXmPn8VUR9f+0Ovr/kSCRdGUNXYCrqVUB6iv1VyoFLyEFatyqbotWA6aAmZVee1VRoIpWDZaq7o16JpJiwWWmqi4FW4BN6G9gGGnq5r11hu2esZuOdt6glZXWeIwbwGEgQ/7XTHR7STY+vtUl2M4FLgHLHlpmnqlpwqTqpxjOMEJTjBlk7EJsMQOSgWshUaByUuSZpUl98kqXzxQaPPqbhKMGMsuxm70fTULHA3NxkbbeYn9mRahymLVjYAWx3pGq2E9otWxntAw7ByNhv8+1+R+JQo+f5b5xVItuCtoCc2FL7Xn9hoxJf+hwkA5+NDIms4YMjLE4wsKuBPZA9yU6wAAAABJRU5ErkJggg=="},"tileNames":["m_grin","m_lol","m_cool","m_shock","m_angry","m_sleep"],"theme":{"accent":"#ffd21f","bgTop":"#2a2140","bgBottom":"#120a20","hudText":"#ffe9a0","font":"'Segoe UI', system-ui, sans-serif","labels":{"over":"ВРЕМЯ ВЫШЛО","win":"ВСЕ МЕМЫ СОБРАНЫ!","again":"Тап — заново","scoreUnit":"уровень","level":"Уровень"}},"rules":{"cols":7,"rows":8,"minRun":3,"specials":true,"mode":"timed","duration":48,"pool":["m_grin","m_lol","m_cool","m_shock","m_angry","m_sleep"],"progression":{"count":50,"goal":[8,0.5],"types":[4,0.045,6],"time":[48,0.58,20]}}};
+/* ============================================================
+   SHARKY GAME ENGINE — universal core (core.js)
+   ------------------------------------------------------------
+   Общий слой для всех мини-игр ленты Sharky:
+     • canvas + DPR + resize/layout
+     • игровой цикл (loop/update/render)
+     • ввод: pointer (tap/swipe) + клавиатура
+     • звук (beep), частицы (burst)
+     • загрузка base64-ассетов
+     • тематический HUD (счёт + полоса таймера) и экран Game Over
+     • ПРОТОКОЛ Sharky (postMessage): принимает init/start/pause,
+       шлёт ready/score/gameover; автостарт ВНЕ ленты по таймеру.
+
+   Игра = это ядро + один МОДУЛЬ-СЦЕНА (механика, регистрируется
+   через Engine.register) + объект CONFIG (тема/правила/ассеты).
+   Сборщик (build.js) встраивает все три части в один .html —
+   игры в Sharky крутятся в sandbox-iframe через srcdoc, поэтому
+   внешние <script> и относительные ассеты недопустимы.
+
+   ── КОНТРАКТ СЦЕНЫ ──
+   Engine.register('genre', function(engine, cfg){
+     return {
+       init(){},          // одноразовая настройка (ассеты+геометрия готовы)
+       reset(){},         // (пере)собрать игровое состояние; на каждый запуск
+       layout(L){},       // пересчёт геометрии из {W,H,headerH}
+       update(dt){},      // продвинуть механику (таймер ведёт ЯДРО)
+       render(ctx){},     // нарисовать поле (фон/HUD/оверлей рисует ЯДРО)
+       pointerDown(p){},  // p = {x,y} в пикселях canvas
+       pointerUp(e){},    // e = {x,y,downX,downY,dx,dy,dist,dir}
+       pointerMove(p){},
+       key(k){},          // k = event.key
+     };
+   });
+
+   ── API ЯДРА для сцены (engine.*) ──
+     ctx, W, H, headerH, cfg, theme, rules, score   (только чтение)
+     img(name) -> HTMLImageElement
+     beep(freq,dur,type,vol)
+     burst(x,y,opts)                  // частицы (по умолчанию — как в match3)
+     addScore(n) / setScore(v)        // меняет счёт + шлёт его в ленту
+     gameOver()                       // завершить забег (смерть). Таймер тоже завершает.
+     rr(x,y,w,h,r) / accent()         // помощники рисования
+   ============================================================ */
+(function (global) {
+  'use strict';
+
+  // ── canvas / контекст ──
+  let cv, ctx;
+  let W = 360, H = 580, headerH = 70, dpr = 1;
+
+  // ── конфиг / сцена ──
+  let cfg = null, theme = {}, rules = {}, scene = null;
+
+  // ── состояние забега ──
+  let state = 'loading';            // loading | playing | over
+  let running = false, raf = 0, last = 0;
+  let score = 0, best = 0, timeLeft = 0, duration = 0, timed = false;
+  let assetsReady = false, pendingStart = false, gotShell = false;
+  let savedState = null;            // прогресс, присланный лентой в init (или null)
+
+  // ── ассеты ──
+  const IMG = {}; let imgTotal = 0, imgLoaded = 0;
+
+  // ── звук ──
+  let audioCtx = null;
+
+  // ── частицы ──
+  const parts = [];
+
+  // ── ввод ──
+  let downX = 0, downY = 0, hasDown = false;
+  const pointers = {};        // pointerId → {x,y} точки нажатия (мультитач)
+  const keys = new Set();     // зажатые клавиши (для платформеров и т.п.)
+  const GAME_KEYS = [' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
+  /* ═══════════ CONTROLS: универсальный слой управления (CONFIG.controls) ═══════════
+     Все схемы транслируются в ВИРТУАЛЬНЫЕ КЛАВИШИ → работают с любой сценой.
+     controls = {
+       scheme: 'joystick' | 'tapmove' | 'tapaction' | 'aim' | null(=только кнопки),
+       joystick: { side:'left', radius:0.09, deadzone:0.3 },
+       tapAction: 'jump',                     — что делает тап (схема tapaction)
+       aim: { fire:'attack' | false },        — держишь палец/мышь = огонь в ту сторону
+       buttons: [ {glyph:'▲', action:'jump'} | {glyph:'✕', key:'x'} … ]  — программируемые
+     }
+     Действие → клавиша: */
+  const ACT2KEY = { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown',
+    jump: ' ', attack: 'x', fire: 'x', dash: 'c', hook: 'v', slow: 'g', swap: 'q', map: 'm', bomb: 'x', undo: 'z' };
+  const CTL = { axis: { x: 0, y: 0 }, aim: { x: 0, y: 0, active: false }, mouse: { x: 0, y: 0 },
+    playerScreen: null, scheme: null };
+  let ctlCfg = null, ctlBtns = [], joy = null, tapTarget = null, ctlHeld = {};
+  function actKey(b) { return b.key || ACT2KEY[b.action] || ' '; }
+  function ctlPress(key) { if (!keys.has(key)) { keys.add(key); if (scene && scene.key) scene.key(key); } }
+  function ctlRelease(key) { keys.delete(key); }
+  function initControls(c) {
+    ctlCfg = c || null;
+    if (!ctlCfg) return;
+    CTL.scheme = ctlCfg.scheme || null;
+    layoutCtlButtons();
+  }
+  function layoutCtlButtons() {
+    ctlBtns = [];
+    if (!ctlCfg || !ctlCfg.buttons) return;
+    const r = Math.min(W, H) * 0.075, m = r * 0.7;
+    for (let i = 0; i < ctlCfg.buttons.length; i++) {
+      const b = ctlCfg.buttons[i];
+      // свои координаты (в долях экрана) или авто-дуга справа снизу
+      const x = b.x != null ? b.x * W : W - m - r - (i % 2) * (r * 2.3);
+      const y = b.y != null ? b.y * H : H - m - r - Math.floor(i / 2) * (r * 2.3);
+      ctlBtns.push({ x: x, y: y, r: b.r ? b.r * Math.min(W, H) : r, glyph: b.glyph || '●', key: actKey(b), id: i });
+    }
+  }
+  function ctlDown(p) {   // true = событие съедено слоем управления
+    if (!ctlCfg) return false;
+    for (let i = 0; i < ctlBtns.length; i++) {
+      const b = ctlBtns[i];
+      if ((p.x - b.x) * (p.x - b.x) + (p.y - b.y) * (p.y - b.y) <= b.r * b.r * 1.45) {
+        ctlHeld[p.id] = b.key; ctlPress(b.key); return true;
+      }
+    }
+    const sch = CTL.scheme;
+    if (sch === 'joystick') {
+      const side = (ctlCfg.joystick && ctlCfg.joystick.side) || 'left';
+      const inZone = side === 'any' || (side === 'left' ? p.x < W * 0.55 : p.x > W * 0.45);
+      if (inZone && !joy) { joy = { id: p.id, cx: p.x, cy: p.y }; return true; }
+      return false;
+    }
+    if (sch === 'tapmove') { tapTarget = { x: p.x, y: p.y, id: p.id }; return true; }
+    if (sch === 'tapaction') {
+      const key = ACT2KEY[ctlCfg.tapAction || 'jump'] || ' ';
+      ctlHeld[p.id] = key; ctlPress(key); return true;
+    }
+    if (sch === 'aim') {
+      CTL.aim.x = p.x; CTL.aim.y = p.y; CTL.aim.active = true;
+      const f = ctlCfg.aim && ctlCfg.aim.fire;
+      if (f !== false) { ctlHeld[p.id] = ACT2KEY[f || 'attack'] || 'x'; ctlPress(ctlHeld[p.id]); }
+      return true;
+    }
+    return false;
+  }
+  function ctlMove(p) {
+    CTL.mouse.x = p.x; CTL.mouse.y = p.y;
+    if (!ctlCfg) return;
+    if (joy && p.id === joy.id) {
+      const R = ((ctlCfg.joystick && ctlCfg.joystick.radius) || 0.09) * Math.min(W, H);
+      const dz = (ctlCfg.joystick && ctlCfg.joystick.deadzone) || 0.3;
+      let dx = (p.x - joy.cx) / R, dy = (p.y - joy.cy) / R;
+      const len = Math.hypot(dx, dy);
+      if (len > 1) { dx /= len; dy /= len; }
+      CTL.axis.x = dx; CTL.axis.y = dy;
+      joy.dx = dx; joy.dy = dy;
+      // 8-way → клавиши
+      (dx < -dz ? ctlPress : ctlRelease)('ArrowLeft');
+      (dx > dz ? ctlPress : ctlRelease)('ArrowRight');
+      (dy < -dz ? ctlPress : ctlRelease)('ArrowUp');
+      (dy > dz ? ctlPress : ctlRelease)('ArrowDown');
+    }
+    if (CTL.scheme === 'aim' && CTL.aim.active) { CTL.aim.x = p.x; CTL.aim.y = p.y; }
+    if (CTL.scheme === 'tapmove' && tapTarget && p.id === tapTarget.id) { tapTarget.x = p.x; tapTarget.y = p.y; }
+  }
+  function ctlUp(p) {
+    if (!ctlCfg) return false;
+    let ate = false;
+    if (ctlHeld[p.id]) { ctlRelease(ctlHeld[p.id]); delete ctlHeld[p.id]; ate = true; }
+    if (joy && p.id === joy.id) {
+      joy = null; CTL.axis.x = 0; CTL.axis.y = 0;
+      ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].forEach(ctlRelease);
+      ate = true;
+    }
+    if (CTL.scheme === 'aim') { CTL.aim.active = false; ate = true; }
+    if (CTL.scheme === 'tapmove' && tapTarget && p.id === tapTarget.id) { tapTarget = null; ate = true; }
+    return ate;
+  }
+  // tap-to-move: каждый кадр сравниваем цель с экранной позицией персонажа
+  // (сцена сообщает её через engine.reportPlayerScreen)
+  function ctlUpdate() {
+    if (!ctlCfg || CTL.scheme !== 'tapmove') return;
+    if (!tapTarget || !CTL.playerScreen) {
+      if (!tapTarget) { ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].forEach(ctlRelease); }
+      return;
+    }
+    const px = CTL.playerScreen.x, py = CTL.playerScreen.y;
+    const dx = tapTarget.x - px, dy = tapTarget.y - py;
+    const dead = Math.min(W, H) * 0.04;
+    (dx < -dead ? ctlPress : ctlRelease)('ArrowLeft');
+    (dx > dead ? ctlPress : ctlRelease)('ArrowRight');
+    (dy < -dead * 2.2 ? ctlPress : ctlRelease)('ArrowUp');     // вверх — с большим порогом (прыжок/лестницы)
+    (dy > dead * 2.2 ? ctlPress : ctlRelease)('ArrowDown');
+  }
+  function drawControls() {
+    if (!ctlCfg) return;
+    // кнопки
+    for (let i = 0; i < ctlBtns.length; i++) {
+      const b = ctlBtns[i];
+      ctx.fillStyle = keys.has(b.key) ? 'rgba(255,255,255,0.34)' : 'rgba(255,255,255,0.15)';
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold ' + Math.round(b.r * 0.8) + 'px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(b.glyph, b.x, b.y + 1);
+    }
+    // джойстик
+    if (CTL.scheme === 'joystick') {
+      const R = ((ctlCfg.joystick && ctlCfg.joystick.radius) || 0.09) * Math.min(W, H);
+      if (joy) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(joy.cx, joy.cy, R, 0, 7); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.beginPath(); ctx.arc(joy.cx + (joy.dx || 0) * R, joy.cy + (joy.dy || 0) * R, R * 0.42, 0, 7); ctx.fill();
+      } else {
+        // подсказка-призрак в зоне
+        const side = (ctlCfg.joystick && ctlCfg.joystick.side) || 'left';
+        const gx = side === 'right' ? W * 0.78 : W * 0.22, gy = H * 0.82;
+        ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(gx, gy, R, 0, 7); ctx.stroke();
+        ctx.beginPath(); ctx.arc(gx, gy, R * 0.42, 0, 7); ctx.stroke();
+      }
+    }
+    // маркер tap-to-move
+    if (CTL.scheme === 'tapmove' && tapTarget) {
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 + Math.sin(Date.now() / 130) * 0.3) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(tapTarget.x, tapTarget.y, 12, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(tapTarget.x, tapTarget.y, 3, 0, 7); ctx.fill();
+    }
+    // прицел aim
+    if (CTL.scheme === 'aim' && CTL.aim.active) {
+      ctx.strokeStyle = 'rgba(255,120,120,0.85)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(CTL.aim.x, CTL.aim.y, 11, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(CTL.aim.x - 16, CTL.aim.y); ctx.lineTo(CTL.aim.x + 16, CTL.aim.y);
+      ctx.moveTo(CTL.aim.x, CTL.aim.y - 16); ctx.lineTo(CTL.aim.x, CTL.aim.y + 16); ctx.stroke();
+    }
+  }
+
+  // ── объект, который получает сцена ──
+  const api = {
+    get ctx() { return ctx; },
+    get W() { return W; },
+    get H() { return H; },
+    get headerH() { return headerH; },
+    get cfg() { return cfg; },
+    get theme() { return theme; },
+    get rules() { return rules; },
+    get score() { return score; },
+    get timeLeft() { return timeLeft; },
+    get duration() { return duration; },
+    get state() { return state; },
+    get keys() { return keys; },          // живой Set зажатых клавиш
+    get ctl() { return CTL; },            // слой управления: axis/aim/mouse/scheme
+    reportPlayerScreen: function (x, y) { CTL.playerScreen = { x: x, y: y }; },
+    img: function (name) { return IMG[name]; },
+    beep: beep,
+    burst: burst,
+    addScore: addScore,
+    setScore: setScore,
+    gameOver: gameOver,
+    // ── сохранение прогресса (лента хранит в Supabase per user+game) ──
+    saveState: function (obj) { try { savedState = obj; send({ type: 'save', value: obj }); } catch (e) {} },
+    loadState: function () { return savedState; },
+    resetTimer: resetTimer,
+    addTime: addTime,
+    rr: rr,
+    accent: accent,
+  };
+
+  const Engine = {
+    scenes: {},
+    register: function (name, factory) { this.scenes[name] = factory; },
+    boot: boot,
+  };
+  global.Engine = Engine;
+
+  // Диагностика (можно дёрнуть из консоли): текущее состояние движка.
+  Engine.debug = function () {
+    return { state: state, running: running, assetsReady: assetsReady, pendingStart: pendingStart,
+             gotShell: gotShell, imgLoaded: imgLoaded, imgTotal: imgTotal, hasScene: !!scene,
+             W: W, H: H };
+  };
+  // Принудительный одиночный кадр (для тестов в скрытой вкладке, где rAF не тикает).
+  Engine.renderOnce = function () { if (scene && assetsReady) render(); };
+  Engine._ctl = CTL;   // отладка слоя управления
+  Engine._keys = keys;
+  // Принудительный шаг цикла ядра (управление+сцена) — тоже для тестов без rAF.
+  Engine.stepOnce = function (dt) { if (scene && assetsReady) update(dt || 1 / 60); };
+  // Применить сохранение и пересобрать забег (эмуляция init.save для тестов).
+  Engine._testLoad = function (o) { savedState = o; if (scene && assetsReady) newRun(); };
+
+  // ════════════════════════════════════════════ BOOT
+  function boot(config) {
+    cfg = config; theme = config.theme || {}; rules = config.rules || {};
+    duration = rules.duration || 60;
+    timed = (rules.mode || 'timed') === 'timed';
+    cv = document.getElementById('c'); ctx = cv.getContext('2d');
+    if (theme.accent) document.documentElement.style.setProperty('--ac', theme.accent);
+    if (theme.bgBottom || theme.bgTop) document.body.style.background = theme.bgBottom || theme.bgTop;
+
+    const factory = Engine.scenes[config.genre];
+    if (!factory) { console.error('Engine: нет сцены для жанра', config.genre); return; }
+    scene = factory(api, config);
+    Engine._scene = scene;   // для отладки/тестов
+    initControls(config.controls);
+
+    window.addEventListener('resize', resize);
+    bindInput();
+    bindProtocol();
+    window.addEventListener('load', function () {
+      loadImages(config.assets || {});
+      // Автостарт ТОЛЬКО вне Sharky. В ленте всегда приходит init -> gotShell=true.
+      setTimeout(function () {
+        if (!gotShell) { if (assetsReady) start(); else pendingStart = true; }
+      }, 400);
+    });
+  }
+
+  // ════════════════════════════════════════════ ГЕОМЕТРИЯ
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = cv.clientWidth || 360; H = cv.clientHeight || 580;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;            // чёткий пиксель-арт
+    headerH = Math.max(48, Math.min(96, H * 0.13));
+    layoutCtlButtons();
+    if (scene && scene.layout) scene.layout({ W: W, H: H, headerH: headerH });
+  }
+
+  // ════════════════════════════════════════════ АССЕТЫ
+  function loadImages(map) {
+    const names = Object.keys(map);
+    imgTotal = names.length; imgLoaded = 0;
+    if (imgTotal === 0) { onReady(); return; }
+    names.forEach(function (n) {
+      const im = new Image();
+      im.onload = im.onerror = function () { imgLoaded++; if (imgLoaded >= imgTotal) onReady(); };
+      const v = map[n];
+      // поддержка готовых data-URL (jpg/webp/png) и «сырого» base64 (по умолч. png)
+      im.src = (typeof v === 'string' && v.lastIndexOf('data:', 0) === 0) ? v : ('data:image/png;base64,' + v);
+      IMG[n] = im;
+    });
+  }
+  function onReady() {
+    resize();
+    try {
+      if (scene.init) scene.init();
+      newRun();
+    } catch (e) { console.error('Engine onReady scene error:', e); }
+    assetsReady = true;
+    try { const v = getComputedStyle(document.documentElement).getPropertyValue('--ac').trim(); if (v) theme.accent = v; } catch (e) {}
+    send({ type: 'ready' });
+    if (pendingStart) start();
+  }
+
+  // ════════════════════════════════════════════ ЖИЗНЕННЫЙ ЦИКЛ
+  function newRun() {
+    score = 0; timeLeft = duration; state = 'playing'; parts.length = 0; overLabel = null;
+    if (scene.reset) scene.reset();
+    send({ type: 'score', value: 0 });
+  }
+  function start() {
+    if (!assetsReady) { pendingStart = true; return; }
+    if (running) return;
+    running = true; last = performance.now();
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+    raf = requestAnimationFrame(loop);
+  }
+  function pause() {
+    running = false; cancelAnimationFrame(raf);
+    if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+  }
+  function restart() {
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+    newRun();
+  }
+  function loop(t) {
+    if (!running) return;
+    const dt = Math.min((t - last) / 1000, 0.05); last = t;
+    try { update(dt); render(); }
+    catch (e) { running = false; console.error('Engine loop error:', e); return; }
+    raf = requestAnimationFrame(loop);
+  }
+  function update(dt) {
+    if (state === 'playing') {
+      ctlUpdate();                                   // tap-to-move → клавиши
+      if (timed) { timeLeft -= dt; if (timeLeft <= 0) { timeLeft = 0; gameOver(); } }
+      if (scene.update) scene.update(dt);
+    }
+    updateParts(dt);
+  }
+  let overLabel = null;   // надпись на экране конца (переопределяет labels.over, напр. «ПОБЕДА»)
+  function gameOver(opts) {
+    if (state === 'over') return;
+    overLabel = (opts && opts.label) || null;
+    state = 'over';
+    send({ type: 'gameover', value: score });
+  }
+  // Сброс таймера раунда (для пораундовых игр). Без аргумента — на полную длительность.
+  function resetTimer(sec) { if (sec) duration = sec; timeLeft = duration; }
+  // Добавить/отнять время (штрафы и бонусы времени)
+  function addTime(sec) { timeLeft = Math.max(0.01, Math.min(duration, timeLeft + sec)); }
+
+  // ════════════════════════════════════════════ СЧЁТ
+  function addScore(n) { setScore(score + n); }
+  function setScore(v) {
+    score = v; if (score > best) best = score;
+    send({ type: 'score', value: score });
+  }
+
+  // ════════════════════════════════════════════ РЕНДЕР
+  function render() {
+    drawBg();
+    if (scene.render) scene.render(ctx);
+    drawParts();
+    if (scene.hud) scene.hud(ctx); else drawHUD();
+    drawControls();                                  // джойстик/кнопки/прицел поверх HUD
+    if (state === 'over') drawOver();
+  }
+  function drawBg() {
+    const bg = theme.bgImage && IMG[theme.bgImage];
+    if (bg && bg.complete && bg.naturalWidth) {
+      // по ширине экрана, верх закреплён наверху, низ обрезается
+      const dh = bg.naturalHeight * (W / bg.naturalWidth);
+      ctx.drawImage(bg, 0, 0, W, dh);
+      if (dh < H) { ctx.fillStyle = theme.bgBottom || '#111'; ctx.fillRect(0, dh, W, H - dh); }
+    } else {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, theme.bgTop || '#222'); g.addColorStop(1, theme.bgBottom || '#111');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+  }
+  function drawHUD() {
+    ctx.textBaseline = 'middle';
+    const cy = headerH / 2;
+    const font = theme.font || "Georgia, serif";
+    let textX = 16;
+    const ico = theme.hudIcon && IMG[theme.hudIcon];
+    if (ico && ico.complete) {
+      const ic = Math.min(34, headerH * 0.5);
+      ctx.drawImage(ico, 12, cy - ic / 2, ic, ic);
+      textX = 16 + ic;
+    }
+    ctx.fillStyle = theme.hudText || '#f4e3b0';
+    ctx.font = 'bold ' + Math.round(headerH * 0.34) + 'px ' + font;
+    ctx.textAlign = 'left'; ctx.fillText(String(score), textX, cy);
+    if (timed) {
+      const bx = W * 0.46, bw = W - bx - 14, by = cy - 7, bh = 14;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; rr(bx, by, bw, bh, 7); ctx.fill();
+      const frac = Math.max(0, timeLeft / duration);
+      ctx.fillStyle = accent(); rr(bx, by, Math.max(2, bw * frac), bh, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(244,227,176,0.6)'; ctx.lineWidth = 1.5; rr(bx, by, bw, bh, 7); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 12px ' + font; ctx.textAlign = 'center';
+      ctx.fillText(Math.ceil(timeLeft) + '', bx + bw / 2, by + bh / 2);
+    }
+  }
+  function drawOver() {
+    const L = theme.labels || {};
+    ctx.fillStyle = 'rgba(10,7,4,0.78)'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const font = theme.font || "Georgia, serif";
+    ctx.fillStyle = accent(); ctx.font = 'bold ' + Math.round(W * 0.085) + 'px ' + font;
+    ctx.fillText(overLabel || L.over || 'GAME OVER', W / 2, H * 0.4);
+    ctx.fillStyle = theme.hudText || '#f4e3b0'; ctx.font = 'bold ' + Math.round(W * 0.13) + 'px ' + font;
+    ctx.fillText(String(score), W / 2, H * 0.52);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = Math.round(W * 0.045) + 'px ' + font;
+    ctx.fillText(L.scoreUnit || 'points', W / 2, H * 0.585);
+    ctx.fillStyle = '#fff'; ctx.font = Math.round(W * 0.05) + 'px ' + font;
+    ctx.fillText(L.again || 'Tap to play again', W / 2, H * 0.7);
+  }
+  function rr(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function accent() { return theme.accent || '#e7b44c'; }
+
+  // ════════════════════════════════════════════ ЧАСТИЦЫ
+  function burst(x, y, o) {
+    o = o || {};
+    if (parts.length > 140) return;
+    const count = o.count || 4, col = o.color || accent(), g = (o.gravity == null ? 300 : o.gravity);
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 120;
+      parts.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40,
+                   life: 0.5 + Math.random() * 0.3, t: 0, s: 2 + Math.random() * 3, g: g, col: col });
+    }
+  }
+  function updateParts(dt) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i]; p.t += dt; if (p.t >= p.life) { parts.splice(i, 1); continue; }
+      p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    }
+  }
+  function drawParts() {
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i], a = Math.max(0, 1 - p.t / p.life);
+      ctx.globalAlpha = a; ctx.fillStyle = p.col;
+      ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ════════════════════════════════════════════ ЗВУК (после первого тапа)
+  function ensureAudio() {
+    if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  }
+  function beep(freq, dur, wtype, vol) {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = wtype || 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(Math.min(vol || 0.15, 0.6), t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur + 0.03);
+  }
+
+  // ════════════════════════════════════════════ ВВОД
+  function localPt(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function bindInput() {
+    cv.addEventListener('pointerdown', function (e) {
+      ensureAudio(); if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+      if (state === 'over') { restart(); return; }
+      const p = localPt(e); p.id = e.pointerId;
+      pointers[e.pointerId] = { x: p.x, y: p.y };
+      downX = p.x; downY = p.y; hasDown = true;   // совместимость со сценами без мультитача
+      if (ctlDown(p)) return;                     // съедено слоем управления
+      if (scene.pointerDown) scene.pointerDown(p);
+    });
+    cv.addEventListener('pointerup', function (e) { endPointer(e, false); });
+    cv.addEventListener('pointercancel', function (e) { endPointer(e, true); });
+    cv.addEventListener('pointermove', function (e) {
+      const p = localPt(e); p.id = e.pointerId;
+      ctlMove(p);
+      if (scene.pointerMove) scene.pointerMove(p);
+    });
+    window.addEventListener('keydown', function (e) {
+      if (GAME_KEYS.indexOf(e.key) !== -1) e.preventDefault();
+      keys.add(e.key);
+      if (scene.key) scene.key(e.key);
+    });
+    window.addEventListener('keyup', function (e) { keys.delete(e.key); });
+    window.addEventListener('blur', function () { keys.clear(); });
+  }
+  function endPointer(e, cancelled) {
+    const start = pointers[e.pointerId]; delete pointers[e.pointerId];
+    if (state === 'over') { hasDown = false; return; }
+    const p = localPt(e);
+    if (ctlUp({ x: p.x, y: p.y, id: e.pointerId })) { hasDown = false; return; }
+    const sx = start ? start.x : downX, sy = start ? start.y : downY;
+    const dx = p.x - sx, dy = p.y - sy, dist = Math.sqrt(dx * dx + dy * dy);
+    const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    if (scene.pointerUp) scene.pointerUp({ x: p.x, y: p.y, id: e.pointerId, downX: sx, downY: sy,
+      dx: dx, dy: dy, dist: dist, dir: dir, had: hasDown, cancelled: !!cancelled });
+    hasDown = false;
+  }
+
+  // ════════════════════════════════════════════ ПРОТОКОЛ SHARKY
+  function send(m) { try { parent.postMessage(m, '*'); } catch (e) {} }
+  function bindProtocol() {
+    window.addEventListener('message', function (e) {
+      const d = e.data || {};
+      if (d.type === 'init') {
+        gotShell = true;
+        if (d.accent) { theme.accent = d.accent; document.documentElement.style.setProperty('--ac', d.accent); }
+        // прогресс из ленты: применяем ДО старта (сцена читает engine.loadState() в reset)
+        if (d.save !== undefined && d.save !== null) { savedState = d.save; if (assetsReady && !running) newRun(); }
+      } else if (d.type === 'start') { gotShell = true; start(); }
+      else if (d.type === 'pause') { gotShell = true; pause(); }
+    });
+  }
+
+})(typeof window !== 'undefined' ? window : this);
+
+/* ============================================================
+   СЦЕНА: match-3 (match3.js)
+   ------------------------------------------------------------
+   Механика «три в ряд». Инфраструктуру даёт ядро (core.js):
+   canvas, цикл, ввод, звук, частицы, таймер, экран Game Over,
+   протокол Sharky.
+
+   Два режима (выбираются через CONFIG.rules):
+   ── КЛАССИКА (по умолчанию) ──
+     Очки за совпадения, фиксированный набор тайлов (CONFIG.tileNames),
+     счёт = накопленные очки, стандартный HUD ядра.
+   ── ЦЕЛЬ/РАУНДЫ (если задан rules.goal) ──
+     Нужно собрать rules.goal штук тайла-задания за раунд (таймер ядра).
+     Собрал — раунд пройден: новый набор еды, новая цель, таймер
+     сбрасывается (engine.resetTimer). Не успел — Game Over.
+     Счёт = число пройденных раундов. Свой HUD (иконка цели + прогресс + таймер).
+
+   CONFIG.rules:
+     cols, rows        размер поля
+     minRun            длина совпадения (3)
+     clearDur          анимация схлопывания, с (0.18)
+     scorePerTile      очков за тайл (классика, 10)
+     goal              сколько собрать тайла-задания за раунд (вкл. режим цели)
+     typeCount         сколько типов тайлов на поле в раунде (по умолч. = длине набора)
+     pool              имена ассетов-кандидатов; каждый раунд из них берётся typeCount
+     boardImage        имя ассета-подложки поля (напр. доска); иначе рисуется рамка
+
+   ── СПЕЦЭЛЕМЕНТЫ (rules.specials:true) ──
+     4-в-ряд → МОЛНИЯ (line, чистит строку/столбец вдоль ряда)
+     L/T-пересечение → БОМБА (3×3), 5-в-ряд → РАДУГА (весь цвет; активируется свапом)
+     Слияния свапом двух бустеров: line+line=крест, line+bomb=3 строки+3 столбца,
+     bomb+bomb=5×5, rainbow+спец=весь цвет+крест, rainbow+rainbow=всё поле.
+     Цепные активации: спец, попавший во взрыв, срабатывает тоже.
+   ── ЛЁД (rules.ice:{count,layers} или маска-строки) ──
+     Ледяная клетка: тайл заморожен (не свапается, не падает); матч/взрыв
+     рядом или на клетке снимает слой; после снятия — обычная клетка.
+   ── ЛИМИТ ХОДОВ (rules.moveLimit:N) ──
+     Успешный ход тратит попытку; HUD показывает ходы (вместо/рядом с таймером);
+     ходы кончились и цель не взята → проигрыш. advanceRound восстанавливает.
+   ============================================================ */
+Engine.register('match3', function (engine, cfg) {
+  'use strict';
+  const R = cfg.rules || {};
+  const COLS = R.cols || 7, ROWS = R.rows || 8;
+  const MINRUN = R.minRun || 3;
+  const CLEAR_DUR = R.clearDur || 0.18;
+  const SCORE = R.scorePerTile || 10;
+
+  const PROG = R.progression || null;   // {count, goal:[base,step], moves:[base,step,min], types:[base,step,max], time:[base,step,min]}
+  const LVL_COUNT = PROG ? (PROG.count || 50) : 0;
+  const GOAL = R.goal || 0;
+  const goalMode = GOAL > 0 || !!PROG;
+  const POOL = (R.pool && R.pool.length) ? R.pool.slice() : null;
+  const FIXED = (cfg.tileNames || Object.keys(cfg.assets || {})).filter(function (n) { return n !== R.boardImage && n !== (cfg.theme && cfg.theme.bgImage); });
+  const TYPE_COUNT = R.typeCount || FIXED.length;
+  const BOARD_IMG = R.boardImage || null;
+  // динамические параметры уровня (переопределяются applyLevel, когда задан PROG)
+  let level = 0, curGoal = GOAL || 10, curTypes = TYPE_COUNT;
+  function applyLevel(L) {
+    if (!PROG) { curGoal = GOAL; curMoves = R.moveLimit || 0; curTypes = TYPE_COUNT; return; }
+    curGoal = PROG.goal[0] + Math.round(L * PROG.goal[1]);
+    curTypes = Math.min(PROG.types[2] || 6, PROG.types[0] + Math.floor(L * PROG.types[1]));
+    if (PROG.moves) curMoves = Math.max(PROG.moves[2] || 8, PROG.moves[0] - Math.floor(L * PROG.moves[1]));
+    if (PROG.time) engine.resetTimer(Math.max(PROG.time[2] || 20, PROG.time[0] - Math.floor(L * PROG.time[1])));
+  }
+
+  // активный набор тайлов раунда (в классике — фиксированный)
+  let activeNames = FIXED.slice();
+  let N = activeNames.length;
+
+  const SPECIALS = !!R.specials;
+  const MOVES = R.moveLimit || 0;
+  let curMoves = MOVES;                 // лимит ходов текущего уровня (0 = таймер)
+  const ICECFG = R.ice || null;
+
+  let grid = [];
+  let cell = 40, originX = 0, originY = 0;
+  let phase = 'idle';                 // idle | swap | swapback | clear | fall
+  let multiplier = 1;
+  let selCell = null, downCell = null;
+  let lastSwap = null, matchedCells = [], clearTimer = 0, clearProg = 0;
+  let ice = [];                       // слои льда по клеткам (0 = нет)
+  let movesLeft = 0;                  // лимит ходов (0 = не используется)
+  let pendingSpawns = [];             // спец-тайлы к спавну после удаления [{r,c,type,special,axis}]
+  let pendingMerge = null;            // слияние бустеров после анимации свапа
+  let sTime = 0;                      // время сцены (анимация радуги)
+
+  // режим цели
+  let collected = 0, rounds = 0, targetIdx = 0, targetName = activeNames[0];
+
+  function iceAt(r, c) { return (ice[r] && ice[r][c]) || 0; }
+  function initIce() {
+    ice = []; for (let r = 0; r < ROWS; r++) { ice[r] = []; for (let c = 0; c < COLS; c++) ice[r][c] = 0; }
+    if (!ICECFG) return;
+    if (Array.isArray(ICECFG)) {          // маска-строки: '0'/'1'/'2'
+      for (let r = 0; r < Math.min(ROWS, ICECFG.length); r++)
+        for (let c = 0; c < Math.min(COLS, ICECFG[r].length); c++) ice[r][c] = +ICECFG[r][c] || 0;
+    } else {
+      let n = ICECFG.count || 6, guard = 0;
+      while (n > 0 && guard++ < 200) {
+        const r = (Math.random() * ROWS) | 0, c = (Math.random() * COLS) | 0;
+        if (!ice[r][c]) { ice[r][c] = ICECFG.layers || 1; n--; }
+      }
+    }
+  }
+  function breakIce(r, c) {
+    if (iceAt(r, c) > 0) {
+      ice[r][c]--;
+      const t = grid[r][c];
+      engine.burst(cellX(c) + cell / 2, cellY(r) + cell / 2, { count: 6, color: '#cfeaff' });
+      engine.beep(700, 0.06, 'triangle', 0.1);
+      if (t) t.clearing = false;
+      return true;
+    }
+    return false;
+  }
+
+  // ── геометрия ──
+  function cellX(c) { return originX + c * cell; }
+  function cellY(r) { return originY + r * cell; }
+  function layout(L) {
+    const m = Math.round(Math.min(L.W, L.H) * 0.03);
+    const availW = L.W - m * 2, availH = L.H - L.headerH - m * 2;
+    cell = Math.floor(Math.min(availW / COLS, availH / ROWS));
+    const bw = cell * COLS, bh = cell * ROWS;
+    originX = Math.round((L.W - bw) / 2);
+    originY = Math.round(L.headerH + (L.H - L.headerH - bh) / 2);
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      const t = grid[r] && grid[r][c];
+      if (t) { t.tx = cellX(c); t.ty = cellY(r); t.px = t.tx; t.py = t.ty; }
+    }
+  }
+
+  // ── набор тайлов раунда ──
+  function pickRound() {
+    if (POOL) {
+      const pool = POOL.slice();
+      for (let i = pool.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp; }
+      activeNames = pool.slice(0, Math.min(curTypes, pool.length));
+    } else {
+      activeNames = FIXED.slice();
+    }
+    N = activeNames.length;
+    targetIdx = (Math.random() * N) | 0;
+    targetName = activeNames[targetIdx];
+  }
+
+  // ── утилиты поля ──
+  function type(r, c) { const t = grid[r] && grid[r][c]; return t ? t.type : null; }
+  function makeTile(tp, r, c, px, py) {
+    return { type: tp, row: r, col: c, px: px, py: py, tx: cellX(c), ty: cellY(r), clearing: false, special: null, axis: null };
+  }
+  function setTarget(t) { t.tx = cellX(t.col); t.ty = cellY(t.row); }
+
+  function genTG() {
+    const tg = [];
+    for (let r = 0; r < ROWS; r++) { tg[r] = []; for (let c = 0; c < COLS; c++) {
+      let t, guard = 0;
+      do { t = (Math.random() * N) | 0; guard++; }
+      while (guard < 40 && ((c >= 2 && tg[r][c - 1] === t && tg[r][c - 2] === t) ||
+                            (r >= 2 && tg[r - 1][c] === t && tg[r - 2][c] === t)));
+      tg[r][c] = t;
+    } }
+    return tg;
+  }
+  function runAtTG(tg, r, c) {
+    const t = tg[r][c]; if (t == null) return false;
+    let h = 1, k;
+    for (k = c - 1; k >= 0 && tg[r][k] === t; k--) h++;
+    for (k = c + 1; k < COLS && tg[r][k] === t; k++) h++;
+    let v = 1;
+    for (k = r - 1; k >= 0 && tg[k][c] === t; k--) v++;
+    for (k = r + 1; k < ROWS && tg[k][c] === t; k++) v++;
+    return h >= MINRUN || v >= MINRUN;
+  }
+  function hasMoveOn(tg) {
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      if (c + 1 < COLS) { const a = tg[r][c], b = tg[r][c + 1]; tg[r][c] = b; tg[r][c + 1] = a; const ok = runAtTG(tg, r, c) || runAtTG(tg, r, c + 1); tg[r][c] = a; tg[r][c + 1] = b; if (ok) return true; }
+      if (r + 1 < ROWS) { const a = tg[r][c], b = tg[r + 1][c]; tg[r][c] = b; tg[r + 1][c] = a; const ok = runAtTG(tg, r, c) || runAtTG(tg, r + 1, c); tg[r][c] = a; tg[r + 1][c] = b; if (ok) return true; }
+    }
+    return false;
+  }
+  function buildTypeGrid() { const tg = []; for (let r = 0; r < ROWS; r++) { tg[r] = []; for (let c = 0; c < COLS; c++) tg[r][c] = type(r, c); } return tg; }
+  function hasMove() { return hasMoveOn(buildTypeGrid()); }
+
+  function buildBoard() {
+    let tg;
+    do { tg = genTG(); } while (!hasMoveOn(tg));
+    grid = [];
+    for (let r = 0; r < ROWS; r++) { grid[r] = []; for (let c = 0; c < COLS; c++) grid[r][c] = makeTile(tg[r][c], r, c, cellX(c), cellY(r)); }
+  }
+  function reshuffle() {
+    let tg, guard = 0;
+    do { tg = genTG(); guard++; } while (guard < 60 && !hasMoveOn(tg));
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { grid[r][c].type = tg[r][c]; grid[r][c].clearing = false; }
+  }
+
+  // Ряды с метаданными: плоский набор клеток + спавны бустеров (4=line, 5=rainbow, L/T=bomb).
+  function findRuns() {
+    const runsH = [], runsV = [];
+    for (let r = 0; r < ROWS; r++) { let c = 0; while (c < COLS) { const t = type(r, c); if (t == null || t < 0) { c++; continue; } let run = 1; while (c + run < COLS && type(r, c + run) === t) run++; if (run >= MINRUN) runsH.push({ r: r, c: c, len: run, horiz: true, t: t }); c += run; } }
+    for (let c = 0; c < COLS; c++) { let r = 0; while (r < ROWS) { const t = type(r, c); if (t == null || t < 0) { r++; continue; } let run = 1; while (r + run < ROWS && type(r + run, c) === t) run++; if (run >= MINRUN) runsV.push({ r: r, c: c, len: run, horiz: false, t: t }); r += run; } }
+    const seen = {}, flat = [];
+    const add = (r, c) => { const k = r * COLS + c; if (!seen[k]) { seen[k] = 1; flat.push([r, c]); } };
+    runsH.forEach(x => { for (let k = 0; k < x.len; k++) add(x.r, x.c + k); });
+    runsV.forEach(x => { for (let k = 0; k < x.len; k++) add(x.r, x.c + k); });
+    const spawns = [];
+    if (SPECIALS) {
+      const spawnAt = {};   // не дублировать спавн в одной клетке
+      const anchor = (x) => {
+        // якорь: свапнутая клетка, если она в ряду, иначе центр
+        if (lastSwap) {
+          const pts = [lastSwap.a, lastSwap.b];
+          for (let i = 0; i < 2; i++) {
+            const p = pts[i];
+            if (x.horiz ? (p.r === x.r && p.c >= x.c && p.c < x.c + x.len)
+                        : (p.c === x.c && p.r >= x.r && p.r < x.r + x.len)) return { r: p.r, c: p.c };
+          }
+        }
+        return x.horiz ? { r: x.r, c: x.c + (x.len >> 1) } : { r: x.r + (x.len >> 1), c: x.c };
+      };
+      // бомбы на пересечениях L/T
+      runsH.forEach(h => runsV.forEach(v => {
+        if (h.t !== v.t) return;
+        if (v.c >= h.c && v.c < h.c + h.len && h.r >= v.r && h.r < v.r + v.len) {
+          const k = h.r * COLS + v.c;
+          if (!spawnAt[k]) { spawnAt[k] = 1; spawns.push({ r: h.r, c: v.c, type: h.t, special: 'bomb' }); }
+        }
+      }));
+      runsH.concat(runsV).forEach(x => {
+        if (x.len < 4) return;
+        const a = anchor(x), k = a.r * COLS + a.c;
+        if (spawnAt[k]) return;
+        spawnAt[k] = 1;
+        spawns.push(x.len >= 5 ? { r: a.r, c: a.c, type: x.t, special: 'rainbow' }
+                               : { r: a.r, c: a.c, type: x.t, special: 'line', axis: x.horiz ? 'h' : 'v' });
+      });
+    }
+    return { flat: flat, spawns: spawns };
+  }
+  // клетки эффекта спец-тайла
+  function specialCells(t) {
+    const out = [];
+    if (t.special === 'line') {
+      if (t.axis === 'h') { for (let c = 0; c < COLS; c++) out.push([t.row, c]); }
+      else { for (let r = 0; r < ROWS; r++) out.push([r, t.col]); }
+    } else if (t.special === 'bomb') {
+      for (let r = t.row - 1; r <= t.row + 1; r++) for (let c = t.col - 1; c <= t.col + 1; c++)
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) out.push([r, c]);
+    } else if (t.special === 'rainbow') {
+      // радуга в цепной реакции: чистит самый частый цвет
+      const cnt = {};
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const tp = type(r, c); if (tp != null && tp >= 0) cnt[tp] = (cnt[tp] || 0) + 1; }
+      let best = 0, bn = -1; for (const k in cnt) if (cnt[k] > bn) { bn = cnt[k]; best = +k; }
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (type(r, c) === best) out.push([r, c]);
+      out.push([t.row, t.col]);
+    }
+    return out;
+  }
+  function colorCells(tp) {
+    const out = [];
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (type(r, c) === tp) out.push([r, c]);
+    return out;
+  }
+  // цепная реакция: спец-тайлы, попавшие во взрыв, срабатывают тоже
+  function expandRemoval(cells) {
+    const seen = {}, out = [];
+    const push = (r, c) => { const k = r * COLS + c; if (!seen[k]) { seen[k] = 1; out.push([r, c]); return true; } return false; };
+    cells.forEach(x => push(x[0], x[1]));
+    for (let i = 0; i < out.length; i++) {
+      const t = grid[out[i][0]][out[i][1]];
+      if (t && t.special && iceAt(out[i][0], out[i][1]) === 0)
+        specialCells(t).forEach(x => push(x[0], x[1]));
+    }
+    return out;
+  }
+  function adjacent(a, b) { return Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1; }
+
+  function trySwap(a, b) {
+    if (phase !== 'idle') return;
+    const ta = grid[a.r][a.c], tb = grid[b.r][b.c];
+    if (!ta || !tb) return;
+    if (iceAt(a.r, a.c) || iceAt(b.r, b.c)) { engine.beep(150, 0.1, 'sine', 0.1); return; }   // заморожено
+    grid[a.r][a.c] = tb; grid[b.r][b.c] = ta;
+    tb.row = a.r; tb.col = a.c; setTarget(tb);
+    ta.row = b.r; ta.col = b.c; setTarget(ta);
+    lastSwap = { a: { r: a.r, c: a.c }, b: { r: b.r, c: b.c } };
+    // радуга или слияние двух бустеров: активация после анимации свапа
+    pendingMerge = null;
+    if (SPECIALS && (ta.special || tb.special)) {
+      const spA = ta.special, spB = tb.special;
+      if (spA === 'rainbow' || spB === 'rainbow' || (spA && spB)) pendingMerge = { ta: ta, tb: tb };
+    }
+    multiplier = 1; phase = 'swap'; engine.beep(330, 0.07, 'square', 0.12);
+  }
+  // набор клеток для слияния/активации радуги (тайлы уже на новых местах)
+  function mergeRemoval(m) {
+    const ta = m.ta, tb = m.tb;   // ta теперь в b-позиции, tb в a-позиции
+    const spA = ta.special, spB = tb.special;
+    const cross = (r0, c0, thick) => {
+      const out = [];
+      for (let c = 0; c < COLS; c++) for (let dr = -thick; dr <= thick; dr++) if (r0 + dr >= 0 && r0 + dr < ROWS) out.push([r0 + dr, c]);
+      for (let r = 0; r < ROWS; r++) for (let dc = -thick; dc <= thick; dc++) if (c0 + dc >= 0 && c0 + dc < COLS) out.push([r, c0 + dc]);
+      return out;
+    };
+    const both = spA && spB;
+    if (spA === 'rainbow' && spB === 'rainbow') {   // всё поле
+      const out = []; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) out.push([r, c]); return out;
+    }
+    if (spA === 'rainbow' || spB === 'rainbow') {
+      const rb = spA === 'rainbow' ? ta : tb, other = rb === ta ? tb : ta;
+      let out;
+      if (other.special) out = colorCells(other.type).concat(cross(rb.row, rb.col, 0));  // радуга+спец
+      else out = colorCells(other.type);                                                 // радуга+цвет
+      out.push([rb.row, rb.col]);
+      return out;
+    }
+    if (both && spA === 'line' && spB === 'line') return cross(ta.row, ta.col, 0);        // крест
+    if (both && spA === 'bomb' && spB === 'bomb') {                                       // 5×5
+      const out = [];
+      for (let r = ta.row - 2; r <= ta.row + 2; r++) for (let c = ta.col - 2; c <= ta.col + 2; c++)
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) out.push([r, c]);
+      out.push([tb.row, tb.col]);
+      return out;
+    }
+    if (both) return cross(ta.row, ta.col, 1);                                            // line+bomb: 3+3
+    return null;
+  }
+  function swapBack() {
+    const a = lastSwap.a, b = lastSwap.b;
+    const ta = grid[a.r][a.c], tb = grid[b.r][b.c];
+    grid[a.r][a.c] = tb; grid[b.r][b.c] = ta;
+    tb.row = a.r; tb.col = a.c; setTarget(tb);
+    ta.row = b.r; ta.col = b.c; setTarget(ta);
+    phase = 'swapback'; engine.beep(180, 0.12, 'sine', 0.1);
+  }
+
+  function spendMove() { if (curMoves) movesLeft = Math.max(0, movesLeft - 1); }
+  function enterClear(cells, spawns) {
+    matchedCells = cells;
+    pendingSpawns = spawns || [];
+    for (let i = 0; i < cells.length; i++) { const t = grid[cells[i][0]][cells[i][1]]; if (t) t.clearing = true; }
+    if (!goalMode) engine.addScore(cells.length * SCORE * multiplier);
+    clearTimer = 0; clearProg = 0; phase = 'clear';
+    engine.beep(440 + Math.min(multiplier, 8) * 70, 0.12, 'square', 0.18);
+    if (multiplier >= 2) engine.beep(660 + multiplier * 60, 0.10, 'triangle', 0.14);
+  }
+  function doRemoveAndFall() {
+    for (let i = 0; i < matchedCells.length; i++) {
+      const r = matchedCells[i][0], c = matchedCells[i][1], t = grid[r][c];
+      if (iceAt(r, c) > 0) { breakIce(r, c); continue; }   // лёд поглощает удаление
+      if (t) {
+        engine.burst(t.px + cell / 2, t.py + cell / 2);
+        if (goalMode && t.type === targetIdx) collected++;
+      }
+      grid[r][c] = null;
+    }
+    matchedCells = [];
+    // спавн заработанных бустеров (на месте якоря, до гравитации)
+    for (let i = 0; i < pendingSpawns.length; i++) {
+      const s = pendingSpawns[i];
+      if (!grid[s.r][s.c]) {
+        const t = makeTile(s.type, s.r, s.c, cellX(s.c), cellY(s.r));
+        t.special = s.special; t.axis = s.axis || null;
+        grid[s.r][s.c] = t;
+        engine.burst(cellX(s.c) + cell / 2, cellY(s.r) + cell / 2, { count: 10, color: '#fff' });
+      }
+    }
+    pendingSpawns = [];
+    // гравитация с ледяными «замками»: лёд держит тайл, сегменты падают отдельно
+    for (let c = 0; c < COLS; c++) {
+      let ptr = ROWS - 1;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (iceAt(r, c) > 0) { ptr = r - 1; continue; }    // ледяная клетка — граница сегмента
+        const t = grid[r][c];
+        if (t) {
+          if (r !== ptr) { grid[ptr][c] = t; grid[r][c] = null; }
+          t.row = ptr; setTarget(t); ptr--;
+        }
+      }
+      let born = 0;
+      for (let r = 0; r < ROWS; r++) {
+        if (!grid[r][c] && iceAt(r, c) === 0) {
+          const tp = (Math.random() * N) | 0;
+          grid[r][c] = makeTile(tp, r, c, cellX(c), originY - (++born) * cell);
+        }
+      }
+    }
+    phase = 'fall';
+  }
+
+  // Раунд/уровень пройден → следующий набор, новая цель, сброс, сохранение прогресса.
+  function advanceRound() {
+    if (PROG) {
+      level++;
+      engine.saveState({ level: level });
+      engine.setScore(level);
+      if (level >= LVL_COUNT) { engine.gameOver({ label: (cfg.theme && cfg.theme.labels && cfg.theme.labels.win) || 'ПРОЙДЕНО!' }); return; }
+      applyLevel(level);
+    } else { rounds++; engine.setScore(rounds); }
+    pickRound();
+    collected = 0; multiplier = 1; selCell = null; downCell = null;
+    movesLeft = curMoves;
+    buildBoard(); initIce(); phase = 'idle';
+    if (!(PROG && PROG.time)) engine.resetTimer();   // при таймере applyLevel уже задал длительность
+    engine.beep(523, 0.10, 'square', 0.18);
+    engine.beep(784, 0.12, 'triangle', 0.16);
+  }
+
+  function moveTiles(dt) {
+    let moving = false;
+    const k = Math.min(1, dt * 16);
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      const tl = grid[r][c]; if (!tl) continue;
+      if (Math.abs(tl.tx - tl.px) > 0.5 || Math.abs(tl.ty - tl.py) > 0.5) { tl.px += (tl.tx - tl.px) * k; tl.py += (tl.ty - tl.py) * k; moving = true; }
+      else { tl.px = tl.tx; tl.py = tl.ty; }
+    }
+    return moving;
+  }
+
+  function cellAt(x, y) {
+    const c = Math.floor((x - originX) / cell), r = Math.floor((y - originY) / cell);
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
+    return { r: r, c: c };
+  }
+
+  // ── рисование подложки поля ──
+  function drawCover(ctx, img, x, y, w, h) {
+    const ir = img.naturalWidth / img.naturalHeight, rr = w / h;
+    let sw, sh, sx, sy;
+    if (ir > rr) { sh = img.naturalHeight; sw = sh * rr; sx = (img.naturalWidth - sw) / 2; sy = 0; }
+    else { sw = img.naturalWidth; sh = sw / rr; sx = 0; sy = (img.naturalHeight - sh) / 2; }
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  }
+
+  // ── кастомный HUD режима цели (иконка задания + прогресс + таймер + уровень) ──
+  // HUD режима цели: задание (КРУПНАЯ иконка цели + прогресс) и полоса времени —
+  // прямо над верхней кромкой доски (а не в верхней полосе экрана).
+  function sceneHud(ctx) {
+    const font = (cfg.theme && cfg.theme.font) || 'sans-serif';
+    const hudText = (cfg.theme && cfg.theme.hudText) || '#fff';
+    const ac = engine.accent();
+    const pad = Math.round(cell * 0.18);
+    const boardTop = originY - pad;
+    const boardW = cell * COLS;
+    const gap = Math.max(6, Math.round(cell * 0.14));
+    const radius = Math.round(cell * 0.25);
+
+    // ── полоса под карточкой: время ИЛИ лимит ходов ──
+    const barH = Math.max(14, Math.round(cell * 0.34));
+    const barX = originX, barW = boardW;
+    const barY = boardTop - gap - barH;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; engine.rr(barX, barY, barW, barH, barH / 2); ctx.fill();
+    if (curMoves) {
+      const frac = movesLeft / curMoves;
+      ctx.fillStyle = frac < 0.25 ? '#e0533d' : ac;
+      engine.rr(barX, barY, Math.max(barH, barW * frac), barH, barH / 2); ctx.fill();
+    } else {
+      const frac = Math.max(0, engine.timeLeft / engine.duration);
+      ctx.fillStyle = frac < 0.25 ? '#e0533d' : ac;
+      engine.rr(barX, barY, Math.max(barH, barW * frac), barH, barH / 2); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5; engine.rr(barX, barY, barW, barH, barH / 2); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold ' + Math.round(barH * 0.66) + 'px ' + font;
+    ctx.fillText(curMoves ? ('Ходы: ' + movesLeft) : (Math.ceil(engine.timeLeft) + ' с'), barX + barW / 2, barY + barH / 2 + 1);
+
+    // ── карточка задания над полосой: КРУПНАЯ иконка цели + N/GOAL ──
+    const isz = Math.round(cell * 1.35);                       // крупная иконка
+    const countFont = Math.round(cell * 0.72);
+    ctx.font = 'bold ' + countFont + 'px ' + font;
+    const countTxt = Math.min(collected, curGoal) + '/' + curGoal;
+    const txtW = ctx.measureText(countTxt).width;
+    const innerGap = Math.round(cell * 0.22);
+    const cardPadX = Math.round(cell * 0.3), cardPadY = Math.round(cell * 0.16);
+    const cardW = isz + innerGap + txtW + cardPadX * 2;
+    const cardH = isz + cardPadY * 2;
+    const cardX = originX + (boardW - cardW) / 2;
+    const cardY = barY - gap - cardH;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; engine.rr(cardX, cardY, cardW, cardH, radius); ctx.fill();
+    ctx.strokeStyle = ac; ctx.lineWidth = 2; engine.rr(cardX, cardY, cardW, cardH, radius); ctx.stroke();
+    const icon = engine.img(targetName);
+    if (icon && icon.complete) ctx.drawImage(icon, cardX + cardPadX, cardY + cardPadY, isz, isz);
+    ctx.fillStyle = hudText; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold ' + countFont + 'px ' + font;
+    ctx.fillText(countTxt, cardX + cardPadX + isz + innerGap, cardY + cardH / 2 + 1);
+
+    // ── уровень: мелко, по центру над карточкой (не залезая за край экрана) ──
+    const lvlY = cardY - Math.round(cell * 0.18);
+    if (lvlY > Math.round(cell * 0.5)) {
+      ctx.save();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.font = 'bold ' + Math.round(cell * 0.38) + 'px ' + font;
+      ctx.shadowColor = 'rgba(0,0,0,0.85)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
+      ctx.fillStyle = '#fff';
+      ctx.fillText(PROG ? ('Уровень ' + (level + 1) + '/' + LVL_COUNT) : ('Уровень ' + (rounds + 1)), originX + boardW / 2, lvlY);
+      ctx.restore();
+    }
+  }
+
+  // ── публичный контракт сцены ──
+  return {
+    init: function () { /* геометрию даёт layout, поле строит reset */ },
+    reset: function () {
+      rounds = 0; collected = 0; multiplier = 1; selCell = null; downCell = null;
+      if (PROG) { const sv = engine.loadState && engine.loadState(); level = (sv && sv.level | 0) || 0; if (level >= LVL_COUNT || level < 0) level = 0; engine.setScore(level); }
+      applyLevel(level);
+      movesLeft = curMoves; pendingSpawns = []; pendingMerge = null;
+      if (goalMode) pickRound();
+      buildBoard(); initIce(); phase = 'idle';
+    },
+    layout: layout,
+    update: function (dt) {
+      sTime += dt;
+      const moving = moveTiles(dt);
+      if (phase === 'swap' && !moving) {
+        if (pendingMerge) {   // радуга/слияние бустеров — активация без матча
+          const cells = expandRemoval(mergeRemoval(pendingMerge));
+          pendingMerge = null; spendMove();
+          enterClear(cells, []);
+        } else {
+          const res = findRuns();
+          if (res.flat.length) { spendMove(); enterClear(expandRemoval(res.flat), res.spawns); }
+          else swapBack();
+        }
+      } else if (phase === 'swapback' && !moving) {
+        phase = 'idle'; selCell = null;
+      } else if (phase === 'clear') {
+        clearTimer += dt; clearProg = Math.min(1, clearTimer / CLEAR_DUR);
+        if (clearTimer >= CLEAR_DUR) doRemoveAndFall();
+      } else if (phase === 'fall' && !moving) {
+        const res = findRuns();
+        if (res.flat.length) { multiplier++; enterClear(expandRemoval(res.flat), res.spawns); }
+        else {
+          multiplier = 1; phase = 'idle';
+          if (goalMode && collected >= curGoal) advanceRound();
+          else if (curMoves && movesLeft <= 0) engine.gameOver();     // ходы кончились
+          else if (!hasMove()) reshuffle();
+        }
+      }
+    },
+    render: function (ctx) {
+      const ac = engine.accent();
+      const pad = Math.round(cell * 0.18);
+      const bx = originX - pad, by = originY - pad, bw = cell * COLS + pad * 2, bh = cell * ROWS + pad * 2;
+      const board = BOARD_IMG && engine.img(BOARD_IMG);
+      if (board && board.complete && board.naturalWidth) {
+        drawCover(ctx, board, bx, by, bw, bh);
+      } else {
+        ctx.fillStyle = '#3a2f20'; engine.rr(bx, by, bw, bh, pad); ctx.fill();
+        ctx.strokeStyle = ac; ctx.lineWidth = 2; engine.rr(bx, by, bw, bh, pad); ctx.stroke();
+        for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+          const x = cellX(c), y = cellY(r);
+          ctx.fillStyle = ((r + c) & 1) ? 'rgba(255,240,200,0.06)' : 'rgba(0,0,0,0.18)';
+          ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+        }
+      }
+      if (selCell) {
+        const x = cellX(selCell.c), y = cellY(selCell.r);
+        ctx.strokeStyle = ac; ctx.lineWidth = 3;
+        engine.rr(x + 2, y + 2, cell - 4, cell - 4, 6); ctx.stroke();
+      }
+      const inset = cell * 0.1;
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        const t = grid[r][c]; if (!t) continue;
+        let s = t.clearing ? 1 - clearProg : 1;
+        if (s <= 0.02) continue;
+        const size = (cell - inset * 2) * s;
+        const ccx = t.px + cell / 2, ccy = t.py + cell / 2;
+        ctx.globalAlpha = t.clearing ? Math.max(0, 1 - clearProg) : 1;
+        if (t.special === 'rainbow') {
+          // радужный диск (вращается)
+          for (let i = 0; i < 6; i++) {
+            ctx.fillStyle = 'hsl(' + (i * 60 + sTime * 90) + ',85%,60%)';
+            ctx.beginPath(); ctx.moveTo(ccx, ccy);
+            ctx.arc(ccx, ccy, size * 0.48, i * Math.PI / 3 + sTime * 1.5, (i + 1) * Math.PI / 3 + sTime * 1.5);
+            ctx.closePath(); ctx.fill();
+          }
+          ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ccx, ccy, size * 0.16, 0, 7); ctx.fill();
+        } else {
+          const img = engine.img(activeNames[t.type]);
+          if (img && img.complete) ctx.drawImage(img, ccx - size / 2, ccy - size / 2, size, size);
+          if (t.special === 'line') {
+            ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = Math.max(2, cell * 0.09);
+            ctx.beginPath();
+            if (t.axis === 'h') { ctx.moveTo(ccx - size * 0.46, ccy); ctx.lineTo(ccx + size * 0.46, ccy);
+              ctx.moveTo(ccx + size * 0.28, ccy - size * 0.14); ctx.lineTo(ccx + size * 0.46, ccy); ctx.lineTo(ccx + size * 0.28, ccy + size * 0.14);
+              ctx.moveTo(ccx - size * 0.28, ccy - size * 0.14); ctx.lineTo(ccx - size * 0.46, ccy); ctx.lineTo(ccx - size * 0.28, ccy + size * 0.14); }
+            else { ctx.moveTo(ccx, ccy - size * 0.46); ctx.lineTo(ccx, ccy + size * 0.46);
+              ctx.moveTo(ccx - size * 0.14, ccy + size * 0.28); ctx.lineTo(ccx, ccy + size * 0.46); ctx.lineTo(ccx + size * 0.14, ccy + size * 0.28);
+              ctx.moveTo(ccx - size * 0.14, ccy - size * 0.28); ctx.lineTo(ccx, ccy - size * 0.46); ctx.lineTo(ccx + size * 0.14, ccy - size * 0.28); }
+            ctx.stroke();
+          } else if (t.special === 'bomb') {
+            ctx.strokeStyle = 'rgba(20,20,20,0.85)'; ctx.lineWidth = Math.max(2, cell * 0.1);
+            ctx.beginPath(); ctx.arc(ccx, ccy, size * 0.42 + Math.sin(sTime * 8) * 1.5, 0, 7); ctx.stroke();
+            ctx.fillStyle = '#ffce54'; ctx.beginPath(); ctx.arc(ccx + size * 0.3, ccy - size * 0.34, size * 0.1, 0, 7); ctx.fill();
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+      // лёд поверх тайлов
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        const n = iceAt(r, c); if (!n) continue;
+        const x = cellX(c), y = cellY(r);
+        ctx.fillStyle = n >= 2 ? 'rgba(185,225,255,0.62)' : 'rgba(200,232,255,0.42)';
+        engine.rr(x + 1, y + 1, cell - 2, cell - 2, 5); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1.4;
+        engine.rr(x + 1, y + 1, cell - 2, cell - 2, 5); ctx.stroke();
+        if (n === 1) {   // трещины на последнем слое
+          ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x + cell * 0.25, y + cell * 0.2); ctx.lineTo(x + cell * 0.5, y + cell * 0.55); ctx.lineTo(x + cell * 0.35, y + cell * 0.8);
+          ctx.moveTo(x + cell * 0.5, y + cell * 0.55); ctx.lineTo(x + cell * 0.75, y + cell * 0.65);
+          ctx.stroke();
+        }
+      }
+    },
+    hud: goalMode ? sceneHud : undefined,
+    // отладка/тесты: снимок внутреннего состояния (без рендера)
+    _state: function () {
+      return { collected: collected, rounds: rounds, level: level, curGoal: curGoal, curTypes: curTypes, phase: phase, targetIdx: targetIdx, targetName: targetName,
+               N: N, activeNames: activeNames.slice(), cell: cell, originX: originX, originY: originY,
+               movesLeft: movesLeft, curMoves: curMoves,
+               iceCells: ice.reduce(function (n, row) { return n + row.filter(Boolean).length; }, 0),
+               specials: (function () { const out = []; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const t = grid[r][c]; if (t && t.special) out.push({ r: r, c: c, s: t.special, axis: t.axis }); } return out; })(),
+               grid: grid.map(function (row) { return row.map(function (t) { return t ? t.type : null; }); }) };
+    },
+    // тест-хуки: принудительный спец-тайл и слой льда
+    _setSpecial: function (r, c, s, axis) { const t = grid[r][c]; if (t) { t.special = s; t.axis = axis || 'h'; } },
+    _setIce: function (r, c, n) { ice[r][c] = n; },
+    pointerDown: function (p) { downCell = cellAt(p.x, p.y); },
+    pointerUp: function (e) {
+      if (phase !== 'idle') { downCell = null; return; }
+      if (downCell && e.dist > cell * 0.4) {
+        let nr = downCell.r, nc = downCell.c;
+        if (Math.abs(e.dx) > Math.abs(e.dy)) nc += e.dx > 0 ? 1 : -1; else nr += e.dy > 0 ? 1 : -1;
+        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) { trySwap({ r: downCell.r, c: downCell.c }, { r: nr, c: nc }); selCell = null; downCell = null; return; }
+      }
+      const up = cellAt(e.x, e.y);
+      if (up) {
+        if (!selCell) selCell = { r: up.r, c: up.c };
+        else if (selCell.r === up.r && selCell.c === up.c) selCell = null;
+        else if (adjacent(selCell, up)) { trySwap(selCell, up); selCell = null; }
+        else selCell = { r: up.r, c: up.c };
+      }
+      downCell = null;
+    },
+  };
+});
+
+Engine.boot(CONFIG);
+</script></body></html>

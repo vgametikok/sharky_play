@@ -10,7 +10,7 @@
 <canvas id="c"></canvas>
 <script>
 'use strict';
-const CONFIG = {"genre":"platformer","meta":{"title":"Ввысь"},"theme":{"accent":"#ffd24a","bgTop":"#8fd4f0","bgBottom":"#e8b7d8","font":"'Segoe UI', system-ui, sans-serif","labels":{"over":"СОРВАЛСЯ","win":"ВЕРШИНА!","again":"Тап — заново","scoreUnit":"монет","level":"Ярус"}},"rules":{"mode":"untimed"},"platformer":{"tileSize":16,"viewTilesX":13,"mode":"levels","physics":{"gravity":1450,"moveSpeed":128,"jumpVel":430,"dashSpeed":300,"dashTime":0.16},"player":{"w":0.7,"h":0.92,"hp":3,"lives":3,"color":"#ff7a4d","abilities":{"doubleJump":true},"checkpointHeal":true},"enemies":{"moth":{"w":0.8,"h":0.7,"hp":1,"dmg":1,"speed":42,"ai":"fly","fly":true,"range":5,"score":40,"color":"#b06fd1","stompable":true}},"legend":{"#":{"tile":true,"solid":true,"color":"#c9a06a"},"=":{"tile":true,"solid":true,"color":"#d9b382"},"-":{"tile":true,"oneWay":true,"color":"#e8c79a"},"Z":{"tile":true,"solid":true,"phase":[1.7,1],"phaseStagger":0.3,"color":"#c7b0e0"},"v":{"tile":true,"solid":true,"spring":660,"color":"#6fd0a0"},"^":{"tile":true,"hazard":1,"color":"#d85a5a"},"P":{"player":true},"E":{"exit":true,"color":"#7ce0a0"},"S":{"checkpoint":true},"C":{"pickup":"coin","value":10,"color":"#ffd24a"},"M":{"platform":true,"dx":3,"dy":0,"speed":42,"wTiles":3,"color":"#d9b382"},"f":{"enemy":"moth"}},"levels":[{"map":["#           #","#           #","#    SEC    #","#   =====   #","#      C    #","#     ---   #","#           #","#           #","#           #","#    M      #","#           #","#           #","#  C        #","# =v=       #","#           #","#           #","#           #","#   ---     #","#           #","#     f     #","#     SC    #","#     ZZZ   #","#           #","#           #","#           #","#       --- #","#           #","#           #","#      C    #","#      M    #","#           #","#           #","#           #","#   ---     #","#           #","# f         #","#  C        #","# ---       #","#           #","#           #","#           #","#   =v=     #","#           #","#           #","#     SC    #","#     ---   #","#           #","#           #","#           #","#        M  #","#           #","#           #","#      C    #","#     ---   #","#           #","#           #","#           #","#   ---     #","#           #","#           #","#  C        #","# ---       #","#           #","#  C  P  C  #","#############","#############"]}]}};
+const CONFIG = {"genre":"platformer","meta":{"title":"Ввысь"},"assets":{"player":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADEAAAAxCAYAAABznEEcAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAIXSURBVGhD3ZgxSgRBEEX3GmamBoKGImKiBnqCRRBNPYCBeALPYKZgIJgYbCBs4CEMjE0UE0EEQVh5Tf+lKXqGWVGmaj982OmdHf/rqp6ecfCfGh2sTG6P1pPzUDwB8X69O/kc7cQFITgA8s1wLR4IoanE9/AsQfCZsTAwtBImPBACkcfHG8n5dH9ipp9PV5ObIDCVcblWCCUAQbTZJQgt1BXi4+012dUamaUKXy9PCWBzddlXFWaFwEDs723Hr0RYCKw1sbS4MHW+VH+yEF1AZCriAqLcH2aFcH2HagNhj6ACehzJl+hfPEpYCLkGgl0BSFeHW1WI0sw+5tz8M39idptgaDk5n+5HhFb4prZi3O3sE+zu/CS5DG37nzG3a+DxYZw2LnZi3aEsgMxacPUuAYB2XpmZBoKwNQjspho1ACoiiFp42S0EAG0Qel2Veweh70sAfH95MV0PNQi+K49DQrivBABYreQeoqkKcwdhA2NXELVbqyC0JtxD8MdrAGEhSoCQEBYgFITWhAUgFAAyQGVoIEqQkBDYDQQiYAnAMeMWgkduAnNsIZiMdLG+VEKUM2rf6BTaQrh5nwBEFShF0BICA4p5x+A3jOXT+1UNQKJVBKIqyL23UVcBaMPPFURbBV2JoDWAMFVATRBhqoBqEG7uSF1lIXrfnX8jCxGqjaRaJVz916+L9MxkHaqtqEST8yl/pMHgB8Drung8WWZvAAAAAElFTkSuQmCC","moth":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC8AAAAvCAYAAABzJ5OsAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAI2SURBVGhD1ZixSgNREEWDBgMJAcHCNP6BvSKWtkGstPcTYmMpKFgIllaWKWwtrPwBP8DaQvwD+5XzeFfGxyamUHLfhWHX3X1wZvbOvI2d/9Zw0G+I/Gc96q31mtvLaYpud6WuBPq99Wa8f14nPJUXPFGNhVT1CE98Pn54JwCcwCM81uHe4d5Vw1vJj/toFrjgz7aum6eDl3Tc3Bh5JQDgLHiqLXhL+6hJ2+BJjLCFL20TE5ic3n37nuA8L/PQPPgy7CqPaMRFErCER3HOtyVgC47UnITgSYiGtpzxUeXUIayrLQFZwrOrUvn8iK+AZCwKXD63h6fqJ6OHBB8btAp47HJx/Jq+W0p4wu57RqLq05u3FFS5DR4bWU4boAAniRI+vglLeFUeOCLCc88WPlrmN3i7xp0HzznATCDdy8s8VMLHSvOJwCZl3az35+/NZPycADXnd7aPvOFj1YEHVlUnAAaehOz8Dtw8eI1NeT4v8xBAWIadtQ1e/gee87zMQwAtAo/nreCjZYAHnCblekwA69g17KLwVBx47uelyxdQER5oADkCGxPgGpGXLl+CB5zAHsATJbySykuXrxJetlACqjbndjM+wmvScB1geZ9rsk1a5KIIHysLKLbRzmoJ3x+uJvhYdST46HtLeDao3cHlD7A2eN5Svu0jKh6rjqqBb5N2VIHb/tegFG8BcJpV8HZ+nyXBC7wauyD5XfBlP1irrHzV8IR+y+ZHfIVtAOVYRn7kD9TpfAGNHlS4ZTPE1AAAAABJRU5ErkJggg=="},"theme":{"accent":"#ffd24a","bgTop":"#8fd4f0","bgBottom":"#e8b7d8","font":"'Segoe UI', system-ui, sans-serif","labels":{"over":"СОРВАЛСЯ","win":"ВЕРШИНА!","again":"Тап — заново","scoreUnit":"монет","level":"Ярус"}},"rules":{"mode":"untimed"},"platformer":{"tileSize":16,"viewTilesX":13,"mode":"levels","physics":{"gravity":1450,"moveSpeed":128,"jumpVel":430,"dashSpeed":300,"dashTime":0.16},"saveCheckpoint":true,"player":{"w":0.7,"h":0.92,"hp":3,"lives":3,"color":"#ff7a4d","abilities":{"doubleJump":true},"checkpointHeal":true,"anims":{"idle":{"imgs":["player"],"fps":1,"w":1.4,"h":1.6}}},"enemies":{"moth":{"w":0.8,"h":0.7,"hp":1,"dmg":1,"speed":42,"ai":"fly","fly":true,"range":5,"score":40,"color":"#b06fd1","stompable":true,"anims":{"idle":{"imgs":["moth"],"fps":1,"w":1.3,"h":1.2}}}},"legend":{"#":{"tile":true,"solid":true,"color":"#c9a06a"},"=":{"tile":true,"solid":true,"color":"#d9b382"},"-":{"tile":true,"oneWay":true,"color":"#e8c79a"},"Z":{"tile":true,"solid":true,"phase":[1.7,1],"phaseStagger":0.3,"color":"#c7b0e0"},"v":{"tile":true,"solid":true,"spring":660,"color":"#6fd0a0"},"^":{"tile":true,"hazard":1,"color":"#d85a5a"},"P":{"player":true},"E":{"exit":true,"color":"#7ce0a0"},"S":{"checkpoint":true},"C":{"pickup":"coin","value":10,"color":"#ffd24a"},"M":{"platform":true,"dx":3,"dy":0,"speed":42,"wTiles":3,"color":"#d9b382"},"f":{"enemy":"moth"}},"levels":[{"map":["#           #","#           #","#    SEC    #","#   =====   #","#      C    #","#     ---   #","#           #","#           #","#           #","#    M      #","#           #","#           #","#  C        #","# =v=       #","#           #","#           #","#           #","#   ---     #","#           #","#     f     #","#     SC    #","#     ZZZ   #","#           #","#           #","#           #","#       --- #","#           #","#           #","#      C    #","#      M    #","#           #","#           #","#           #","#   ---     #","#           #","# f         #","#  C        #","# ---       #","#           #","#           #","#           #","#   =v=     #","#           #","#           #","#     SC    #","#     ---   #","#           #","#           #","#           #","#        M  #","#           #","#           #","#      C    #","#     ---   #","#           #","#           #","#           #","#   ---     #","#           #","#           #","#  C        #","# ---       #","#           #","#  C  P  C  #","#############","#############"]}]}};
 /* ============================================================
    SHARKY GAME ENGINE — universal core (core.js)
    ------------------------------------------------------------
@@ -69,6 +69,7 @@ const CONFIG = {"genre":"platformer","meta":{"title":"Ввысь"},"theme":{"acc
   let running = false, raf = 0, last = 0;
   let score = 0, best = 0, timeLeft = 0, duration = 0, timed = false;
   let assetsReady = false, pendingStart = false, gotShell = false;
+  let savedState = null;            // прогресс, присланный лентой в init (или null)
 
   // ── ассеты ──
   const IMG = {}; let imgTotal = 0, imgLoaded = 0;
@@ -265,6 +266,9 @@ const CONFIG = {"genre":"platformer","meta":{"title":"Ввысь"},"theme":{"acc
     addScore: addScore,
     setScore: setScore,
     gameOver: gameOver,
+    // ── сохранение прогресса (лента хранит в Supabase per user+game) ──
+    saveState: function (obj) { try { savedState = obj; send({ type: 'save', value: obj }); } catch (e) {} },
+    loadState: function () { return savedState; },
     resetTimer: resetTimer,
     addTime: addTime,
     rr: rr,
@@ -290,6 +294,8 @@ const CONFIG = {"genre":"platformer","meta":{"title":"Ввысь"},"theme":{"acc
   Engine._keys = keys;
   // Принудительный шаг цикла ядра (управление+сцена) — тоже для тестов без rAF.
   Engine.stepOnce = function (dt) { if (scene && assetsReady) update(dt || 1 / 60); };
+  // Применить сохранение и пересобрать забег (эмуляция init.save для тестов).
+  Engine._testLoad = function (o) { savedState = o; if (scene && assetsReady) newRun(); };
 
   // ════════════════════════════════════════════ BOOT
   function boot(config) {
@@ -571,6 +577,8 @@ const CONFIG = {"genre":"platformer","meta":{"title":"Ввысь"},"theme":{"acc
       if (d.type === 'init') {
         gotShell = true;
         if (d.accent) { theme.accent = d.accent; document.documentElement.style.setProperty('--ac', d.accent); }
+        // прогресс из ленты: применяем ДО старта (сцена читает engine.loadState() в reset)
+        if (d.save !== undefined && d.save !== null) { savedState = d.save; if (assetsReady && !running) newRun(); }
       } else if (d.type === 'start') { gotShell = true; start(); }
       else if (d.type === 'pause') { gotShell = true; pause(); }
     });
@@ -690,6 +698,7 @@ Engine.register('platformer', function (engine, cfg) {
   // ── волна A: spelunky / nintendo / метроидвания ──
   const SUITS = P.suits || null;                       // костюмы {id:{color,speedMul,jumpMul,abilities}}
   const MAPCFG = P.map || null;                        // мини-карта метроидвании
+  const SAVE_CP = !!P.saveCheckpoint;                  // сохранять последний костёр между сессиями
   let worldFlags = {};                                 // флаги мира (бэктрекинг тайлов по ifFlag)
   let stars = 0;                                       // скрытые звёзды за особые прохождения
   let visited = {};                                    // посещённые экраны 'sx,sy'
@@ -1814,6 +1823,8 @@ Engine.register('platformer', function (engine, cfg) {
       combo = 0; comboT = 0; toasts = []; choosing = null; bonusT = 0;
       worldFlags = {}; stars = 0; visited = {}; mapMarkers = {}; mapOpen = false; slowHeld = false;
       loadLevel();
+      // возобновление с сохранённого костра (соулслайк/climber)
+      if (SAVE_CP) { const sv = engine.loadState && engine.loadState(); if (sv && sv.cp) { respawnPt = { x: sv.cp[0], y: sv.cp[1] }; playerToRespawn(); ents.forEach(function (e) { if (e.kind === 'checkpoint' && Math.abs(e.x - sv.cp[0]) < TS && Math.abs(e.y - sv.cp[1]) < TS) e.lit = true; }); } }
       cam.x = Math.max(0, player.x - viewW / 2); cam.y = 0;
     },
     layout: function (Lx) {
@@ -2003,6 +2014,7 @@ Engine.register('platformer', function (engine, cfg) {
           if (!e.lit) {
             for (let j = 0; j < ents.length; j++) if (ents[j].kind === 'checkpoint') ents[j].lit = false;
             e.lit = true; respawnPt = { x: e.x, y: e.y };
+            if (SAVE_CP) engine.saveState({ cp: [e.x, e.y] });
             if (PLDEF.checkpointHeal) { player.hp = player.maxHp; if (stam()) player.stamina = stam().max; }
             sfx('check'); burstAt(e.x + TS / 2, e.y, { count: 10, color: '#8f8' });
           }
