@@ -1,0 +1,2568 @@
+<!DOCTYPE html><html lang="ru"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Ввысь</title>
+<style>
+  :root { --ac:#e7b44c; }
+  html,body{margin:0;width:100vw;height:100vh;overflow:hidden;touch-action:none;background:#000;}
+  canvas{display:block;width:100%;height:100%;}
+</style></head><body>
+<canvas id="c"></canvas>
+<script>
+'use strict';
+const CONFIG = {"genre":"platformer","meta":{"title":"Ввысь"},"theme":{"accent":"#ffd24a","bgTop":"#8fd4f0","bgBottom":"#e8b7d8","font":"'Segoe UI', system-ui, sans-serif","labels":{"over":"СОРВАЛСЯ","win":"ВЕРШИНА!","again":"Тап — заново","scoreUnit":"монет","level":"Ярус"}},"rules":{"mode":"untimed"},"platformer":{"tileSize":16,"viewTilesX":13,"mode":"levels","physics":{"gravity":1450,"moveSpeed":128,"jumpVel":430,"dashSpeed":300,"dashTime":0.16},"player":{"w":0.7,"h":0.92,"hp":3,"lives":3,"color":"#ff7a4d","abilities":{"doubleJump":true},"checkpointHeal":true},"enemies":{"moth":{"w":0.8,"h":0.7,"hp":1,"dmg":1,"speed":42,"ai":"fly","fly":true,"range":5,"score":40,"color":"#b06fd1","stompable":true}},"legend":{"#":{"tile":true,"solid":true,"color":"#c9a06a"},"=":{"tile":true,"solid":true,"color":"#d9b382"},"-":{"tile":true,"oneWay":true,"color":"#e8c79a"},"Z":{"tile":true,"solid":true,"phase":[1.7,1],"phaseStagger":0.3,"color":"#c7b0e0"},"v":{"tile":true,"solid":true,"spring":660,"color":"#6fd0a0"},"^":{"tile":true,"hazard":1,"color":"#d85a5a"},"P":{"player":true},"E":{"exit":true,"color":"#7ce0a0"},"S":{"checkpoint":true},"C":{"pickup":"coin","value":10,"color":"#ffd24a"},"M":{"platform":true,"dx":3,"dy":0,"speed":42,"wTiles":3,"color":"#d9b382"},"f":{"enemy":"moth"}},"levels":[{"map":["#           #","#           #","#    SEC    #","#   =====   #","#      C    #","#     ---   #","#           #","#           #","#           #","#    M      #","#           #","#           #","#  C        #","# =v=       #","#           #","#           #","#           #","#   ---     #","#           #","#     f     #","#     SC    #","#     ZZZ   #","#           #","#           #","#           #","#       --- #","#           #","#           #","#      C    #","#      M    #","#           #","#           #","#           #","#   ---     #","#           #","# f         #","#  C        #","# ---       #","#           #","#           #","#           #","#   =v=     #","#           #","#           #","#     SC    #","#     ---   #","#           #","#           #","#           #","#        M  #","#           #","#           #","#      C    #","#     ---   #","#           #","#           #","#           #","#   ---     #","#           #","#           #","#  C        #","# ---       #","#           #","#  C  P  C  #","#############","#############"]}]}};
+/* ============================================================
+   SHARKY GAME ENGINE — universal core (core.js)
+   ------------------------------------------------------------
+   Общий слой для всех мини-игр ленты Sharky:
+     • canvas + DPR + resize/layout
+     • игровой цикл (loop/update/render)
+     • ввод: pointer (tap/swipe) + клавиатура
+     • звук (beep), частицы (burst)
+     • загрузка base64-ассетов
+     • тематический HUD (счёт + полоса таймера) и экран Game Over
+     • ПРОТОКОЛ Sharky (postMessage): принимает init/start/pause,
+       шлёт ready/score/gameover; автостарт ВНЕ ленты по таймеру.
+
+   Игра = это ядро + один МОДУЛЬ-СЦЕНА (механика, регистрируется
+   через Engine.register) + объект CONFIG (тема/правила/ассеты).
+   Сборщик (build.js) встраивает все три части в один .html —
+   игры в Sharky крутятся в sandbox-iframe через srcdoc, поэтому
+   внешние <script> и относительные ассеты недопустимы.
+
+   ── КОНТРАКТ СЦЕНЫ ──
+   Engine.register('genre', function(engine, cfg){
+     return {
+       init(){},          // одноразовая настройка (ассеты+геометрия готовы)
+       reset(){},         // (пере)собрать игровое состояние; на каждый запуск
+       layout(L){},       // пересчёт геометрии из {W,H,headerH}
+       update(dt){},      // продвинуть механику (таймер ведёт ЯДРО)
+       render(ctx){},     // нарисовать поле (фон/HUD/оверлей рисует ЯДРО)
+       pointerDown(p){},  // p = {x,y} в пикселях canvas
+       pointerUp(e){},    // e = {x,y,downX,downY,dx,dy,dist,dir}
+       pointerMove(p){},
+       key(k){},          // k = event.key
+     };
+   });
+
+   ── API ЯДРА для сцены (engine.*) ──
+     ctx, W, H, headerH, cfg, theme, rules, score   (только чтение)
+     img(name) -> HTMLImageElement
+     beep(freq,dur,type,vol)
+     burst(x,y,opts)                  // частицы (по умолчанию — как в match3)
+     addScore(n) / setScore(v)        // меняет счёт + шлёт его в ленту
+     gameOver()                       // завершить забег (смерть). Таймер тоже завершает.
+     rr(x,y,w,h,r) / accent()         // помощники рисования
+   ============================================================ */
+(function (global) {
+  'use strict';
+
+  // ── canvas / контекст ──
+  let cv, ctx;
+  let W = 360, H = 580, headerH = 70, dpr = 1;
+
+  // ── конфиг / сцена ──
+  let cfg = null, theme = {}, rules = {}, scene = null;
+
+  // ── состояние забега ──
+  let state = 'loading';            // loading | playing | over
+  let running = false, raf = 0, last = 0;
+  let score = 0, best = 0, timeLeft = 0, duration = 0, timed = false;
+  let assetsReady = false, pendingStart = false, gotShell = false;
+
+  // ── ассеты ──
+  const IMG = {}; let imgTotal = 0, imgLoaded = 0;
+
+  // ── звук ──
+  let audioCtx = null;
+
+  // ── частицы ──
+  const parts = [];
+
+  // ── ввод ──
+  let downX = 0, downY = 0, hasDown = false;
+  const pointers = {};        // pointerId → {x,y} точки нажатия (мультитач)
+  const keys = new Set();     // зажатые клавиши (для платформеров и т.п.)
+  const GAME_KEYS = [' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
+  /* ═══════════ CONTROLS: универсальный слой управления (CONFIG.controls) ═══════════
+     Все схемы транслируются в ВИРТУАЛЬНЫЕ КЛАВИШИ → работают с любой сценой.
+     controls = {
+       scheme: 'joystick' | 'tapmove' | 'tapaction' | 'aim' | null(=только кнопки),
+       joystick: { side:'left', radius:0.09, deadzone:0.3 },
+       tapAction: 'jump',                     — что делает тап (схема tapaction)
+       aim: { fire:'attack' | false },        — держишь палец/мышь = огонь в ту сторону
+       buttons: [ {glyph:'▲', action:'jump'} | {glyph:'✕', key:'x'} … ]  — программируемые
+     }
+     Действие → клавиша: */
+  const ACT2KEY = { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown',
+    jump: ' ', attack: 'x', fire: 'x', dash: 'c', hook: 'v', slow: 'g', swap: 'q', map: 'm', bomb: 'x', undo: 'z' };
+  const CTL = { axis: { x: 0, y: 0 }, aim: { x: 0, y: 0, active: false }, mouse: { x: 0, y: 0 },
+    playerScreen: null, scheme: null };
+  let ctlCfg = null, ctlBtns = [], joy = null, tapTarget = null, ctlHeld = {};
+  function actKey(b) { return b.key || ACT2KEY[b.action] || ' '; }
+  function ctlPress(key) { if (!keys.has(key)) { keys.add(key); if (scene && scene.key) scene.key(key); } }
+  function ctlRelease(key) { keys.delete(key); }
+  function initControls(c) {
+    ctlCfg = c || null;
+    if (!ctlCfg) return;
+    CTL.scheme = ctlCfg.scheme || null;
+    layoutCtlButtons();
+  }
+  function layoutCtlButtons() {
+    ctlBtns = [];
+    if (!ctlCfg || !ctlCfg.buttons) return;
+    const r = Math.min(W, H) * 0.075, m = r * 0.7;
+    for (let i = 0; i < ctlCfg.buttons.length; i++) {
+      const b = ctlCfg.buttons[i];
+      // свои координаты (в долях экрана) или авто-дуга справа снизу
+      const x = b.x != null ? b.x * W : W - m - r - (i % 2) * (r * 2.3);
+      const y = b.y != null ? b.y * H : H - m - r - Math.floor(i / 2) * (r * 2.3);
+      ctlBtns.push({ x: x, y: y, r: b.r ? b.r * Math.min(W, H) : r, glyph: b.glyph || '●', key: actKey(b), id: i });
+    }
+  }
+  function ctlDown(p) {   // true = событие съедено слоем управления
+    if (!ctlCfg) return false;
+    for (let i = 0; i < ctlBtns.length; i++) {
+      const b = ctlBtns[i];
+      if ((p.x - b.x) * (p.x - b.x) + (p.y - b.y) * (p.y - b.y) <= b.r * b.r * 1.45) {
+        ctlHeld[p.id] = b.key; ctlPress(b.key); return true;
+      }
+    }
+    const sch = CTL.scheme;
+    if (sch === 'joystick') {
+      const side = (ctlCfg.joystick && ctlCfg.joystick.side) || 'left';
+      const inZone = side === 'any' || (side === 'left' ? p.x < W * 0.55 : p.x > W * 0.45);
+      if (inZone && !joy) { joy = { id: p.id, cx: p.x, cy: p.y }; return true; }
+      return false;
+    }
+    if (sch === 'tapmove') { tapTarget = { x: p.x, y: p.y, id: p.id }; return true; }
+    if (sch === 'tapaction') {
+      const key = ACT2KEY[ctlCfg.tapAction || 'jump'] || ' ';
+      ctlHeld[p.id] = key; ctlPress(key); return true;
+    }
+    if (sch === 'aim') {
+      CTL.aim.x = p.x; CTL.aim.y = p.y; CTL.aim.active = true;
+      const f = ctlCfg.aim && ctlCfg.aim.fire;
+      if (f !== false) { ctlHeld[p.id] = ACT2KEY[f || 'attack'] || 'x'; ctlPress(ctlHeld[p.id]); }
+      return true;
+    }
+    return false;
+  }
+  function ctlMove(p) {
+    CTL.mouse.x = p.x; CTL.mouse.y = p.y;
+    if (!ctlCfg) return;
+    if (joy && p.id === joy.id) {
+      const R = ((ctlCfg.joystick && ctlCfg.joystick.radius) || 0.09) * Math.min(W, H);
+      const dz = (ctlCfg.joystick && ctlCfg.joystick.deadzone) || 0.3;
+      let dx = (p.x - joy.cx) / R, dy = (p.y - joy.cy) / R;
+      const len = Math.hypot(dx, dy);
+      if (len > 1) { dx /= len; dy /= len; }
+      CTL.axis.x = dx; CTL.axis.y = dy;
+      joy.dx = dx; joy.dy = dy;
+      // 8-way → клавиши
+      (dx < -dz ? ctlPress : ctlRelease)('ArrowLeft');
+      (dx > dz ? ctlPress : ctlRelease)('ArrowRight');
+      (dy < -dz ? ctlPress : ctlRelease)('ArrowUp');
+      (dy > dz ? ctlPress : ctlRelease)('ArrowDown');
+    }
+    if (CTL.scheme === 'aim' && CTL.aim.active) { CTL.aim.x = p.x; CTL.aim.y = p.y; }
+    if (CTL.scheme === 'tapmove' && tapTarget && p.id === tapTarget.id) { tapTarget.x = p.x; tapTarget.y = p.y; }
+  }
+  function ctlUp(p) {
+    if (!ctlCfg) return false;
+    let ate = false;
+    if (ctlHeld[p.id]) { ctlRelease(ctlHeld[p.id]); delete ctlHeld[p.id]; ate = true; }
+    if (joy && p.id === joy.id) {
+      joy = null; CTL.axis.x = 0; CTL.axis.y = 0;
+      ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].forEach(ctlRelease);
+      ate = true;
+    }
+    if (CTL.scheme === 'aim') { CTL.aim.active = false; ate = true; }
+    if (CTL.scheme === 'tapmove' && tapTarget && p.id === tapTarget.id) { tapTarget = null; ate = true; }
+    return ate;
+  }
+  // tap-to-move: каждый кадр сравниваем цель с экранной позицией персонажа
+  // (сцена сообщает её через engine.reportPlayerScreen)
+  function ctlUpdate() {
+    if (!ctlCfg || CTL.scheme !== 'tapmove') return;
+    if (!tapTarget || !CTL.playerScreen) {
+      if (!tapTarget) { ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].forEach(ctlRelease); }
+      return;
+    }
+    const px = CTL.playerScreen.x, py = CTL.playerScreen.y;
+    const dx = tapTarget.x - px, dy = tapTarget.y - py;
+    const dead = Math.min(W, H) * 0.04;
+    (dx < -dead ? ctlPress : ctlRelease)('ArrowLeft');
+    (dx > dead ? ctlPress : ctlRelease)('ArrowRight');
+    (dy < -dead * 2.2 ? ctlPress : ctlRelease)('ArrowUp');     // вверх — с большим порогом (прыжок/лестницы)
+    (dy > dead * 2.2 ? ctlPress : ctlRelease)('ArrowDown');
+  }
+  function drawControls() {
+    if (!ctlCfg) return;
+    // кнопки
+    for (let i = 0; i < ctlBtns.length; i++) {
+      const b = ctlBtns[i];
+      ctx.fillStyle = keys.has(b.key) ? 'rgba(255,255,255,0.34)' : 'rgba(255,255,255,0.15)';
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold ' + Math.round(b.r * 0.8) + 'px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(b.glyph, b.x, b.y + 1);
+    }
+    // джойстик
+    if (CTL.scheme === 'joystick') {
+      const R = ((ctlCfg.joystick && ctlCfg.joystick.radius) || 0.09) * Math.min(W, H);
+      if (joy) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(joy.cx, joy.cy, R, 0, 7); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.beginPath(); ctx.arc(joy.cx + (joy.dx || 0) * R, joy.cy + (joy.dy || 0) * R, R * 0.42, 0, 7); ctx.fill();
+      } else {
+        // подсказка-призрак в зоне
+        const side = (ctlCfg.joystick && ctlCfg.joystick.side) || 'left';
+        const gx = side === 'right' ? W * 0.78 : W * 0.22, gy = H * 0.82;
+        ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(gx, gy, R, 0, 7); ctx.stroke();
+        ctx.beginPath(); ctx.arc(gx, gy, R * 0.42, 0, 7); ctx.stroke();
+      }
+    }
+    // маркер tap-to-move
+    if (CTL.scheme === 'tapmove' && tapTarget) {
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 + Math.sin(Date.now() / 130) * 0.3) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(tapTarget.x, tapTarget.y, 12, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(tapTarget.x, tapTarget.y, 3, 0, 7); ctx.fill();
+    }
+    // прицел aim
+    if (CTL.scheme === 'aim' && CTL.aim.active) {
+      ctx.strokeStyle = 'rgba(255,120,120,0.85)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(CTL.aim.x, CTL.aim.y, 11, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(CTL.aim.x - 16, CTL.aim.y); ctx.lineTo(CTL.aim.x + 16, CTL.aim.y);
+      ctx.moveTo(CTL.aim.x, CTL.aim.y - 16); ctx.lineTo(CTL.aim.x, CTL.aim.y + 16); ctx.stroke();
+    }
+  }
+
+  // ── объект, который получает сцена ──
+  const api = {
+    get ctx() { return ctx; },
+    get W() { return W; },
+    get H() { return H; },
+    get headerH() { return headerH; },
+    get cfg() { return cfg; },
+    get theme() { return theme; },
+    get rules() { return rules; },
+    get score() { return score; },
+    get timeLeft() { return timeLeft; },
+    get duration() { return duration; },
+    get state() { return state; },
+    get keys() { return keys; },          // живой Set зажатых клавиш
+    get ctl() { return CTL; },            // слой управления: axis/aim/mouse/scheme
+    reportPlayerScreen: function (x, y) { CTL.playerScreen = { x: x, y: y }; },
+    img: function (name) { return IMG[name]; },
+    beep: beep,
+    burst: burst,
+    addScore: addScore,
+    setScore: setScore,
+    gameOver: gameOver,
+    resetTimer: resetTimer,
+    addTime: addTime,
+    rr: rr,
+    accent: accent,
+  };
+
+  const Engine = {
+    scenes: {},
+    register: function (name, factory) { this.scenes[name] = factory; },
+    boot: boot,
+  };
+  global.Engine = Engine;
+
+  // Диагностика (можно дёрнуть из консоли): текущее состояние движка.
+  Engine.debug = function () {
+    return { state: state, running: running, assetsReady: assetsReady, pendingStart: pendingStart,
+             gotShell: gotShell, imgLoaded: imgLoaded, imgTotal: imgTotal, hasScene: !!scene,
+             W: W, H: H };
+  };
+  // Принудительный одиночный кадр (для тестов в скрытой вкладке, где rAF не тикает).
+  Engine.renderOnce = function () { if (scene && assetsReady) render(); };
+  Engine._ctl = CTL;   // отладка слоя управления
+  Engine._keys = keys;
+  // Принудительный шаг цикла ядра (управление+сцена) — тоже для тестов без rAF.
+  Engine.stepOnce = function (dt) { if (scene && assetsReady) update(dt || 1 / 60); };
+
+  // ════════════════════════════════════════════ BOOT
+  function boot(config) {
+    cfg = config; theme = config.theme || {}; rules = config.rules || {};
+    duration = rules.duration || 60;
+    timed = (rules.mode || 'timed') === 'timed';
+    cv = document.getElementById('c'); ctx = cv.getContext('2d');
+    if (theme.accent) document.documentElement.style.setProperty('--ac', theme.accent);
+    if (theme.bgBottom || theme.bgTop) document.body.style.background = theme.bgBottom || theme.bgTop;
+
+    const factory = Engine.scenes[config.genre];
+    if (!factory) { console.error('Engine: нет сцены для жанра', config.genre); return; }
+    scene = factory(api, config);
+    Engine._scene = scene;   // для отладки/тестов
+    initControls(config.controls);
+
+    window.addEventListener('resize', resize);
+    bindInput();
+    bindProtocol();
+    window.addEventListener('load', function () {
+      loadImages(config.assets || {});
+      // Автостарт ТОЛЬКО вне Sharky. В ленте всегда приходит init -> gotShell=true.
+      setTimeout(function () {
+        if (!gotShell) { if (assetsReady) start(); else pendingStart = true; }
+      }, 400);
+    });
+  }
+
+  // ════════════════════════════════════════════ ГЕОМЕТРИЯ
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = cv.clientWidth || 360; H = cv.clientHeight || 580;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;            // чёткий пиксель-арт
+    headerH = Math.max(48, Math.min(96, H * 0.13));
+    layoutCtlButtons();
+    if (scene && scene.layout) scene.layout({ W: W, H: H, headerH: headerH });
+  }
+
+  // ════════════════════════════════════════════ АССЕТЫ
+  function loadImages(map) {
+    const names = Object.keys(map);
+    imgTotal = names.length; imgLoaded = 0;
+    if (imgTotal === 0) { onReady(); return; }
+    names.forEach(function (n) {
+      const im = new Image();
+      im.onload = im.onerror = function () { imgLoaded++; if (imgLoaded >= imgTotal) onReady(); };
+      const v = map[n];
+      // поддержка готовых data-URL (jpg/webp/png) и «сырого» base64 (по умолч. png)
+      im.src = (typeof v === 'string' && v.lastIndexOf('data:', 0) === 0) ? v : ('data:image/png;base64,' + v);
+      IMG[n] = im;
+    });
+  }
+  function onReady() {
+    resize();
+    try {
+      if (scene.init) scene.init();
+      newRun();
+    } catch (e) { console.error('Engine onReady scene error:', e); }
+    assetsReady = true;
+    try { const v = getComputedStyle(document.documentElement).getPropertyValue('--ac').trim(); if (v) theme.accent = v; } catch (e) {}
+    send({ type: 'ready' });
+    if (pendingStart) start();
+  }
+
+  // ════════════════════════════════════════════ ЖИЗНЕННЫЙ ЦИКЛ
+  function newRun() {
+    score = 0; timeLeft = duration; state = 'playing'; parts.length = 0; overLabel = null;
+    if (scene.reset) scene.reset();
+    send({ type: 'score', value: 0 });
+  }
+  function start() {
+    if (!assetsReady) { pendingStart = true; return; }
+    if (running) return;
+    running = true; last = performance.now();
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+    raf = requestAnimationFrame(loop);
+  }
+  function pause() {
+    running = false; cancelAnimationFrame(raf);
+    if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+  }
+  function restart() {
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+    newRun();
+  }
+  function loop(t) {
+    if (!running) return;
+    const dt = Math.min((t - last) / 1000, 0.05); last = t;
+    try { update(dt); render(); }
+    catch (e) { running = false; console.error('Engine loop error:', e); return; }
+    raf = requestAnimationFrame(loop);
+  }
+  function update(dt) {
+    if (state === 'playing') {
+      ctlUpdate();                                   // tap-to-move → клавиши
+      if (timed) { timeLeft -= dt; if (timeLeft <= 0) { timeLeft = 0; gameOver(); } }
+      if (scene.update) scene.update(dt);
+    }
+    updateParts(dt);
+  }
+  let overLabel = null;   // надпись на экране конца (переопределяет labels.over, напр. «ПОБЕДА»)
+  function gameOver(opts) {
+    if (state === 'over') return;
+    overLabel = (opts && opts.label) || null;
+    state = 'over';
+    send({ type: 'gameover', value: score });
+  }
+  // Сброс таймера раунда (для пораундовых игр). Без аргумента — на полную длительность.
+  function resetTimer(sec) { if (sec) duration = sec; timeLeft = duration; }
+  // Добавить/отнять время (штрафы и бонусы времени)
+  function addTime(sec) { timeLeft = Math.max(0.01, Math.min(duration, timeLeft + sec)); }
+
+  // ════════════════════════════════════════════ СЧЁТ
+  function addScore(n) { setScore(score + n); }
+  function setScore(v) {
+    score = v; if (score > best) best = score;
+    send({ type: 'score', value: score });
+  }
+
+  // ════════════════════════════════════════════ РЕНДЕР
+  function render() {
+    drawBg();
+    if (scene.render) scene.render(ctx);
+    drawParts();
+    if (scene.hud) scene.hud(ctx); else drawHUD();
+    drawControls();                                  // джойстик/кнопки/прицел поверх HUD
+    if (state === 'over') drawOver();
+  }
+  function drawBg() {
+    const bg = theme.bgImage && IMG[theme.bgImage];
+    if (bg && bg.complete && bg.naturalWidth) {
+      // по ширине экрана, верх закреплён наверху, низ обрезается
+      const dh = bg.naturalHeight * (W / bg.naturalWidth);
+      ctx.drawImage(bg, 0, 0, W, dh);
+      if (dh < H) { ctx.fillStyle = theme.bgBottom || '#111'; ctx.fillRect(0, dh, W, H - dh); }
+    } else {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, theme.bgTop || '#222'); g.addColorStop(1, theme.bgBottom || '#111');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+  }
+  function drawHUD() {
+    ctx.textBaseline = 'middle';
+    const cy = headerH / 2;
+    const font = theme.font || "Georgia, serif";
+    let textX = 16;
+    const ico = theme.hudIcon && IMG[theme.hudIcon];
+    if (ico && ico.complete) {
+      const ic = Math.min(34, headerH * 0.5);
+      ctx.drawImage(ico, 12, cy - ic / 2, ic, ic);
+      textX = 16 + ic;
+    }
+    ctx.fillStyle = theme.hudText || '#f4e3b0';
+    ctx.font = 'bold ' + Math.round(headerH * 0.34) + 'px ' + font;
+    ctx.textAlign = 'left'; ctx.fillText(String(score), textX, cy);
+    if (timed) {
+      const bx = W * 0.46, bw = W - bx - 14, by = cy - 7, bh = 14;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; rr(bx, by, bw, bh, 7); ctx.fill();
+      const frac = Math.max(0, timeLeft / duration);
+      ctx.fillStyle = accent(); rr(bx, by, Math.max(2, bw * frac), bh, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(244,227,176,0.6)'; ctx.lineWidth = 1.5; rr(bx, by, bw, bh, 7); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 12px ' + font; ctx.textAlign = 'center';
+      ctx.fillText(Math.ceil(timeLeft) + '', bx + bw / 2, by + bh / 2);
+    }
+  }
+  function drawOver() {
+    const L = theme.labels || {};
+    ctx.fillStyle = 'rgba(10,7,4,0.78)'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const font = theme.font || "Georgia, serif";
+    ctx.fillStyle = accent(); ctx.font = 'bold ' + Math.round(W * 0.085) + 'px ' + font;
+    ctx.fillText(overLabel || L.over || 'GAME OVER', W / 2, H * 0.4);
+    ctx.fillStyle = theme.hudText || '#f4e3b0'; ctx.font = 'bold ' + Math.round(W * 0.13) + 'px ' + font;
+    ctx.fillText(String(score), W / 2, H * 0.52);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = Math.round(W * 0.045) + 'px ' + font;
+    ctx.fillText(L.scoreUnit || 'points', W / 2, H * 0.585);
+    ctx.fillStyle = '#fff'; ctx.font = Math.round(W * 0.05) + 'px ' + font;
+    ctx.fillText(L.again || 'Tap to play again', W / 2, H * 0.7);
+  }
+  function rr(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function accent() { return theme.accent || '#e7b44c'; }
+
+  // ════════════════════════════════════════════ ЧАСТИЦЫ
+  function burst(x, y, o) {
+    o = o || {};
+    if (parts.length > 140) return;
+    const count = o.count || 4, col = o.color || accent(), g = (o.gravity == null ? 300 : o.gravity);
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 120;
+      parts.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40,
+                   life: 0.5 + Math.random() * 0.3, t: 0, s: 2 + Math.random() * 3, g: g, col: col });
+    }
+  }
+  function updateParts(dt) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i]; p.t += dt; if (p.t >= p.life) { parts.splice(i, 1); continue; }
+      p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    }
+  }
+  function drawParts() {
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i], a = Math.max(0, 1 - p.t / p.life);
+      ctx.globalAlpha = a; ctx.fillStyle = p.col;
+      ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ════════════════════════════════════════════ ЗВУК (после первого тапа)
+  function ensureAudio() {
+    if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  }
+  function beep(freq, dur, wtype, vol) {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = wtype || 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(Math.min(vol || 0.15, 0.6), t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur + 0.03);
+  }
+
+  // ════════════════════════════════════════════ ВВОД
+  function localPt(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function bindInput() {
+    cv.addEventListener('pointerdown', function (e) {
+      ensureAudio(); if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+      if (state === 'over') { restart(); return; }
+      const p = localPt(e); p.id = e.pointerId;
+      pointers[e.pointerId] = { x: p.x, y: p.y };
+      downX = p.x; downY = p.y; hasDown = true;   // совместимость со сценами без мультитача
+      if (ctlDown(p)) return;                     // съедено слоем управления
+      if (scene.pointerDown) scene.pointerDown(p);
+    });
+    cv.addEventListener('pointerup', function (e) { endPointer(e, false); });
+    cv.addEventListener('pointercancel', function (e) { endPointer(e, true); });
+    cv.addEventListener('pointermove', function (e) {
+      const p = localPt(e); p.id = e.pointerId;
+      ctlMove(p);
+      if (scene.pointerMove) scene.pointerMove(p);
+    });
+    window.addEventListener('keydown', function (e) {
+      if (GAME_KEYS.indexOf(e.key) !== -1) e.preventDefault();
+      keys.add(e.key);
+      if (scene.key) scene.key(e.key);
+    });
+    window.addEventListener('keyup', function (e) { keys.delete(e.key); });
+    window.addEventListener('blur', function () { keys.clear(); });
+  }
+  function endPointer(e, cancelled) {
+    const start = pointers[e.pointerId]; delete pointers[e.pointerId];
+    if (state === 'over') { hasDown = false; return; }
+    const p = localPt(e);
+    if (ctlUp({ x: p.x, y: p.y, id: e.pointerId })) { hasDown = false; return; }
+    const sx = start ? start.x : downX, sy = start ? start.y : downY;
+    const dx = p.x - sx, dy = p.y - sy, dist = Math.sqrt(dx * dx + dy * dy);
+    const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    if (scene.pointerUp) scene.pointerUp({ x: p.x, y: p.y, id: e.pointerId, downX: sx, downY: sy,
+      dx: dx, dy: dy, dist: dist, dir: dir, had: hasDown, cancelled: !!cancelled });
+    hasDown = false;
+  }
+
+  // ════════════════════════════════════════════ ПРОТОКОЛ SHARKY
+  function send(m) { try { parent.postMessage(m, '*'); } catch (e) {} }
+  function bindProtocol() {
+    window.addEventListener('message', function (e) {
+      const d = e.data || {};
+      if (d.type === 'init') {
+        gotShell = true;
+        if (d.accent) { theme.accent = d.accent; document.documentElement.style.setProperty('--ac', d.accent); }
+      } else if (d.type === 'start') { gotShell = true; start(); }
+      else if (d.type === 'pause') { gotShell = true; pause(); }
+    });
+  }
+
+})(typeof window !== 'undefined' ? window : this);
+
+/* ============================================================
+   СЦЕНА: platformer (platformer.js)
+   ------------------------------------------------------------
+   Универсальный 2D-платформер для Sharky: марио-стиль, метроидвания,
+   соулслайк, спеланки, бесконечный раннер — всё задаётся ДАННЫМИ в
+   CONFIG.platformer, код сцены один на все игры.
+
+   ── ВОЗМОЖНОСТИ ──
+   • Тайлмапы ASCII-строками + легенда (solid / one-way / лестницы /
+     шипы / двери с ключом / декор / вода*)                    [levels]
+   • Три режима уровней:
+       mode:'levels'  — список нарисованных уровней, выход → следующий
+       mode:'runner'  — бесконечный раннер из чанков (автобег, дистанция)
+       mode:'caves'   — генерация уровня из комнат-шаблонов с
+                        гарантированным путём (спеланки-лайт)
+   • Игрок: бег/прыжок (coyote time, jump buffer, переменная высота),
+     двойной прыжок / прыжок от стены / дэш-перекат — открываются
+     способностями (метроидвания), стамина (соулслайк), жизни, i-frames
+   • Оружие: ударное (меч, хитбокс по направлению) и стрельба
+     (снаряды), переключение, данные в WEAPONS
+   • Враги: ai = patrol | chase | fly | shooter | jumper | turret,
+     stomp по-мариовски, дропы, очки
+   • Боссы: фазы по HP, атаки-паттерны (charge/aimed/spread/slam/summon),
+     полоса HP, гейт выхода до смерти босса
+   • NPC с репликами (пузырь диалога)
+   • Пикапы: монеты, сердца, ключи, способности, оружие; чекпоинты
+   • Движущиеся платформы (переносят игрока)
+   • Камера со сглаживанием, тряска, параллакс-слои фона
+   • Тач-кнопки (мультитач: ← → прыжок/атака/дэш/смена оружия) + клавиатура
+   • Анимации спрайтами: {imgs:[кадры]} или {img,fw,fh,frames:[i]} —
+     либо цветные плейсхолдеры, если спрайтов нет (def.color)
+
+   ── СХЕМА CONFIG.platformer (все поля с дефолтами) ──
+   {
+     tileSize:16, viewTilesX:12, mode:'levels',
+     physics:{gravity,moveSpeed,accel,friction,airControl,jumpVel,maxFall,
+              coyote,buffer,wallSlide,wallJumpX,dashSpeed,dashTime,climbSpeed},
+     player:{w,h(в тайлах),hp,lives,weapons:['sword'],abilities:{doubleJump,
+             wallJump,dash},dashIFrames,stamina:{max,regen,attackCost,dashCost},
+             checkpointHeal,color,anims},
+     weapons:{sword:{type:'melee',dmg,range,cooldown,knockback},
+              bow:{type:'ranged',dmg,speed,cooldown,life,color}},
+     enemies:{walker:{w,h,hp,dmg,speed,ai,stompable,fly,range,shotCooldown,
+              projSpeed,score,color,drop,anims,
+              boss:{name,gate,onDeath,phases:[{hpPct,attacks,cooldown}],summon}}},
+     npcs:{sage:{lines:['…'],color}},
+     legend:{ '#':{tile,solid,color|img}, '-':{tile,oneWay}, '^':{tile,hazard:1},
+              'L':{tile,ladder}, 'D':{tile,solid,door}, 'P':{player},
+              'E':{exit}, 'S':{checkpoint}, 'C':{pickup:'coin',value},
+              'H':{pickup:'heart'}, 'K':{pickup:'key'},
+              'A':{pickup:'ability',ability:'doubleJump'},
+              'W':{pickup:'weapon',weapon:'bow'}, 'g':{enemy:'walker'},
+              'N':{npc:'sage'}, 'M':{platform,dx,dy,speed,wTiles} },
+     levels:[{map:[строки]}], runner:{speed,ramp,maxSpeed,chunks:[{map}]},
+     generator:{gridW,gridH,roomW,roomH,rooms:{LR:[],LRD:[],LRU:[],LRUD:[],X:[]}},
+     bgLayers:[{img,factor,y}], respawnEnemies:false, touchControls:true
+   }
+   ============================================================ */
+Engine.register('platformer', function (engine, cfg) {
+  'use strict';
+  const P = cfg.platformer || {};
+  const TS = P.tileSize || 16;
+  const PH = Object.assign({
+    gravity: 1500, moveSpeed: 120, accel: 1600, friction: 2000, airControl: 0.75,
+    jumpVel: 420, maxFall: 560, coyote: 0.09, buffer: 0.12,
+    wallSlide: 90, wallJumpX: 230, dashSpeed: 330, dashTime: 0.16, climbSpeed: 85,
+  }, P.physics || {});
+  const LEGEND = P.legend || {};
+  const ENEMIES = P.enemies || {};
+  const NPCS = P.npcs || {};
+  const WEAPONS = P.weapons || {};
+  const PLDEF = Object.assign({ w: 0.7, h: 0.95, hp: 3, lives: 3, weapons: [], abilities: {},
+    dashIFrames: false, stamina: null, checkpointHeal: true, color: null, anims: null }, P.player || {});
+  const MODE = P.mode || 'levels';
+  const RUN = Object.assign({ speed: 130, ramp: 3, maxSpeed: 280, chunks: [] }, P.runner || {});
+  const GENC = P.generator || null;
+  const LEVELS = P.levels || [];
+  const VIEW_TX = P.viewTilesX || 12;
+  const LB = (cfg.theme && cfg.theme.labels) || {};
+  const TOUCH = P.touchControls !== false && MODE !== 'runner' && !cfg.controls;   // CONFIG.controls замещает встроенные кнопки
+  const FONT = (cfg.theme && cfg.theme.font) || 'sans-serif';
+
+  // ── состояние мира ──
+  let scale = 2, viewW = 0, viewH = 0;                 // масштаб и видимая область (в мировых px)
+  let grid = [], tCols = 0, tRows = 0;                 // тайлы уровня (levels/caves)
+  let rMap = null, rRows = 0, rGenX = 0;               // тайлы раннера (Map 'x,y'→char, бесконечно)
+  let ents = [], player = null;
+  let cam = { x: 0, y: 0 }, shakeT = 0, shakePow = 0;
+  let levelIdx = 0, lives = 0, respawnPt = null;
+  let collected = {}, openedDoors = {};                // собранные пикапы / открытые двери (по ключу тайла)
+  let curLevelRows = null;                             // карта текущего уровня (для респауна врагов)
+  let runnerDist = 0, runnerSpeed = 0;
+  let bubbleNpc = null, bubbleT = 0;
+  let btns = [], ptrBtn = {}, vkeys = {};              // тач-кнопки
+  let prevIn = {};                                     // фронты нажатий
+  let time = 0;
+  // отложенные переходы: нельзя пересобирать ents посреди цикла столкновений
+  let pendingRespawn = false, pendingLevel = false;
+  let bonusT = 0;                                      // таймер спавна летающего бонуса
+  // ── новые системы (все опциональны, включаются данными конфига) ──
+  const WEATHER = P.weather || null;                   // {wind, rain}
+  const DAYNIGHT = P.dayNight || null;                 // {period, nightSpeedMul, nightRangeMul, maxDark}
+  const COMBO = P.combo || null;                       // {step, max, decay}
+  const CRAFT = P.craft || null;                       // {resources, recipes}
+  const ROGUE = P.roguelite || null;                   // {onDeath, onLevel, choices}
+  let combo = 0, comboT = 0;                           // серия убийств без урона
+  let toasts = [];                                     // всплывающие плашки [{text,t}]
+  let choosing = null;                                 // roguelite: [3 варианта] или null (пауза)
+  let chTrack = null;                                  // челленджи уровня {damaged, coins0, t0}
+  // ── волна A: spelunky / nintendo / метроидвания ──
+  const SUITS = P.suits || null;                       // костюмы {id:{color,speedMul,jumpMul,abilities}}
+  const MAPCFG = P.map || null;                        // мини-карта метроидвании
+  let worldFlags = {};                                 // флаги мира (бэктрекинг тайлов по ifFlag)
+  let stars = 0;                                       // скрытые звёзды за особые прохождения
+  let visited = {};                                    // посещённые экраны 'sx,sy'
+  let mapMarkers = {};                                 // ручные пометки на карте
+  let mapOpen = false;
+  let ropeTiles = {};                                  // верёвки Spelunky (runtime-лестницы)
+  let trapList = [];                                   // ловушки-тайлы [{tx,ty,def,cd}]
+  let pendItems = [];                                  // маятники (качающиеся лезвия)
+  let slowHeld = false;                                // слоу-мо
+  let bumpFx = {};                                     // анимация блоков-бамп 'tx,ty'→t
+  function ab(name) {                                  // способность с учётом костюма
+    const s = player.suit && SUITS && SUITS[player.suit];
+    if (s && s.abilities && s.abilities[name] != null) return s.abilities[name];
+    return player.abilities[name];
+  }
+  function suitDef() { return player.suit && SUITS ? SUITS[player.suit] : null; }
+  function setFlag(f) { if (f && !worldFlags[f]) { worldFlags[f] = true; toast('⚑ ' + f); } }
+  function flagOk(d) {
+    if (d.ifFlag && !worldFlags[d.ifFlag]) return false;
+    if (d.ifNotFlag && worldFlags[d.ifNotFlag]) return false;
+    return true;
+  }
+  function toast(text) { toasts.push({ text: text, t: 2.2 }); }
+  function nightK() {                                  // 0=день … 1=глухая ночь (плавно)
+    if (!DAYNIGHT) return 0;
+    const ph = (time % DAYNIGHT.period) / DAYNIGHT.period;   // первая половина — день
+    return Math.max(0, -Math.sin(ph * Math.PI * 2));
+  }
+  function comboMul() { return COMBO ? 1 + Math.min(combo * (COMBO.step || 0.25), COMBO.max || 4) : 1; }
+
+  // ════════════════════════════════ ТАЙЛЫ
+  function L(ch) { return LEGEND[ch]; }
+  function tileAt(tx, ty) {
+    if (MODE === 'runner') { const c = rMap.get(tx + ',' + ty); return c || ' '; }
+    if (ty < 0 || ty >= tRows || tx < 0 || tx >= tCols) return ' ';
+    return grid[ty][tx];
+  }
+  function setTile(tx, ty, ch) {
+    if (MODE === 'runner') { rMap.set(tx + ',' + ty, ch); return; }
+    if (ty >= 0 && ty < tRows && tx >= 0 && tx < tCols) grid[ty][tx] = ch;
+  }
+  function defAt(tx, ty) {
+    const d = L(tileAt(tx, ty));
+    if (!d || !d.tile) return null;
+    if ((d.ifFlag || d.ifNotFlag) && !flagOk(d)) return null;   // условные тайлы (бэктрекинг)
+    return d;
+  }
+  // фазовые платформы: phase:[onSec,offSec] (+phaseShift), исчезают/появляются по таймеру
+  function phaseOn(d, tx, ty) {
+    if (!d.phase) return true;
+    const on = d.phase[0], off = d.phase[1];
+    const shift = (d.phaseShift || 0) + (d.phaseStagger ? ((tx * 7 + ty * 13) % 4) * d.phaseStagger : 0);
+    return ((time + shift) % (on + off)) < on;
+  }
+  function solidAt(tx, ty) {
+    const d = defAt(tx, ty);
+    if (!d || !d.solid) return false;
+    if (d.door && openedDoors[tx + ',' + ty]) return false;
+    if (d.phase && !phaseOn(d, tx, ty)) return false;
+    if ((d.breakable || d.diggable) && openedDoors['b' + tx + ',' + ty]) return false;   // сломан/выкопан
+    return true;
+  }
+  function digTile(tx, ty) {   // копание (Spelunky)
+    const d = defAt(tx, ty);
+    if (d && d.diggable && solidAt(tx, ty)) {
+      openedDoors['b' + tx + ',' + ty] = true;
+      burstAt((tx + 0.5) * TS, (ty + 0.5) * TS, { count: 7, color: d.color });
+      sfx('slam');
+      return true;
+    }
+    return false;
+  }
+  // блок Марио: бамп головой снизу → подпрыг + приз сверху
+  function bumpTile(tx, ty) {
+    const d = defAt(tx, ty);
+    if (!d || !d.bumpable) return;
+    const key = tx + ',' + ty;
+    if (d.once && openedDoors['u' + key]) return;
+    bumpFx[key] = 0.18; sfx('coin');
+    if (d.gives && L(d.gives) && L(d.gives).pickup) spawnPickup(L(d.gives), tx, ty - 1, null);
+    if (d.once) openedDoors['u' + key] = true;
+  }
+  function levelWpx() { return MODE === 'runner' ? Infinity : tCols * TS; }
+  function levelHpx() { return (MODE === 'runner' ? rRows : tRows) * TS; }
+
+  // ════════════════════════════════ СУЩНОСТИ
+  function spawnFromChar(ch, tx, ty, keyPrefix) {
+    const d = L(ch); if (!d) return false;
+    const key = (keyPrefix || '') + tx + ',' + ty;
+    if (d.player) { respawnPt = respawnPt || { x: tx * TS, y: ty * TS }; playerSpawnAt(tx, ty); return true; }
+    if (d.enemy) { if (!collected[key]) spawnEnemy(d.enemy, tx, ty, key); return true; }
+    if (d.npc) { spawnNpc(d.npc, tx, ty); return true; }
+    if (d.pickup) { if (!collected[key]) spawnPickup(d, tx, ty, key); return true; }
+    if (d.exit) { ents.push({ kind: 'exit', x: tx * TS, y: ty * TS, w: TS, h: TS, def: d }); return true; }
+    if (d.checkpoint) { ents.push({ kind: 'checkpoint', x: tx * TS, y: ty * TS, w: TS, h: TS, lit: false, def: d }); return true; }
+    if (d.platform) {
+      ents.push({ kind: 'platform', x: tx * TS, y: ty * TS, w: (d.wTiles || 2) * TS, h: TS * 0.5,
+        x0: tx * TS, y0: ty * TS, dx: (d.dx || 0) * TS, dy: (d.dy || 0) * TS,
+        speed: d.speed || 30, t: 0, def: d, pdx: 0, pdy: 0 });
+      return true;
+    }
+    if (d.throwable) {   // предмет для подбора/броска (Spelunky)
+      const w = (d.wTiles || 0.6) * TS;
+      ents.push({ kind: 'item', def: d, x: tx * TS + (TS - w) / 2, y: (ty + 1) * TS - w,
+        w: w, h: w, vx: 0, vy: 0, held: false, thrown: false, onGround: false, hitWall: 0, gdir: 1 });
+      return true;
+    }
+    if (d.pendulum) {    // качающееся лезвие на цепи
+      pendItems.push({ ax: (tx + 0.5) * TS, ay: (ty + 0.5) * TS, len: (d.len || 4) * TS,
+        speed: d.speed || 1.6, phase: d.phaseShift || 0, dmg: d.dmg || 1, r: (d.r || 0.5) * TS });
+      return true;
+    }
+    if (d.trap) {        // ловушка-стреломёт: тайл остаётся, логика в trapList
+      trapList.push({ tx: tx, ty: ty, def: d, cd: 0 });
+      return false;      // тайл рисуется/солиден как задан
+    }
+    return false;
+  }
+  function spawnEnemy(id, tx, ty, key) {
+    const d = ENEMIES[id]; if (!d) return;
+    const w = (d.w || 0.8) * TS, h = (d.h || 0.8) * TS;
+    const e = { kind: 'enemy', id: id, def: d, key: key,
+      x: tx * TS + (TS - w) / 2, y: (ty + 1) * TS - h, w: w, h: h,
+      vx: 0, vy: 0, hp: d.hp || 1, maxHp: d.hp || 1, facing: -1, onGround: false, hitWall: 0,
+      flash: 0, atkT: (d.shotCooldown || 1.5) * Math.random(), jumpT: 0, t: Math.random() * 6,
+      anim: { name: '', t: 0, i: 0 } };
+    if (d.boss) { e.boss = d.boss; e.bossActive = false; }
+    ents.push(e);
+  }
+  function spawnNpc(id, tx, ty) {
+    const d = NPCS[id]; if (!d) return;
+    const w = (d.w || 0.8) * TS, h = (d.h || 0.95) * TS;
+    ents.push({ kind: 'npc', id: id, def: d, x: tx * TS + (TS - w) / 2, y: (ty + 1) * TS - h,
+      w: w, h: h, line: 0, anim: { name: '', t: 0, i: 0 } });
+  }
+  function spawnPickup(d, tx, ty, key) {
+    ents.push({ kind: 'pickup', def: d, key: key, x: tx * TS + TS * 0.2, y: ty * TS + TS * 0.2,
+      w: TS * 0.6, h: TS * 0.6, t: Math.random() * 6 });
+  }
+  function playerSpawnAt(tx, ty) {
+    const w = PLDEF.w * TS, h = PLDEF.h * TS;
+    player.x = tx * TS + (TS - w) / 2; player.y = (ty + 1) * TS - h;
+    player.vx = 0; player.vy = 0;
+  }
+
+  function makePlayer() {
+    return { x: 0, y: 0, w: PLDEF.w * TS, h: PLDEF.h * TS, vx: 0, vy: 0,
+      facing: 1, onGround: false, hitWall: 0, drop: false,
+      hp: PLDEF.hp, maxHp: PLDEF.hp, coins: 0, keysN: 0,
+      weapons: (PLDEF.weapons || []).slice(), weaponIdx: 0,
+      abilities: Object.assign({}, PLDEF.abilities || {}),
+      stamina: PLDEF.stamina ? PLDEF.stamina.max : 0,
+      coyote: 0, buffer: 0, jumps: 0, climbing: false,
+      inv: 0, attackT: 0, attackCd: 0, swingHit: null, shootT: 0,
+      tempWeapon: null,                    // {id, t} — временное супер-оружие (бонус)
+      dashT: 0, dashCd: 0, anim: { name: '', t: 0, i: 0 },
+      gdir: 1,                             // направление гравитации (гравифлип VVVVVV)
+      pound: false,                        // граунд-паунд в полёте
+      grap: null,                          // крюк-кошка: {tx,ty,hang}
+      res: {},                             // ресурсы для крафта
+      suit: null,                          // текущий костюм-трансформация
+      carry: null,                         // предмет в руках (Spelunky)
+      ropes: PLDEF.ropes || 0,             // запас верёвок
+      mods: { dmg: 1, speed: 1 } };        // roguelite-модификаторы
+  }
+  // текущее оружие: временный бонус приоритетнее выбранного
+  function curWeapon() {
+    if (player.tempWeapon) return WEAPONS[player.tempWeapon.id];
+    return WEAPONS[player.weapons[player.weaponIdx]];
+  }
+  function curWeaponName() {
+    const id = player.tempWeapon ? player.tempWeapon.id : player.weapons[player.weaponIdx];
+    const w = WEAPONS[id];
+    return (w && w.name) || id;
+  }
+
+  // ════════════════════════════════ ПОСТРОЕНИЕ УРОВНЕЙ
+  function buildDesigned(rows) {
+    curLevelRows = rows;
+    trapList = []; pendItems = []; ropeTiles = {}; bumpFx = {};
+    tRows = rows.length; tCols = 0;
+    for (let r = 0; r < tRows; r++) tCols = Math.max(tCols, rows[r].length);
+    grid = []; ents = []; respawnPt = null;
+    for (let ty = 0; ty < tRows; ty++) {
+      grid[ty] = [];
+      for (let tx = 0; tx < tCols; tx++) {
+        const ch = rows[ty][tx] || ' ';
+        if (spawnFromChar(ch, tx, ty, levelIdx + ':')) grid[ty][tx] = ' ';
+        else grid[ty][tx] = L(ch) && L(ch).tile ? ch : ' ';
+      }
+    }
+    if (!respawnPt) { respawnPt = { x: TS, y: TS }; player.x = TS; player.y = TS; }
+  }
+  // респаун врагов после смерти (соулслайк): пересобрать сущности, сохранив пикапы/двери
+  function rebuildEnts() { buildDesigned(curLevelRows); playerToRespawn(); }
+  function playerToRespawn() {
+    player.x = respawnPt.x + (TS - player.w) / 2; player.y = respawnPt.y + TS - player.h;
+    player.vx = 0; player.vy = 0; player.inv = 1.2; player.climbing = false;
+  }
+
+  // ── раннер: бесконечная лента из чанков ──
+  function runnerReset() {
+    rMap = new Map(); ents = []; rGenX = 0; runnerDist = 0; runnerSpeed = RUN.speed;
+    rRows = (RUN.chunks[0] && RUN.chunks[0].map.length) || 12;
+    appendChunks(Math.ceil((viewW * 3) / TS));
+    respawnPt = { x: TS * 2, y: 0 };
+    player.x = TS * 2; player.y = (rRows - 4) * TS; player.vx = 0; player.vy = 0;
+  }
+  function appendChunks(untilTx) {
+    let guard = 0;
+    while (rGenX < untilTx && guard++ < 60) {
+      // первый чанк — всегда chunks[0]; далее — взвешенный выбор по дистанции
+      // (chunk.minM/maxM в метрах: лёгкие в начале, сложные позже; weight — частота)
+      let ch;
+      if (rGenX === 0) ch = RUN.chunks[0];
+      else {
+        const m = Math.floor(rGenX);   // текущая дистанция в тайлах≈метрах
+        const cands = [];
+        for (let ci = 0; ci < RUN.chunks.length; ci++) {
+          const c2 = RUN.chunks[ci];
+          if (c2.minM != null && m < c2.minM) continue;
+          if (c2.maxM != null && m > c2.maxM) continue;
+          for (let wi = 0; wi < (c2.weight || 1); wi++) cands.push(c2);
+        }
+        ch = cands.length ? cands[(Math.random() * cands.length) | 0] : RUN.chunks[(Math.random() * RUN.chunks.length) | 0];
+      }
+      const rows = ch.map, w = rows[0].length;
+      for (let ty = 0; ty < rows.length; ty++) for (let tx = 0; tx < w; tx++) {
+        const c = rows[ty][tx] || ' ';
+        if (c === ' ') continue;
+        if (spawnFromChar(c, rGenX + tx, ty, 'r')) continue;
+        if (L(c) && L(c).tile) rMap.set((rGenX + tx) + ',' + ty, c);
+      }
+      rGenX += w;
+    }
+  }
+  function runnerCleanup() {
+    const minTx = Math.floor((cam.x - viewW) / TS);
+    for (const k of rMap.keys()) { if (parseInt(k, 10) < minTx) rMap.delete(k); }
+    ents = ents.filter(e => e.x > cam.x - viewW * 1.5);
+  }
+
+  // ── caves: спеланки-лайт генерация из комнат ──
+  function cavesReset() {
+    const G = GENC, gw = G.gridW || 3, gh = G.gridH || 3, rw = G.roomW, rh = G.roomH;
+    // 1) путь сверху вниз
+    const type = []; for (let r = 0; r < gh; r++) { type[r] = []; for (let c = 0; c < gw; c++) type[r][c] = 'X'; }
+    let col = (Math.random() * gw) | 0, row = 0;
+    const startCol = col;
+    type[0][col] = 'LR';
+    while (row < gh) {
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      let steps = 1 + ((Math.random() * gw) | 0);
+      while (steps-- > 0) {
+        const nc = col + dir;
+        if (nc < 0 || nc >= gw || Math.random() < 0.3) break;
+        col = nc; if (type[row][col] === 'X') type[row][col] = 'LR';
+      }
+      if (row === gh - 1) break;
+      type[row][col] = (type[row][col] === 'LRU') ? 'LRUD' : 'LRD';
+      row++;
+      type[row][col] = 'LRU';
+    }
+    const endCol = col;
+    // 2) собрать карту из шаблонов (+рамка из сплошного тайла)
+    const solidCh = G.borderChar || '#';
+    const rows = [];
+    for (let r = 0; r < gh; r++) {
+      for (let y = 0; y < rh; y++) {
+        let line = solidCh;
+        for (let c = 0; c < gw; c++) {
+          const pool = G.rooms[type[r][c]] && G.rooms[type[r][c]].length ? G.rooms[type[r][c]] : G.rooms.X;
+          const tpl = pool[cavesPick(r, c, pool.length)];   // детерминированный выбор в рамках прогона
+          line += (tpl[y] || '').padEnd(rw, ' ').slice(0, rw);
+        }
+        rows.push(line + solidCh);
+      }
+    }
+    rows.unshift(solidCh.repeat(gw * rw + 2));
+    rows.push(solidCh.repeat(gw * rw + 2));
+    // 3) игрок в стартовой комнате, выход в конечной
+    injectChar(rows, startCol, 0, rw, rh, 'P');
+    injectChar(rows, endCol, gh - 1, rw, rh, G.exitChar || 'E');
+    levelIdx = 0;
+    buildDesigned(rows);
+  }
+  let _cavesSeed = 0;
+  function cavesPick(r, c, n) { return Math.abs((r * 73856093) ^ (c * 19349663) ^ _cavesSeed) % n; }
+  // найти свободную клетку с опорой в комнате (rc,rr) и вписать символ
+  function injectChar(rows, rc, rr, rw, rh, ch) {
+    const x0 = 1 + rc * rw, y0 = 1 + rr * rh;
+    for (let y = y0 + rh - 2; y >= y0; y--) for (let x = x0 + 1; x < x0 + rw - 1; x++) {
+      const below = rows[y + 1] && rows[y + 1][x];
+      const here = rows[y][x];
+      if (here === ' ' && below && L(below) && L(below).solid) {
+        rows[y] = rows[y].slice(0, x) + ch + rows[y].slice(x + 1);
+        return;
+      }
+    }
+    // фолбэк: центр комнаты
+    const cx = x0 + (rw >> 1), cy = y0 + (rh >> 1);
+    rows[cy] = rows[cy].slice(0, cx) + ch + rows[cy].slice(cx + 1);
+  }
+
+  function loadLevel() {
+    collected = {}; openedDoors = {};
+    if (MODE === 'runner') { runnerReset(); }
+    else if (MODE === 'caves') { _cavesSeed = (Math.random() * 1e9) | 0; cavesReset(); }
+    else buildDesigned(LEVELS[levelIdx].map);
+    // челленджи уровня: без урона / все монеты / скорость
+    chTrack = { damaged: false, coins0: ents.filter(e => e.kind === 'pickup' && e.def.pickup === 'coin').length, t0: time };
+  }
+  function levelChallenges() {
+    const lvl = LEVELS[levelIdx];
+    return (lvl && lvl.challenges) || P.challenges || null;
+  }
+  function awardChallenges() {
+    const list = levelChallenges();
+    if (!list || !chTrack) return;
+    const coinsLeft = ents.filter(e => e.kind === 'pickup' && e.def.pickup === 'coin' && !e.dead).length;
+    for (let i = 0; i < list.length; i++) {
+      const ch = list[i];
+      let ok = false;
+      if (ch.type === 'noDamage') ok = !chTrack.damaged;
+      else if (ch.type === 'allCoins') ok = chTrack.coins0 > 0 && coinsLeft === 0;
+      else if (ch.type === 'fast') ok = (time - chTrack.t0) <= (ch.time || 60);
+      if (ok) {
+        addScore(ch.score || 100);
+        if (ch.star) { stars++; toast('⭐ ' + (ch.label || ch.type)); }   // скрытая звезда Марио
+        else toast('✔ ' + (ch.label || ch.type) + ' +' + (ch.score || 100));
+        sfx('power');
+      }
+    }
+  }
+  // ── roguelite: выбор из 3 случайных апгрейдов (пауза геймплея) ──
+  function pickUpgrades() {
+    const pool = (ROGUE.choices || []).slice();
+    const out = [];
+    while (out.length < 3 && pool.length) out.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
+    return out.length ? out : null;
+  }
+  function applyUpgrade(u) {
+    const p = player;
+    if (u.hp) p.hp = Math.min(p.maxHp, p.hp + u.hp);
+    if (u.maxHp) { p.maxHp += u.maxHp; p.hp += u.maxHp; }
+    if (u.dmgMul) p.mods.dmg *= u.dmgMul;
+    if (u.speedMul) p.mods.speed *= u.speedMul;
+    if (u.life) lives += u.life;
+    if (u.ability) p.abilities[u.ability] = true;
+    toast(u.label || 'Апгрейд!'); sfx('power');
+  }
+
+  // ════════════════════════════════ ФИЗИКА
+  function moveBody(e, dt, opts) {
+    opts = opts || {};
+    e.onGround = false; e.hitWall = 0;
+    const maxV = Math.max(Math.abs(e.vx), Math.abs(e.vy));
+    const steps = Math.max(1, Math.ceil((maxV * dt) / (TS * 0.6)));
+    const sdt = dt / steps;
+    for (let i = 0; i < steps; i++) moveStep(e, sdt, opts);
+  }
+  function moveStep(e, dt, opts) {
+    // X
+    if (e.vx !== 0) {
+      let nx = e.x + e.vx * dt;
+      const dir = e.vx > 0 ? 1 : -1;
+      const edge = dir > 0 ? nx + e.w : nx;
+      const tx = Math.floor(edge / TS);
+      const ty0 = Math.floor(e.y / TS), ty1 = Math.floor((e.y + e.h - 0.5) / TS);
+      let hit = false;
+      for (let ty = ty0; ty <= ty1; ty++) if (solidAt(tx, ty)) { hit = true; break; }
+      if (hit) { nx = dir > 0 ? tx * TS - e.w - 0.01 : (tx + 1) * TS + 0.01; e.vx = 0; e.hitWall = dir; }
+      e.x = nx;
+    }
+    // Y (gdir=1 — обычная гравитация; -1 — перевёрнутая, «пол» на потолке)
+    const gd = e.gdir || 1;
+    const prevBottom = e.y + e.h;
+    if (e.vy !== 0) {
+      let ny = e.y + e.vy * dt;
+      const tx0 = Math.floor(e.x / TS), tx1 = Math.floor((e.x + e.w - 0.5) / TS);
+      const falling = e.vy * gd > 0;
+      if (falling) {
+        const ty = gd > 0 ? Math.floor((ny + e.h) / TS) : Math.floor(ny / TS);
+        let land = false;
+        for (let tx = tx0; tx <= tx1; tx++) {
+          if (solidAt(tx, ty)) { land = true; break; }
+          const d = defAt(tx, ty);
+          if (gd > 0 && d && d.oneWay && !opts.noOneWay && !e.drop && prevBottom <= ty * TS + 2) { land = true; break; }
+        }
+        if (land) {
+          ny = gd > 0 ? ty * TS - e.h - 0.01 : (ty + 1) * TS + 0.01;
+          e.vy = 0; e.onGround = true;
+        }
+      } else {
+        const ty = gd > 0 ? Math.floor(ny / TS) : Math.floor((ny + e.h) / TS);
+        let bump = false;
+        for (let tx = tx0; tx <= tx1; tx++) if (solidAt(tx, ty)) {
+          bump = true;
+          if (opts.bumper) bumpTile(tx, ty);   // блоки Марио — только игрок
+          break;
+        }
+        if (bump) { ny = gd > 0 ? (ty + 1) * TS + 0.01 : ty * TS - e.h - 0.01; e.vy = 0; }
+      }
+      e.y = ny;
+    }
+  }
+  function overlap(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+  function onLadder(e) {
+    const tx = Math.floor((e.x + e.w / 2) / TS);
+    const ty0 = Math.floor(e.y / TS), ty1 = Math.floor((e.y + e.h) / TS);
+    for (let ty = ty0; ty <= ty1; ty++) {
+      const d = defAt(tx, ty);
+      if ((d && d.ladder) || ropeTiles[tx + ',' + ty]) return true;
+    }
+    return false;
+  }
+
+  // ════════════════════════════════ ВВОД
+  function inp() {
+    const k = engine.keys;
+    return {
+      left:  k.has('ArrowLeft') || k.has('a') || k.has('A') || vkeys.left,
+      right: k.has('ArrowRight') || k.has('d') || k.has('D') || vkeys.right,
+      up:    k.has('ArrowUp') || k.has('w') || k.has('W') || vkeys.up,
+      down:  k.has('ArrowDown') || k.has('s') || k.has('S') || vkeys.down,
+      jump:  k.has(' ') || k.has('z') || k.has('Z') || k.has('k') || k.has('K') || k.has('ArrowUp') || k.has('w') || k.has('W') || vkeys.jump,
+      atk:   k.has('x') || k.has('X') || k.has('j') || k.has('J') || vkeys.atk,
+      dash:  k.has('c') || k.has('C') || k.has('l') || k.has('L') || k.has('Shift') || vkeys.dash,
+      swap:  k.has('q') || k.has('Q') || vkeys.swap,
+      hook:  k.has('v') || k.has('V') || k.has('b') || k.has('B') || vkeys.hook,
+      slow:  k.has('g') || k.has('G') || vkeys.slow,
+      map:   k.has('m') || k.has('M') || vkeys.map,
+    };
+  }
+  function pressed(cur, name) { return cur[name] && !prevIn[name]; }
+
+  // ════════════════════════════════ ИГРОК
+  function stam() { return PLDEF.stamina; }
+  function useStamina(cost) {
+    if (!stam()) return true;
+    if (player.stamina < cost) return false;
+    player.stamina -= cost; return true;
+  }
+  function updatePlayer(dt, cur) {
+    const p = player;
+    if (stam()) p.stamina = Math.min(stam().max, p.stamina + stam().regen * dt);
+    p.inv = Math.max(0, p.inv - dt);
+    p.attackT = Math.max(0, p.attackT - dt);
+    p.shootT = Math.max(0, p.shootT - dt);
+    if (p.tempWeapon) { p.tempWeapon.t -= dt; if (p.tempWeapon.t <= 0) { p.tempWeapon = null; sfx('swap'); } }
+    p.attackCd = Math.max(0, p.attackCd - dt);
+    p.dashCd = Math.max(0, p.dashCd - dt);
+    p.coyote = Math.max(0, p.coyote - dt);
+    p.buffer = Math.max(0, p.buffer - dt);
+
+    const auto = MODE === 'runner';
+    const wantL = !auto && cur.left, wantR = auto || cur.right;
+
+    // ── раннер-полосы (Subway Surfers): 3 дорожки, свайпы ↑/↓ ──
+    if (auto && RUN.lanes) {
+      const rows = RUN.lanes.rows || [3, 6, 9];
+      if (p.lane == null) p.lane = (rows.length / 2) | 0;
+      const tyL = rows[p.lane] * TS - p.h;
+      p.vy = 0; p.y += (tyL - p.y) * Math.min(1, dt * 12);
+      p.vx = runnerSpeed;
+      moveBody(p, dt, { noOneWay: true });
+      if (p.hitWall) { killPlayer(); return; }   // врезался в препятствие
+      return afterMove(dt);
+    }
+
+    // ── подкат (раннер): свайп вниз / удержание down ──
+    if (auto) {
+      const baseH = PLDEF.h * TS;
+      if (p.slideT > 0) {
+        p.slideT -= dt;
+        if (p.slideT <= 0 && p.h < baseH) { p.y -= baseH - p.h; p.h = baseH; }
+      } else if ((cur.down || p.slideReq) && p.onGround && p.h >= baseH) {
+        p.slideT = 0.6; const nh = baseH * 0.55;
+        p.y += p.h - nh; p.h = nh; sfx('dash');
+      }
+      p.slideReq = false;
+    }
+
+    // ── крюк-кошка (Dead Cells): полёт к точке / вис ──
+    if (p.grap) {
+      if (pressed(cur, 'jump')) {           // отцеп с прыжком
+        p.grap = null; p.vy = -PH.jumpVel * 0.9 * p.gdir; p.jumps = 1; sfx('jump');
+      } else if (cur.down) { p.grap = null; }  // просто отпустить
+      else {
+        const gx = (p.grap.tx + 0.5) * TS - p.w / 2, gy = (p.grap.ty + 0.9) * TS;
+        const dx = gx - p.x, dy = gy - p.y, dist = Math.hypot(dx, dy);
+        if (dist < 6 || p.grap.hang) { p.grap.hang = true; p.x = gx; p.y = gy; p.vx = 0; p.vy = 0; }
+        else {
+          const sp = PH.grappleSpeed || 380;
+          p.vx = dx / dist * sp; p.vy = dy / dist * sp;
+          const px = p.x, py = p.y;
+          moveBody(p, dt, { noOneWay: true });
+          if (p.hitWall || (p.x === px && p.y === py)) p.grap = null;   // упёрлись
+        }
+        return afterMove(dt);
+      }
+    }
+    if (pressed(cur, 'hook') && ab('grapple') && !p.grap) {
+      // ближайшая grapple-точка в радиусе, предпочтительно выше и по взгляду
+      const R = (PH.grappleRange || 7) * TS;
+      const pcx = p.x + p.w / 2, pcy = p.y + p.h / 2;
+      let best = null;
+      const tx0 = Math.floor((pcx - R) / TS), tx1 = Math.floor((pcx + R) / TS);
+      const ty0 = Math.floor((pcy - R) / TS), ty1 = Math.floor((pcy + 2 * TS) / TS);
+      for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+        const d = defAt(tx, ty); if (!d || !d.grapple) continue;
+        const cx = (tx + 0.5) * TS, cy2 = (ty + 0.5) * TS;
+        let score = Math.hypot(cx - pcx, cy2 - pcy);
+        if (score > R) continue;
+        if ((cx - pcx) * p.facing < 0) score += TS * 3;    // сзади — штраф
+        if (cy2 > pcy) score += TS * 2;                    // ниже — штраф
+        if (!best || score < best.score) best = { tx: tx, ty: ty, score: score };
+      }
+      if (best) { p.grap = { tx: best.tx, ty: best.ty, hang: false }; p.pound = false; p.climbing = false; sfx('dash'); }
+    }
+
+    // ── граунд-паунд (Rayman): рывок вниз в полёте ──
+    if (p.pound) {
+      p.vx = 0; p.vy = (PH.poundSpeed || 620) * p.gdir;
+      moveBody(p, dt);
+      if (p.onGround) {
+        p.pound = false;
+        shake(6, 0.3); sfx('slam');
+        burstAt(p.x + p.w / 2, p.y + p.h, { count: 14 });
+        const R2 = (PH.poundRadius || 2.4) * TS;
+        for (let i = 0; i < ents.length; i++) {
+          const e = ents[i];
+          if (e.kind === 'enemy' && !e.dead && !e.boss &&
+              Math.abs(e.x + e.w / 2 - (p.x + p.w / 2)) < R2 && Math.abs(e.y - p.y) < TS * 2.5)
+            damageEnemy(e, PH.poundDmg || 2, Math.sign(e.x - p.x) * 200);
+        }
+        // ломаем breakable-тайлы под ударом
+        const bty = Math.floor((p.gdir > 0 ? p.y + p.h + 2 : p.y - 2) / TS);
+        for (let btx = Math.floor((p.x - 4) / TS); btx <= Math.floor((p.x + p.w + 4) / TS); btx++) {
+          const d = defAt(btx, bty);
+          if (d && d.breakable && solidAt(btx, bty)) {
+            openedDoors['b' + btx + ',' + bty] = true;
+            burstAt((btx + 0.5) * TS, (bty + 0.5) * TS, { count: 8, color: d.color });
+          }
+        }
+      }
+      return afterMove(dt);
+    }
+    if (pressed(cur, 'down') && !p.onGround && ab('groundPound') && !p.climbing && !p.grap) {
+      p.pound = true; p.dashT = 0; sfx('swing');
+    }
+
+    // ── дэш / перекат ──
+    if (p.dashT > 0) {
+      p.dashT -= dt;
+      p.vy = 0;
+      moveBody(p, dt);
+      if (p.dashT <= 0) p.vx = 0;
+      return afterMove(dt);
+    }
+    if (pressed(cur, 'dash') && ab('dash') && p.dashCd <= 0 && useStamina(stam() ? stam().dashCost : 0)) {
+      p.dashT = PH.dashTime; p.dashCd = 0.5; p.vx = PH.dashSpeed * p.facing;
+      if (PLDEF.dashIFrames) p.inv = Math.max(p.inv, PH.dashTime + 0.08);
+      sfx('dash');
+      moveBody(p, dt);
+      return afterMove(dt);
+    }
+
+    // ── лестницы ──
+    if (p.climbing) {
+      if (!onLadder(p) || pressed(cur, 'jump')) { p.climbing = false; }
+      else {
+        p.vx = (wantL ? -1 : wantR ? 1 : 0) * PH.moveSpeed * 0.6;
+        p.vy = (cur.up ? -1 : cur.down ? 1 : 0) * PH.climbSpeed;
+        moveBody(p, dt, { noOneWay: cur.down });
+        return afterMove(dt);
+      }
+    } else if ((cur.up || cur.down) && onLadder(p)) {
+      p.climbing = true; p.vy = 0; p.jumps = 0;
+    }
+
+    // ── горизонталь (+ костюм, конвейер, ускоритель) ──
+    const sd = suitDef();
+    let spdMul = p.mods.speed * ((sd && sd.speedMul) || 1);
+    if (p.onGround) {
+      const fty = Math.floor((p.gdir > 0 ? p.y + p.h + 2 : p.y - 2) / TS);
+      for (let ftx = Math.floor(p.x / TS); ftx <= Math.floor((p.x + p.w - 0.5) / TS); ftx++) {
+        const fd = defAt(ftx, fty);
+        if (fd && fd.conveyor) p.x += fd.conveyor * dt;   // конвейерная лента
+        if (fd && fd.boost) spdMul *= fd.boost;           // ускоряющая платформа
+      }
+    }
+    const targetV = auto ? runnerSpeed : ((wantL ? -1 : 0) + (wantR ? 1 : 0)) * PH.moveSpeed * spdMul;
+    const ctl = p.onGround ? 1 : PH.airControl;
+    if (targetV !== 0) {
+      p.vx += Math.sign(targetV - p.vx) * PH.accel * ctl * dt;
+      if (Math.sign(targetV) === Math.sign(p.vx) && Math.abs(p.vx) > Math.abs(targetV)) p.vx = targetV;
+      p.facing = targetV > 0 ? 1 : -1;
+    } else {
+      const f = PH.friction * ctl * dt;
+      if (Math.abs(p.vx) <= f) p.vx = 0; else p.vx -= Math.sign(p.vx) * f;
+    }
+
+    // ── прыжок: coyote + buffer + double + wall (или гравифлип VVVVVV) ──
+    if (pressed(cur, 'jump')) p.buffer = PH.buffer;
+    const sliding = !p.onGround && p.hitWallStick && ab('wallJump') && p.vy * p.gdir > 0;
+    if (p.buffer > 0) {
+      if (ab('gravityFlip')) {
+        // VVVVVV: вместо прыжка — переворот гравитации (только с опоры)
+        if (p.onGround || p.coyote > 0) { p.gdir *= -1; p.onGround = false; p.coyote = 0; p.buffer = 0; sfx('jump'); }
+      }
+      else if (p.onGround || p.coyote > 0) { doJump(PH.jumpVel); }
+      else if (sliding) { p.vy = -PH.jumpVel * 0.92 * p.gdir; p.vx = -p.hitWallStick * PH.wallJumpX; p.facing = -p.hitWallStick; p.buffer = 0; sfx('jump'); }
+      else if (ab('doubleJump') && p.jumps < 2) { doJump(PH.jumpVel * 0.9); }
+    }
+    // переменная высота: отпустил прыжок — гасим подъём (кроме отскока от пружины)
+    p.springT = Math.max(0, (p.springT || 0) - dt);
+    if (!cur.jump && p.springT <= 0 && p.vy * p.gdir < -80) p.vy = -80 * p.gdir;
+
+    // ── гравитация (+ ветер) ──
+    p.drop = cur.down;
+    p.vy += PH.gravity * p.gdir * dt;
+    if (WEATHER && WEATHER.wind) p.vx += WEATHER.wind * (p.onGround ? 0.35 : 1) * dt;
+    if (sliding) p.vy = p.gdir > 0 ? Math.min(p.vy, PH.wallSlide) : Math.max(p.vy, -PH.wallSlide);
+    p.vy = p.gdir > 0 ? Math.min(p.vy, PH.maxFall) : Math.max(p.vy, -PH.maxFall);
+
+    moveBody(p, dt, { noOneWay: false, bumper: true });
+
+    // прилипание к стене (для wall jump) — держим факт касания чуть дольше
+    if (p.hitWall) { p.hitWallStick = p.hitWall; p.wallT = 0.12; }
+    else { p.wallT = Math.max(0, (p.wallT || 0) - dt); if (p.wallT <= 0) p.hitWallStick = 0; }
+
+    // ── верёвка вниз (Spelunky): hook при зажатом down, запас ropes ──
+    if (pressed(cur, 'hook') && cur.down && (p.ropes || 0) > 0 && !p.grap) {
+      const rtx = Math.floor((p.x + p.w / 2) / TS);
+      let rty = Math.floor((p.y + p.h) / TS), len = 0;
+      while (len < (PH.ropeLen || 8) && rty + 1 < 1e6 && !solidAt(rtx, rty)) { ropeTiles[rtx + ',' + rty] = 1; rty++; len++; if (solidAt(rtx, rty)) break; }
+      if (len > 0) { p.ropes--; sfx('door'); toast('Верёвка (' + p.ropes + ')'); }
+    }
+
+    // ── подбор и бросок предмета (Spelunky) ──
+    if (p.carry) {
+      p.carry.x = p.x + p.w / 2 - p.carry.w / 2; p.carry.y = p.y - p.carry.h - 2;
+      if (pressed(cur, 'atk')) {   // бросок
+        const it = p.carry; p.carry = null;
+        it.held = false; it.thrown = true;
+        it.vx = p.facing * (it.def.throwSpeed || 260) + p.vx * 0.5; it.vy = -140;
+        sfx('swing');
+      }
+    }
+
+    // ── атака ──
+    if (pressed(cur, 'swap') && p.weapons.length > 1 && !p.tempWeapon) { p.weaponIdx = (p.weaponIdx + 1) % p.weapons.length; sfx('swap'); }
+    const w = curWeapon();
+    // auto-оружие стреляет пока зажата кнопка, обычное — по нажатию
+    const wantFire = !p.carry && w && (w.auto ? cur.atk : pressed(cur, 'atk'));
+    if (wantFire && p.attackCd <= 0) {
+      // подбор предмета вместо атаки, если стоим на нём
+      let picked = false;
+      for (let i = 0; i < ents.length; i++) {
+        const e = ents[i];
+        if (e.kind === 'item' && !e.held && !e.thrown && overlap(p, e)) { p.carry = e; e.held = true; picked = true; sfx('coin'); break; }
+      }
+      if (!picked && useStamina(stam() ? stam().attackCost : 0)) {
+        p.attackCd = w.cooldown || 0.35;
+        if (w.type === 'melee') {
+          p.attackT = 0.16; p.swingHit = {}; sfx('swing');
+          // копание: удар ломает diggable-тайлы в зоне замаха (вниз — если зажат down)
+          if (cur.down && p.onGround) {
+            digTile(Math.floor((p.x + p.w / 2) / TS), Math.floor((p.y + p.h + 4) / TS));
+          } else {
+            const hbD = meleeHitbox();
+            const dtx0 = Math.floor(hbD.x / TS), dtx1 = Math.floor((hbD.x + hbD.w) / TS);
+            const dty0 = Math.floor(hbD.y / TS), dty1 = Math.floor((hbD.y + hbD.h) / TS);
+            for (let ty2 = dty0; ty2 <= dty1; ty2++) for (let tx2 = dtx0; tx2 <= dtx1; tx2++) digTile(tx2, ty2);
+          }
+        }
+        else { fireWeapon(p, Object.assign({}, w, { dmg: (w.dmg || 1) * p.mods.dmg })); p.shootT = 0.14; sfx('shoot'); }
+      }
+    }
+    afterMove(dt);
+
+    function doJump(v) {
+      const jm = (suitDef() && suitDef().jumpMul) || 1;
+      p.vy = -v * jm * p.gdir; p.onGround = false; p.coyote = 0; p.buffer = 0; p.jumps++; p.climbing = false; sfx('jump');
+    }
+  }
+  function afterMove(dt) {
+    const p = player;
+    if (p.onGround) { p.coyote = PH.coyote; p.jumps = 0; }
+    // пружины/батуты: тайл под ногами с spring → направленный отскок
+    if (p.onGround) {
+      const sty = Math.floor((p.gdir > 0 ? p.y + p.h + 2 : p.y - 2) / TS);
+      for (let stx = Math.floor(p.x / TS); stx <= Math.floor((p.x + p.w - 0.5) / TS); stx++) {
+        const d = defAt(stx, sty);
+        if (d && d.spring) {
+          p.vy = -d.spring * p.gdir; p.onGround = false; p.coyote = 0; p.jumps = 1; p.springT = 0.45;
+          if (d.springX) p.vx = d.springX;
+          sfx('jump'); burstAt(p.x + p.w / 2, p.gdir > 0 ? p.y + p.h : p.y, { count: 6, color: d.color });
+          break;
+        }
+      }
+    }
+    // движущиеся платформы: посадка + перенос
+    for (let i = 0; i < ents.length; i++) {
+      const e = ents[i]; if (e.kind !== 'platform') continue;
+      const feet = p.y + p.h;
+      if (p.vy >= 0 && p.x < e.x + e.w && p.x + p.w > e.x && feet >= e.y - 1 && feet <= e.y + e.h * 0.9) {
+        p.y = e.y - p.h - 0.01; p.vy = 0; p.onGround = true; p.coyote = PH.coyote; p.jumps = 0;
+        p.x += e.pdx; p.y += e.pdy;
+      }
+    }
+    // шипы/опасные тайлы
+    const tx0 = Math.floor(p.x / TS), tx1 = Math.floor((p.x + p.w) / TS);
+    const ty0 = Math.floor(p.y / TS), ty1 = Math.floor((p.y + p.h) / TS);
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      const d = defAt(tx, ty);
+      if (d && d.hazard) hurtPlayer(d.hazard, (p.x + p.w / 2 < (tx + 0.5) * TS) ? -1 : 1);
+    }
+    // двери: открываем ключом
+    if (p.keysN > 0) {
+      for (let ty = ty0 - 1; ty <= ty1 + 1; ty++) for (let tx = tx0 - 1; tx <= tx1 + 1; tx++) {
+        const d = defAt(tx, ty);
+        if (d && d.door && !openedDoors[tx + ',' + ty] &&
+            Math.abs((tx + 0.5) * TS - (p.x + p.w / 2)) < TS * 1.2 &&
+            Math.abs((ty + 0.5) * TS - (p.y + p.h / 2)) < TS * 1.4) {
+          openedDoors[tx + ',' + ty] = true; p.keysN--;
+          burstAt((tx + 0.5) * TS, (ty + 0.5) * TS, { count: 10 }); sfx('door');
+        }
+      }
+    }
+    // падение за низ уровня
+    if (p.y > levelHpx() + TS * 2) killPlayer();
+  }
+
+  function hurtPlayer(dmg, dir) {
+    const p = player;
+    if (p.inv > 0 || engine.state !== 'playing') return;
+    combo = 0;                                        // серия убийств прервана уроном
+    if (chTrack) chTrack.damaged = true;              // челлендж «без урона»
+    if (p.shield) {                                   // одноразовый щит (раннер-бустер)
+      p.shield = false; p.inv = 1.0;
+      sfx('hit'); burstAt(p.x + p.w / 2, p.y + p.h / 2, { count: 10, color: '#7ce0ff' });
+      return;
+    }
+    if (p.suit) {                                     // костюм принимает удар на себя (Марио)
+      p.suit = null; p.inv = 1.2;
+      shake(3, 0.2); sfx('hurt');
+      burstAt(p.x + p.w / 2, p.y + p.h / 2, { count: 10, color: '#fff' });
+      return;
+    }
+    p.hp -= dmg; p.inv = 1.0;
+    p.vx = (dir || -p.facing) * 160; p.vy = -180;
+    shake(4, 0.25); sfx('hurt');
+    burstAt(p.x + p.w / 2, p.y + p.h / 2, { count: 8, color: '#f55' });
+    if (p.hp <= 0) killPlayer();
+  }
+  function killPlayer() {
+    const p = player;
+    if (engine.state !== 'playing') return;
+    lives--;
+    burstAt(p.x + p.w / 2, p.y + p.h / 2, { count: 16, color: '#f55' });
+    sfx('die');
+    if (MODE === 'runner' || lives <= 0) { engine.gameOver(); return; }
+    p.hp = p.maxHp;
+    if (stam()) p.stamina = stam().max;
+    combo = 0; p.grap = null; p.pound = false; p.gdir = 1;
+    if (ROGUE && ROGUE.onDeath) choosing = pickUpgrades();   // выбор апгрейда перед респауном
+    pendingRespawn = true;   // пересборка — в начале следующего кадра
+  }
+
+  // ════════════════════════════════ ОРУЖИЕ
+  function fireProjectile(src, w, friendly, angOverride) {
+    const cx = src.x + src.w / 2, cy = src.y + src.h * 0.45;
+    let vx, vy;
+    if (angOverride != null) { vx = Math.cos(angOverride) * (w.speed || 260); vy = Math.sin(angOverride) * (w.speed || 260); }
+    else if (friendly) { vx = (w.speed || 280) * src.facing; vy = 0; }
+    else { // прицельно в игрока
+      const dx = player.x + player.w / 2 - cx, dy = player.y + player.h / 2 - cy;
+      const len = Math.max(1, Math.hypot(dx, dy)); const s = w.speed || 200;
+      vx = dx / len * s; vy = dy / len * s;
+    }
+    const r = w.size || 3;
+    const pr = { kind: 'proj', x: cx - r, y: cy - r, w: r * 2, h: r * 2, vx: vx, vy: vy,
+      dmg: w.dmg || 1, friendly: !!friendly, life: w.life || 2, pierce: !!w.pierce, hitSet: null,
+      color: w.color || (friendly ? '#ffe08a' : '#ff7070'), grav: w.grav || 0 };
+    ents.push(pr);
+  }
+  // выстрел игрока: count снарядов веером на w.spread радиан
+  function fireWeapon(src, w) {
+    const n = w.count || 1;
+    let base = src.facing > 0 ? 0 : Math.PI;
+    // aim-схема: точный угол в сторону касания/курсора
+    if (engine.ctl.scheme === 'aim' && engine.ctl.aim.active && engine.ctl.playerScreen) {
+      base = Math.atan2(engine.ctl.aim.y - engine.ctl.playerScreen.y,
+                        engine.ctl.aim.x - engine.ctl.playerScreen.x);
+    }
+    if (n === 1) { fireProjectile(src, w, true, base); return; }
+    const total = w.spread || 0.5;
+    for (let i = 0; i < n; i++) {
+      const off = (i - (n - 1) / 2) * (total / Math.max(1, n - 1));
+      fireProjectile(src, w, true, base - off * (src.facing > 0 ? 1 : -1));
+    }
+  }
+  function meleeHitbox() {
+    const p = player, w = WEAPONS[p.weapons[p.weaponIdx]];
+    const range = ((w && w.range) || 1.0) * TS;
+    return { x: p.facing > 0 ? p.x + p.w : p.x - range, y: p.y - TS * 0.15, w: range, h: p.h + TS * 0.3 };
+  }
+
+  // ════════════════════════════════ ВРАГИ / NPC / БОСС
+  function updateEnemy(e, dt) {
+    const d = e.def;
+    e.t += dt; e.flash = Math.max(0, e.flash - dt);
+    const pcx = player.x + player.w / 2, ecx = e.x + e.w / 2;
+    const distX = pcx - ecx, adx = Math.abs(distX);
+    // ночь обостряет врагов (день/ночь): дальность и скорость
+    const nk = nightK();
+    const rangeMul = DAYNIGHT ? 1 + nk * ((DAYNIGHT.nightRangeMul || 1.5) - 1) : 1;
+    e.nMul = DAYNIGHT ? 1 + nk * ((DAYNIGHT.nightSpeedMul || 1.4) - 1) : 1;
+    let aggro;
+    if (d.vision) {
+      // стелс: конус взгляда + слух на бег; замеченный враг помнит игрока alertT сек
+      const inCone = (distX * e.facing > 0) && adx < d.vision * TS * rangeMul && Math.abs(player.y - e.y) < 3 * TS;
+      const heard = Math.abs(player.vx) > PH.moveSpeed * 0.7 && adx < (d.hearing || 4) * TS * rangeMul;
+      if (inCone || heard) { if (!e.alertT) sfx('eshoot'); e.alertT = 4; }
+      e.alertT = Math.max(0, (e.alertT || 0) - dt);
+      aggro = e.alertT > 0;
+    } else {
+      aggro = adx < (d.range || 7) * TS * rangeMul && Math.abs(player.y - e.y) < 6 * TS;
+    }
+    if (e.boss && aggro) e.bossActive = true;
+
+    if (e.boss && e.bossActive) { updateBoss(e, dt); }
+    else if (d.fly) {
+      const spd = (d.speed || 40) * (e.nMul || 1);
+      if ((d.ai === 'chase' || e.boss) && aggro) {
+        const dy = (player.y + player.h / 2) - (e.y + e.h / 2);
+        e.vx = Math.sign(distX) * spd; e.vy = Math.sign(dy) * spd * 0.7;
+      } else { e.vx = Math.cos(e.t * 0.8) * spd * 0.6; e.vy = Math.sin(e.t * 1.7) * spd * 0.5; }
+      e.facing = e.vx >= 0 ? 1 : -1;
+      e.x += e.vx * dt; e.y += e.vy * dt;
+    } else {
+      // наземные
+      const spd = (d.speed || 30) * (e.nMul || 1);
+      if (d.ai === 'turret') { e.vx = 0; }
+      else if (d.ai === 'chase' && aggro) { e.vx = Math.sign(distX) * spd; }
+      else if (d.ai === 'jumper') {
+        e.jumpT -= dt;
+        if (e.onGround && e.jumpT <= 0 && aggro) { e.vy = -(d.jumpVel || 300); e.vx = Math.sign(distX) * spd * 1.4; e.jumpT = d.jumpEvery || 1.6; }
+        if (e.onGround) e.vx *= 0.8;
+      } else { // patrol
+        if (e.vx === 0) e.vx = spd * e.facing;
+        if (e.hitWall) { e.facing = -e.hitWall; e.vx = spd * e.facing; }
+        // разворот у обрыва
+        if (e.onGround && !d.fearless) {
+          const aheadX = e.vx > 0 ? e.x + e.w + 1 : e.x - 1;
+          const footTy = Math.floor((e.y + e.h + 2) / TS), aheadTx = Math.floor(aheadX / TS);
+          if (!solidAt(aheadTx, footTy) && !(defAt(aheadTx, footTy) && defAt(aheadTx, footTy).oneWay)) { e.facing *= -1; e.vx = spd * e.facing; }
+        }
+      }
+      if (e.vx !== 0) e.facing = e.vx > 0 ? 1 : -1;
+      e.vy += PH.gravity * dt; e.vy = Math.min(e.vy, PH.maxFall);
+      moveBody(e, dt);
+    }
+    // стрельба (shooter/turret или любое d.shoots)
+    if ((d.ai === 'shooter' || d.ai === 'turret' || d.shoots) && aggro && !e.boss) {
+      e.atkT -= dt;
+      if (e.atkT <= 0) { e.atkT = d.shotCooldown || 1.6; e.facing = Math.sign(distX) || 1; fireProjectile(e, { speed: d.projSpeed || 180, dmg: d.dmg || 1 }, false); sfx('eshoot'); }
+    }
+  }
+
+  function bossPhase(e) {
+    const frac = e.hp / e.maxHp, ph = e.boss.phases || [];
+    for (let i = ph.length - 1; i >= 0; i--) if (frac <= (ph[i].hpPct || 1)) return ph[i];
+    return ph[0] || { attacks: ['charge'], cooldown: 2 };
+  }
+  function updateBoss(e, dt) {
+    const d = e.def, phase = bossPhase(e);
+    e.atkT -= dt;
+    // движение между атаками: медленно к игроку
+    if (!e.attack) {
+      const spd = (d.speed || 40) * (phase.speedMul || 1);
+      if (!d.fly) { e.vx = Math.sign(player.x - e.x) * spd * 0.5; e.vy += PH.gravity * dt; e.vy = Math.min(e.vy, PH.maxFall); }
+      else { e.vx = Math.sign(player.x - e.x) * spd * 0.5; e.vy = Math.sin(e.t * 2) * 30; e.y += e.vy * dt; }
+      e.facing = Math.sign(player.x - e.x) || 1;
+      moveBody(e, dt);
+      if (e.atkT <= 0) {
+        const atks = phase.attacks || ['charge'];
+        e.attack = atks[(e.atkIdx = ((e.atkIdx || 0) + 1)) % atks.length];
+        e.attackT = 0; e.atkT = phase.cooldown || 1.6;
+        if (e.attack === 'slam' && e.onGround) e.vy = -(d.jumpVel || 380);
+        if (e.attack === 'summon') {
+          const minions = ents.filter(x => x.kind === 'enemy' && x.summoned).length;
+          if (e.boss.summon && minions < (e.boss.summonMax || 3)) {
+            const tx = Math.floor((e.x + e.w / 2) / TS) + (Math.random() < 0.5 ? -2 : 2);
+            spawnEnemy(e.boss.summon, tx, Math.floor(e.y / TS), null);
+            ents[ents.length - 1].summoned = true;
+          }
+          e.attack = null;
+        }
+        if (e.attack === 'spread' || e.attack === 'aimed') {
+          const w = { speed: d.projSpeed || 190, dmg: d.dmg || 1 };
+          if (e.attack === 'spread') {
+            const base = Math.atan2(player.y - e.y, player.x - e.x);
+            for (let a = -2; a <= 2; a++) fireProjectile(e, w, false, base + a * 0.28);
+          } else fireProjectile(e, w, false);
+          sfx('eshoot'); e.attack = null;
+        }
+      }
+    } else if (e.attack === 'charge') {
+      e.attackT += dt;
+      e.vx = e.facing * (d.chargeSpeed || 220);
+      e.vy += PH.gravity * dt;
+      moveBody(e, dt);
+      if (e.hitWall || e.attackT > 0.7) { e.attack = null; e.vx = 0; shake(5, 0.2); }
+    } else if (e.attack === 'slam') {
+      e.attackT += dt;
+      e.vx = Math.sign(player.x - e.x) * (d.speed || 60);
+      e.vy += PH.gravity * dt; e.vy = Math.min(e.vy, PH.maxFall);
+      const wasAir = !e.onGround;
+      moveBody(e, dt);
+      if (e.onGround && wasAir) {
+        shake(8, 0.35); sfx('slam');
+        const w = { speed: d.projSpeed || 160, dmg: d.dmg || 1, life: 0.8 };
+        fireProjectile(e, w, false, Math.PI); fireProjectile(e, w, false, 0);
+        e.attack = null;
+      }
+      if (e.attackT > 2) e.attack = null;
+    } else e.attack = null;
+  }
+
+  function damageEnemy(e, dmg, kb) {
+    e.hp -= dmg; e.flash = 0.12;
+    if (kb) { e.vx = kb; e.vy = Math.min(e.vy, -60); }
+    sfx('hit');
+    burstAt(e.x + e.w / 2, e.y + e.h / 2, { count: 5, color: '#fff' });
+    if (e.hp <= 0) {
+      e.dead = true;
+      if (COMBO) { combo++; comboT = 0; if (combo > 1) toast('КОМБО x' + comboMul().toFixed(1)); }
+      addScore(Math.round((e.def.score || 10) * comboMul()));
+      burstAt(e.x + e.w / 2, e.y + e.h / 2, { count: 14, color: e.def.color || '#fa5' });
+      sfx(e.boss ? 'bossdie' : 'edie');
+      if (e.boss) { shake(10, 0.6); if (e.boss.flag) setFlag(e.boss.flag); if (e.boss.onDeath === 'win') winGame(); }
+      if (e.def.drop && Math.random() < (e.def.dropChance || 0.5)) {
+        const d = L(e.def.drop) || { pickup: 'coin', value: 10, color: '#fc3' };
+        ents.push({ kind: 'pickup', def: d, key: null, x: e.x + e.w / 2 - TS * 0.3, y: e.y, w: TS * 0.6, h: TS * 0.6, t: 0 });
+      }
+    }
+  }
+
+  // ════════════════════════════════ ПРОЧЕЕ
+  function addScore(n) { engine.addScore(n); }
+  function winGame() { engine.gameOver({ label: LB.win || 'ПОБЕДА!' }); }
+  function bossAlive() { return ents.some(e => e.kind === 'enemy' && e.boss && !e.dead); }
+  function shake(pow, t) { shakePow = pow; shakeT = t; }
+  function burstAt(wx, wy, opts) {
+    const s = worldToScreen(wx, wy);
+    engine.burst(s.x, s.y, opts);
+  }
+  function worldToScreen(wx, wy) { return { x: (wx - cam.x) * scale + shakeOX, y: (wy - cam.y) * scale + shakeOY }; }
+  let shakeOX = 0, shakeOY = 0;
+
+  const SFX = {
+    jump: [520, 0.08, 'square', 0.12], land: [180, 0.06, 'sine', 0.08], swing: [300, 0.06, 'sawtooth', 0.1],
+    shoot: [700, 0.07, 'square', 0.1], eshoot: [240, 0.09, 'sawtooth', 0.08], hit: [420, 0.06, 'square', 0.12],
+    hurt: [140, 0.18, 'sawtooth', 0.16], die: [110, 0.4, 'sawtooth', 0.2], edie: [330, 0.12, 'square', 0.12],
+    coin: [880, 0.07, 'square', 0.12], heart: [660, 0.1, 'triangle', 0.12], key: [740, 0.1, 'triangle', 0.12],
+    door: [200, 0.15, 'square', 0.12], check: [590, 0.12, 'triangle', 0.14], exit: [523, 0.15, 'square', 0.16],
+    dash: [460, 0.08, 'sawtooth', 0.1], swap: [500, 0.05, 'square', 0.08], slam: [90, 0.25, 'sawtooth', 0.2],
+    power: [700, 0.2, 'triangle', 0.16], bossdie: [70, 0.7, 'sawtooth', 0.25],
+  };
+  function sfx(name) { const s = SFX[name]; if (s) engine.beep(s[0], s[1], s[2], s[3]); }
+
+  // ════════════════════════════════ ПИКАПЫ / ВЗАИМОДЕЙСТВИЯ
+  function applyPickup(e) {
+    const d = e.def, p = player;
+    if (e.key) collected[e.key] = true;
+    switch (d.pickup) {
+      case 'coin': p.coins++; addScore(d.value || 10); sfx('coin'); break;
+      case 'heart': p.hp = Math.min(p.maxHp, p.hp + (d.value || 1)); sfx('heart'); break;
+      case 'maxhp': p.maxHp += (d.value || 1); p.hp = p.maxHp; sfx('power'); break;
+      case 'key': p.keysN++; sfx('key'); break;
+      case 'ability': p.abilities[d.ability] = true; setFlag('has_' + d.ability); sfx('power'); break;
+      case 'suit': p.suit = d.suit; toast(d.label || ('Костюм: ' + d.suit)); sfx('power'); break;
+      case 'rope': p.ropes = (p.ropes || 0) + (d.value || 3); sfx('coin'); break;
+      case 'star': stars++; toast('⭐ Звезда!'); sfx('power'); break;
+      case 'magnet': p.magnetT = d.dur || 8; toast('🧲 Магнит!'); sfx('power'); break;
+      case 'boost': p.boostT = d.dur || 3; p.inv = Math.max(p.inv, d.dur || 3); toast('⚡ Ускорение!'); sfx('power'); break;
+      case 'shield': p.shield = true; toast('🛡 Щит!'); sfx('power'); break;
+      case 'resource': {
+        const id = d.res || 'res';
+        p.res[id] = (p.res[id] || 0) + (d.value || 1);
+        sfx('coin');
+        // авто-крафт: как только ресурсов хватает на рецепт — создаём предмет
+        if (CRAFT && CRAFT.recipes) for (let ri = 0; ri < CRAFT.recipes.length; ri++) {
+          const rc = CRAFT.recipes[ri];
+          let ok = true;
+          for (const k in rc.need) if ((p.res[k] || 0) < rc.need[k]) { ok = false; break; }
+          if (!ok) continue;
+          for (const k in rc.need) p.res[k] -= rc.need[k];
+          const g = rc.give || {};
+          if (g.hp) p.hp = Math.min(p.maxHp, p.hp + g.hp);
+          if (g.maxHp) { p.maxHp += g.maxHp; p.hp += g.maxHp; }
+          if (g.weapon && p.weapons.indexOf(g.weapon) === -1) { p.weapons.push(g.weapon); p.weaponIdx = p.weapons.length - 1; }
+          if (g.ability) p.abilities[g.ability] = true;
+          if (g.score) addScore(g.score);
+          if (g.key) p.keysN += g.key;
+          toast(rc.label || 'Скрафчено!'); sfx('power');
+          break;
+        }
+        break;
+      }
+      case 'weapon':
+        if (d.temp) { p.tempWeapon = { id: d.weapon, t: d.temp, total: d.temp }; }  // временный бонус (Contra-style)
+        else { if (p.weapons.indexOf(d.weapon) === -1) p.weapons.push(d.weapon); p.weaponIdx = p.weapons.length - 1; }
+        sfx('power'); break;
+      default: addScore(d.value || 5); sfx('coin');
+    }
+    burstAt(e.x + e.w / 2, e.y + e.h / 2, { count: 8, color: d.color || '#fc3' });
+    e.dead = true;
+  }
+
+  // ════════════════════════════════ ТАЧ-КНОПКИ
+  function layoutButtons() {
+    btns = [];
+    if (!TOUCH) return;
+    const W = engine.W, H = engine.H;
+    const r = Math.min(W, H) * 0.075, m = r * 0.7;
+    btns.push({ id: 'left', x: m + r, y: H - m - r, r: r, glyph: '◀' });
+    btns.push({ id: 'right', x: m + r * 3.3, y: H - m - r, r: r, glyph: '▶' });
+    btns.push({ id: 'jump', x: W - m - r, y: H - m - r, r: r, glyph: '▲' });
+    if ((PLDEF.weapons || []).length) btns.push({ id: 'atk', x: W - m - r * 3.3, y: H - m - r, r: r, glyph: '✕' });
+    if (PLDEF.abilities && (PLDEF.abilities.dash || (P.abilitiesPossible || []).indexOf('dash') !== -1))
+      btns.push({ id: 'dash', x: W - m - r * 2.15, y: H - m - r * 2.9, r: r * 0.8, glyph: '»' });
+    if (PLDEF.abilities && (PLDEF.abilities.grapple || (P.abilitiesPossible || []).indexOf('grapple') !== -1))
+      btns.push({ id: 'hook', x: m + r * 2.15, y: H - m - r * 2.9, r: r * 0.8, glyph: '⚓' });
+    if ((PLDEF.weapons || []).length > 1) btns.push({ id: 'swap', x: W - m - r * 4.2, y: H - m - r * 2.9, r: r * 0.7, glyph: '⇄' });
+    if (PLDEF.abilities && PLDEF.abilities.slowmo) btns.push({ id: 'slow', x: m + r * 3.5, y: H - m - r * 2.9, r: r * 0.75, glyph: '◔' });
+    if (MAPCFG) btns.push({ id: 'map', x: W - m - r * 0.8, y: m + r * 0.8, r: r * 0.7, glyph: '▦' });
+  }
+  function btnAt(x, y) {
+    for (let i = 0; i < btns.length; i++) { const b = btns[i]; if ((x - b.x) * (x - b.x) + (y - b.y) * (y - b.y) <= b.r * b.r * 1.45) return b; }
+    return null;
+  }
+
+  // ════════════════════════════════ АНИМАЦИЯ/РЕНДЕР СУЩНОСТЕЙ
+  function pickAnim(e, def) {
+    if (!def.anims) return null;
+    let name = 'idle';
+    if (e === player) {
+      if (player.dashT > 0) name = 'dash';
+      else if (!player.onGround) name = player.vy < 0 ? 'jump' : 'fall';
+      else if (Math.abs(player.vx) > 10) name = 'run';
+      // выстрел/удар перекрывает позу, если такая анимация есть
+      if (player.attackT > 0 && def.anims.attack) name = 'attack';
+      else if (player.shootT > 0 && def.anims.shoot) name = 'shoot';
+    } else {
+      if (Math.abs(e.vx) > 5 || Math.abs(e.vy || 0) > 5) name = 'run';
+    }
+    if (!def.anims[name]) {
+      // фолбэки: fall→jump, dash/attack/shoot→run/idle
+      if (name === 'fall' && def.anims.jump) name = 'jump';
+      else name = def.anims.idle ? 'idle' : Object.keys(def.anims)[0];
+    }
+    return name;
+  }
+  function drawEnt(ctx, e, def, isPlayer) {
+    const name = pickAnim(e, def);
+    if (name) {
+      const a = def.anims[name];
+      const st = e.anim;
+      if (st.name !== name) { st.name = name; st.t = 0; st.i = 0; }
+      st.t += 1 / 60;
+      const n = a.imgs ? a.imgs.length : (a.frames ? a.frames.length : 1);
+      st.i = Math.floor(st.t * (a.fps || 8)) % n;
+      ctx.save();
+      const cx = e.x + e.w / 2;
+      const flipped = isPlayer && e.gdir < 0;          // гравифлип: рисуем вверх ногами
+      ctx.translate(cx, flipped ? e.y : e.y + e.h);
+      if (e.facing < 0) ctx.scale(-1, 1);
+      if (flipped) ctx.scale(1, -1);
+      const dw = (a.w || def.w || 1) * TS, dh = (a.h || def.h || 1) * TS;
+      if (a.imgs) {
+        const img = engine.img(a.imgs[st.i]);
+        if (img && img.complete) ctx.drawImage(img, -dw / 2, -dh, dw, dh);
+      } else if (a.img) {
+        const sheet = engine.img(a.img);
+        if (sheet && sheet.complete) {
+          const fi = a.frames[st.i], perRow = Math.max(1, Math.floor(sheet.naturalWidth / a.fw));
+          ctx.drawImage(sheet, (fi % perRow) * a.fw, Math.floor(fi / perRow) * a.fh, a.fw, a.fh, -dw / 2, -dh, dw, dh);
+        }
+      }
+      ctx.restore();
+      return;
+    }
+    // плейсхолдер: цветной скруглённый прямоугольник + глаза по направлению
+    const col = (isPlayer && suitDef() && suitDef().color) || def.color || (isPlayer ? engine.accent() : '#c66');
+    ctx.fillStyle = col;
+    rrPath(ctx, e.x, e.y, e.w, e.h, Math.min(4, e.w * 0.25)); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    const eye = Math.max(1.5, e.w * 0.12);
+    ctx.fillStyle = '#fff';
+    const ex = e.x + e.w / 2 + e.facing * e.w * 0.18, ey = e.y + e.h * 0.28;
+    ctx.beginPath(); ctx.arc(ex, ey, eye, 0, 7); ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.beginPath(); ctx.arc(ex + e.facing * eye * 0.4, ey, eye * 0.5, 0, 7); ctx.fill();
+  }
+  function rrPath(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // ════════════════════════════════ КОНТРАКТ СЦЕНЫ
+  return {
+    init: function () {},
+    reset: function () {
+      player = makePlayer();
+      lives = PLDEF.lives; levelIdx = 0; time = 0;
+      vkeys = {}; ptrBtn = {}; prevIn = {};
+      combo = 0; comboT = 0; toasts = []; choosing = null; bonusT = 0;
+      worldFlags = {}; stars = 0; visited = {}; mapMarkers = {}; mapOpen = false; slowHeld = false;
+      loadLevel();
+      cam.x = Math.max(0, player.x - viewW / 2); cam.y = 0;
+    },
+    layout: function (Lx) {
+      scale = Lx.W / (VIEW_TX * TS);
+      viewW = Lx.W / scale; viewH = Lx.H / scale;
+      layoutButtons();
+    },
+
+    update: function (dt) {
+      time += dt;
+      for (let i = toasts.length - 1; i >= 0; i--) { toasts[i].t -= dt; if (toasts[i].t <= 0) toasts.splice(i, 1); }
+      if (choosing) return;                            // roguelite: мир на паузе до выбора
+      if (COMBO && COMBO.decay && combo > 0) { comboT += dt; if (comboT > COMBO.decay) { combo = 0; comboT = 0; } }
+      // отложенные переходы (смена уровня / респаун) — безопасно в начале кадра
+      if (pendingLevel) { pendingLevel = false; loadLevel(); }
+      if (pendingRespawn) {
+        pendingRespawn = false;
+        if (P.respawnEnemies) rebuildEnts(); else playerToRespawn();
+      }
+      const cur = inp();
+
+      // карта метроидвании: открыть/закрыть; при открытой — пауза
+      if (MAPCFG && pressed(cur, 'map')) { mapOpen = !mapOpen; prevIn = cur; return; }
+      if (mapOpen) { prevIn = cur; return; }
+      // слоу-мо (умение): весь мир замедляется, стамина тратится
+      slowHeld = !!(cur.slow && ab('slowmo') && (!stam() || player.stamina > 1));
+      if (slowHeld) {
+        dt *= (PH.slowScale || 0.45);
+        if (stam()) player.stamina = Math.max(0, player.stamina - (stam().slowCost || 20) * dt / (PH.slowScale || 0.45));
+      }
+      // посещённые экраны (для карты)
+      if (MAPCFG) visited[Math.floor(player.x / viewW) + ',' + Math.floor(player.y / viewH)] = true;
+      // анимация бамп-блоков
+      for (const k in bumpFx) { bumpFx[k] -= dt; if (bumpFx[k] <= 0) delete bumpFx[k]; }
+      // ловушки-стреломёты: игрок в луче → выстрел
+      for (let i = 0; i < trapList.length; i++) {
+        const tr = trapList[i];
+        tr.cd = Math.max(0, tr.cd - dt);
+        if (tr.cd > 0) continue;
+        const d = tr.def, dir = d.dir || (player.x > (tr.tx + 0.5) * TS ? 1 : -1);
+        const sameRow = Math.abs((player.y + player.h / 2) - (tr.ty + 0.5) * TS) < TS;
+        const dx = (player.x + player.w / 2) - (tr.tx + 0.5) * TS;
+        if (sameRow && Math.sign(dx) === dir && Math.abs(dx) < (d.range || 8) * TS) {
+          tr.cd = d.cooldown || 2;
+          // спавн стрелы за пределами тайла ловушки, иначе умрёт о него же
+          fireProjectile({ x: (tr.tx + dir * 1.25) * TS, y: tr.ty * TS, w: TS, h: TS, facing: dir },
+                         { speed: d.projSpeed || 220, dmg: d.dmg || 1, life: 1.6 }, false, dir > 0 ? 0 : Math.PI);
+          sfx('eshoot');
+        }
+      }
+      // маятники: качание + урон
+      for (let i = 0; i < pendItems.length; i++) {
+        const pd = pendItems[i];
+        const ang = Math.sin(time * pd.speed + pd.phase) * 1.05;
+        pd.bx = pd.ax + Math.sin(ang) * pd.len;
+        pd.by = pd.ay + Math.cos(ang) * pd.len;
+        const dxp = (player.x + player.w / 2) - pd.bx, dyp = (player.y + player.h / 2) - pd.by;
+        if (dxp * dxp + dyp * dyp < (pd.r + player.w * 0.4) * (pd.r + player.w * 0.4))
+          hurtPlayer(pd.dmg, Math.sign(dxp) || 1);
+      }
+
+      // раннер: разгон и дистанция (+бустеры)
+      if (MODE === 'runner') {
+        runnerSpeed = Math.min(RUN.maxSpeed, runnerSpeed + RUN.ramp * dt);
+        if (player.boostT > 0) { player.boostT -= dt; runnerSpeed *= 1.8; }   // временное ускорение
+        if (player.magnetT > 0) {                                             // магнит: монеты слетаются
+          player.magnetT -= dt;
+          for (let i = 0; i < ents.length; i++) {
+            const e = ents[i];
+            if (e.kind === 'pickup' && e.def.pickup === 'coin' && !e.fly) {
+              const dx = (player.x + player.w / 2) - (e.x + e.w / 2), dy = (player.y + player.h / 2) - (e.y + e.h / 2);
+              const d2 = Math.hypot(dx, dy);
+              if (d2 < TS * 6 && d2 > 1) { e.x += dx / d2 * 260 * dt; e.y += dy / d2 * 260 * dt; }
+            }
+          }
+        }
+        const m = Math.floor(player.x / TS);
+        if (m > runnerDist) { runnerDist = m; engine.setScore(runnerDist); }
+        appendChunks(Math.floor((cam.x + viewW * 2.5) / TS));
+        runnerCleanup();
+      }
+
+      // ── летающие бонусы оружия (Contra-style: пролетают через экран) ──
+      const BS = P.bonusSpawner;
+      if (BS && BS.items && BS.items.length) {
+        bonusT -= dt;
+        if (bonusT <= 0) {
+          const ev = BS.every || [9, 15];
+          bonusT = ev[0] + Math.random() * (ev[1] - ev[0]);
+          const item = BS.items[(Math.random() * BS.items.length) | 0];
+          const dir = Math.random() < 0.5 ? 1 : -1;
+          const x0 = dir > 0 ? cam.x - TS * 2 : cam.x + viewW + TS * 2;
+          const by = player.y - TS * (1.5 + Math.random() * 1.5);
+          ents.push({ kind: 'pickup', key: null, t: Math.random() * 6,
+            def: { pickup: 'weapon', weapon: item.weapon, temp: item.temp || 10, color: item.color || '#fff', label: item.label },
+            x: x0, y: by, w: TS * 0.8, h: TS * 0.8,
+            fly: true, fvx: dir * (BS.speed || 55), baseY: by, life: 14 });
+          sfx('swap');
+        }
+      }
+
+      // платформы двигаем ДО игрока (чтобы pdx был готов)
+      for (let i = 0; i < ents.length; i++) {
+        const e = ents[i]; if (e.kind !== 'platform') continue;
+        e.t += dt;
+        const per = Math.max(0.1, (Math.hypot(e.dx, e.dy) || 1) / e.speed);
+        const ph = (e.t % (per * 2)) / per;                 // 0..2
+        const k = ph < 1 ? ph : 2 - ph;                     // пинг-понг 0..1
+        const nx = e.x0 + e.dx * k, ny = e.y0 + e.dy * k;
+        e.pdx = nx - e.x; e.pdy = ny - e.y; e.x = nx; e.y = ny;
+      }
+
+      updatePlayer(dt, cur);
+
+      // сущности
+      for (let i = 0; i < ents.length; i++) {
+        const e = ents[i];
+        if (e.kind === 'enemy' && !e.dead) updateEnemy(e, dt);
+        else if (e.kind === 'proj') {
+          e.life -= dt; if (e.grav) e.vy += e.grav * dt;
+          e.x += e.vx * dt; e.y += e.vy * dt;
+          const tx = Math.floor((e.x + 3) / TS), ty = Math.floor((e.y + 3) / TS);
+          if (e.life <= 0 || solidAt(tx, ty)) { e.dead = true; burstAt(e.x, e.y, { count: 3, color: e.color }); }
+        } else if (e.kind === 'item' && !e.held) {
+          // брошенный/лежащий предмет (Spelunky): физика + урон врагам в полёте
+          e.vy += PH.gravity * dt; e.vy = Math.min(e.vy, PH.maxFall);
+          const wasThrown = e.thrown && (Math.abs(e.vx) > 40 || Math.abs(e.vy) > 40);
+          moveBody(e, dt);
+          if (e.onGround) { e.vx *= 0.86; if (Math.abs(e.vx) < 8) { e.vx = 0; e.thrown = false; } }
+          if (e.hitWall) {
+            if (wasThrown && e.def.fragile) { e.dead = true; burstAt(e.x + e.w / 2, e.y + e.w / 2, { count: 8, color: e.def.color }); sfx('slam'); }
+            e.vx = 0;
+          }
+          if (wasThrown) for (let j = 0; j < ents.length; j++) {
+            const t2 = ents[j];
+            if (t2.kind === 'enemy' && !t2.dead && overlap(e, t2)) {
+              damageEnemy(t2, e.def.dmg || 2, Math.sign(e.vx) * 180);
+              if (e.def.fragile) { e.dead = true; burstAt(e.x, e.y, { count: 8, color: e.def.color }); }
+              else e.vx *= -0.4;
+              break;
+            }
+          }
+        } else if (e.kind === 'pickup') {
+          e.t += dt;
+          if (e.fly) {                                  // летящий бонус: синусоида + улёт за экран
+            e.x += e.fvx * dt;
+            e.y = e.baseY + Math.sin(e.t * 3) * TS * 0.6;
+            e.life -= dt;
+            if (e.life <= 0 || e.x < cam.x - viewW || e.x > cam.x + viewW * 2) e.dead = true;
+          }
+        }
+      }
+
+      // ── столкновения ──
+      const hb = player.attackT > 0 ? meleeHitbox() : null;
+      const wMelee = hb ? WEAPONS[player.weapons[player.weaponIdx]] : null;
+      for (let i = 0; i < ents.length; i++) {
+        const e = ents[i]; if (e.dead) continue;
+        if (e.kind === 'enemy') {
+          if (hb && !player.swingHit[i] && overlap(hb, e)) {
+            player.swingHit[i] = true;
+            damageEnemy(e, (wMelee && wMelee.dmg) || 1, ((wMelee && wMelee.knockback) || 150) * player.facing);
+          }
+          if (overlap(player, e)) {
+            const falling = player.vy > 40 && (player.y + player.h) - e.y < e.h * 0.55;
+            if (falling && e.def.stompable && !e.boss) {
+              damageEnemy(e, e.def.stompHp || 999, 0);
+              player.vy = -PH.jumpVel * 0.62; sfx('jump');
+            } else hurtPlayer(e.def.dmg || 1, Math.sign(player.x - e.x) || 1);
+          }
+        } else if (e.kind === 'proj') {
+          if (e.friendly) {
+            for (let j = 0; j < ents.length; j++) {
+              const t = ents[j];
+              if (t.kind === 'enemy' && !t.dead && overlap(e, t)) {
+                if (e.pierce) {                       // пробивающий: бьёт каждого один раз, летит дальше
+                  if (!e.hitSet) e.hitSet = [];
+                  if (e.hitSet.indexOf(t) !== -1) continue;
+                  e.hitSet.push(t);
+                  damageEnemy(t, e.dmg, Math.sign(e.vx) * 120);
+                } else { damageEnemy(t, e.dmg, Math.sign(e.vx) * 120); e.dead = true; break; }
+              }
+            }
+          } else if (overlap(e, player)) { hurtPlayer(e.dmg, Math.sign(e.vx) || 1); e.dead = true; }
+        } else if (e.kind === 'pickup' && overlap(player, e)) applyPickup(e);
+        else if (e.kind === 'checkpoint' && overlap(player, e)) {
+          if (!e.lit) {
+            for (let j = 0; j < ents.length; j++) if (ents[j].kind === 'checkpoint') ents[j].lit = false;
+            e.lit = true; respawnPt = { x: e.x, y: e.y };
+            if (PLDEF.checkpointHeal) { player.hp = player.maxHp; if (stam()) player.stamina = stam().max; }
+            sfx('check'); burstAt(e.x + TS / 2, e.y, { count: 10, color: '#8f8' });
+          }
+        } else if (e.kind === 'exit' && overlap(player, e)) {
+          if (!(e.def.needsBossDead !== false && bossAlive())) {
+            sfx('exit');
+            awardChallenges();                               // бонусы за челленджи уровня
+            if (MODE === 'caves') { winGame(); }
+            else {
+              levelIdx++;
+              if (levelIdx >= LEVELS.length) winGame();
+              else {
+                addScore(50); pendingLevel = true;           // загрузка — в начале следующего кадра
+                if (ROGUE && ROGUE.onLevel) choosing = pickUpgrades();
+              }
+            }
+          }
+        } else if (e.kind === 'npc') {
+          const near = Math.abs((e.x + e.w / 2) - (player.x + player.w / 2)) < TS * 2 && Math.abs(e.y - player.y) < TS * 2;
+          if (near) {
+            if (bubbleNpc !== e) { bubbleNpc = e; bubbleT = 0; e.line = 0; }
+            bubbleT += dt;
+            if (bubbleT > 3 && e.def.lines && e.line < e.def.lines.length - 1) { e.line++; bubbleT = 0; }
+          } else if (bubbleNpc === e) bubbleNpc = null;
+        }
+      }
+      ents = ents.filter(e => !e.dead);
+
+      // экранная позиция игрока для слоя управления (tap-to-move, aim)
+      const psc = worldToScreen(player.x + player.w / 2, player.y + player.h / 2);
+      engine.reportPlayerScreen(psc.x, psc.y);
+      // aim-схема: разворот к точке прицела
+      if (engine.ctl.scheme === 'aim' && engine.ctl.aim.active)
+        player.facing = engine.ctl.aim.x >= psc.x ? 1 : -1;
+
+      // ── камера ──
+      const targetX = player.x + player.w / 2 - viewW / 2 + player.facing * TS * 1.5;
+      const targetY = player.y + player.h / 2 - viewH * 0.55;
+      cam.x += (targetX - cam.x) * Math.min(1, dt * 8);
+      cam.y += (targetY - cam.y) * Math.min(1, dt * 6);
+      const maxX = levelWpx() - viewW, maxY = levelHpx() - viewH;
+      cam.x = MODE === 'runner' ? Math.max(cam.x, player.x - viewW * 0.4) : Math.max(0, Math.min(isFinite(maxX) ? maxX : cam.x, cam.x));
+      cam.y = maxY <= 0 ? maxY / 2 : Math.max(0, Math.min(maxY, cam.y));
+      if (shakeT > 0) { shakeT -= dt; shakeOX = (Math.random() * 2 - 1) * shakePow; shakeOY = (Math.random() * 2 - 1) * shakePow; }
+      else { shakeOX = 0; shakeOY = 0; }
+
+      prevIn = cur;
+    },
+
+    render: function (ctx) {
+      ctx.save();
+      ctx.translate(shakeOX, shakeOY);
+      ctx.scale(scale, scale);
+      ctx.translate(-cam.x, -cam.y);
+
+      // параллакс-слои
+      const layers = P.bgLayers || [];
+      for (let i = 0; i < layers.length; i++) {
+        const ly = layers[i], img = engine.img(ly.img);
+        if (!img || !img.complete || !img.naturalWidth) continue;
+        const f = ly.factor == null ? 0.4 : ly.factor;
+        const iw = img.naturalWidth, ih = img.naturalHeight;
+        const y = ly.y != null ? ly.y : levelHpx() - ih;
+        let sx = (cam.x * f) % iw; if (sx < 0) sx += iw;
+        for (let x = cam.x - sx; x < cam.x + viewW; x += iw) ctx.drawImage(img, x, y);
+      }
+
+      // тайлы видимой области
+      const tx0 = Math.floor(cam.x / TS) - 1, tx1 = Math.ceil((cam.x + viewW) / TS) + 1;
+      const ty0 = Math.floor(cam.y / TS) - 1, ty1 = Math.ceil((cam.y + viewH) / TS) + 1;
+      for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+        const ch = tileAt(tx, ty); if (ch === ' ') continue;
+        const d = L(ch); if (!d || !d.tile) continue;
+        if (d.door && openedDoors[tx + ',' + ty]) continue;
+        if (d.ifFlag || d.ifNotFlag) { if (!flagOk(d)) continue; }        // бэктрекинг-тайлы
+        if ((d.breakable || d.diggable) && openedDoors['b' + tx + ',' + ty]) continue;
+        if (d.phase) {
+          // фазовая платформа: полупрозрачна когда выключена, мигает перед исчезновением
+          const on = phaseOn(d, tx, ty);
+          const cyc = (d.phase[0] + d.phase[1]);
+          const shift = (d.phaseShift || 0) + (d.phaseStagger ? ((tx * 7 + ty * 13) % 4) * d.phaseStagger : 0);
+          const tIn = (time + shift) % cyc;
+          let a = on ? 1 : 0.18;
+          if (on && d.phase[0] - tIn < 0.6) a = 0.4 + 0.6 * Math.abs(Math.sin(time * 16));   // мигание
+          ctx.globalAlpha = a; drawTile(ctx, d, tx, ty); ctx.globalAlpha = 1;
+          continue;
+        }
+        const bk = bumpFx[tx + ',' + ty];
+        if (bk != null) {   // бамп-подпрыг блока
+          ctx.save(); ctx.translate(0, -Math.sin((0.18 - bk) / 0.18 * Math.PI) * 4);
+          drawTile(ctx, d, tx, ty); ctx.restore();
+        } else drawTile(ctx, d, tx, ty);
+        if (d.bumpable && d.once && openedDoors['u' + tx + ',' + ty]) {
+          ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(tx * TS, ty * TS, TS, TS);   // использованный блок
+        }
+      }
+      // верёвки (Spelunky)
+      ctx.strokeStyle = '#d8b56a'; ctx.lineWidth = 2;
+      for (const rk in ropeTiles) {
+        const parts2 = rk.split(','), rx = +parts2[0], ry = +parts2[1];
+        ctx.beginPath(); ctx.moveTo((rx + 0.5) * TS, ry * TS); ctx.lineTo((rx + 0.5) * TS, (ry + 1) * TS); ctx.stroke();
+        ctx.beginPath(); ctx.arc((rx + 0.5) * TS, (ry + 0.5) * TS, 1.6, 0, 7); ctx.stroke();
+      }
+      // маятники: цепь + лезвие
+      for (let i = 0; i < pendItems.length; i++) {
+        const pd = pendItems[i];
+        if (pd.bx == null) continue;
+        ctx.strokeStyle = 'rgba(200,200,210,0.8)'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(pd.ax, pd.ay); ctx.lineTo(pd.bx, pd.by); ctx.stroke();
+        ctx.fillStyle = '#c8ccd4';
+        ctx.beginPath(); ctx.arc(pd.bx, pd.by, pd.r, 0, 7); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
+        ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(pd.bx, pd.by, pd.r * 0.4, 0, 7); ctx.fill();
+      }
+      // верёвка крюка
+      if (player.grap) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(player.x + player.w / 2, player.y + player.h * 0.35);
+        ctx.lineTo((player.grap.tx + 0.5) * TS, (player.grap.ty + 0.5) * TS);
+        ctx.stroke();
+      }
+
+      // сущности
+      for (let i = 0; i < ents.length; i++) {
+        const e = ents[i];
+        if (e.kind === 'enemy') {
+          if (e.flash > 0) { ctx.save(); ctx.globalAlpha = 0.5; drawEnt(ctx, e, e.def, false); ctx.restore(); }
+          else drawEnt(ctx, e, e.def, false);
+          if (e.boss && e.bossActive) { /* полоса HP — в hud */ }
+        } else if (e.kind === 'npc') drawEnt(ctx, e, e.def, false);
+        else if (e.kind === 'proj') { ctx.fillStyle = e.color; ctx.beginPath(); ctx.arc(e.x + 3, e.y + 3, 3.2, 0, 7); ctx.fill(); }
+        else if (e.kind === 'pickup') drawPickup(ctx, e);
+        else if (e.kind === 'item') {
+          ctx.fillStyle = e.def.color || '#c8a05a';
+          rrPath(ctx, e.x, e.y, e.w, e.h, 3); ctx.fill();
+          ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+        }
+        else if (e.kind === 'platform') {
+          ctx.fillStyle = (e.def.color || '#9a9a9a'); rrPath(ctx, e.x, e.y, e.w, e.h, 2); ctx.fill();
+          ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke();
+        } else if (e.kind === 'exit') {
+          const locked = e.def.needsBossDead !== false && bossAlive();
+          ctx.fillStyle = locked ? 'rgba(120,120,120,0.8)' : (e.def.color || '#7ce07c');
+          rrPath(ctx, e.x + 2, e.y, e.w - 4, e.h, 3); ctx.fill();
+          ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(e.x + e.w * 0.4, e.y + e.h * 0.45, e.w * 0.2, e.h * 0.15);
+        } else if (e.kind === 'checkpoint') {
+          ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(e.x + 4, e.y + e.h); ctx.lineTo(e.x + 4, e.y + 2); ctx.stroke();
+          ctx.fillStyle = e.lit ? '#7f7' : '#888';
+          ctx.beginPath(); ctx.moveTo(e.x + 4, e.y + 2); ctx.lineTo(e.x + 14, e.y + 5); ctx.lineTo(e.x + 4, e.y + 9); ctx.closePath(); ctx.fill();
+        }
+      }
+
+      // игрок (мигает в i-frames)
+      if (!(player.inv > 0 && Math.floor(time * 14) % 2 === 0)) drawEnt(ctx, player, PLDEF, true);
+      // вспышка у ствола при выстреле
+      if (player.shootT > 0.06) {
+        const wNow = curWeapon();
+        ctx.fillStyle = (wNow && wNow.color) || '#fff';
+        const mx = player.x + player.w / 2 + player.facing * (player.w * 0.75 + 3);
+        const my = player.y + player.h * 0.45;
+        ctx.beginPath(); ctx.arc(mx, my, 2.6 + Math.random() * 1.5, 0, 7); ctx.fill();
+      }
+      // замах меча
+      if (player.attackT > 0) {
+        const hb2 = meleeHitbox();
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        const cx = player.x + player.w / 2, cy = player.y + player.h * 0.45;
+        const a0 = player.facing > 0 ? -1.1 : Math.PI + 1.1, a1 = player.facing > 0 ? 0.9 : Math.PI - 0.9;
+        ctx.arc(cx, cy, hb2.w + player.w * 0.3, Math.min(a0, a1), Math.max(a0, a1));
+        ctx.stroke();
+      }
+
+      // пузырь NPC
+      if (bubbleNpc && bubbleNpc.def.lines) {
+        const e = bubbleNpc, txt = e.def.lines[e.line];
+        ctx.font = '5px ' + FONT;
+        const tw = Math.min(60, ctx.measureText(txt).width + 6);
+        ctx.font = '5px ' + FONT;
+        const bx = e.x + e.w / 2 - tw / 2, by = e.y - 14;
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        rrPath(ctx, bx, by, tw, 10, 3); ctx.fill();
+        ctx.fillStyle = '#222'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(txt, bx + tw / 2, by + 5.5);
+      }
+
+      ctx.restore();
+
+      // ── экранные эффекты ──
+      const W2 = engine.W, H2 = engine.H;
+      // дождь (клонится по ветру)
+      if (WEATHER && WEATHER.rain) {
+        ctx.strokeStyle = 'rgba(160,200,255,0.35)'; ctx.lineWidth = 1;
+        const windK = (WEATHER.wind || 0) * 0.06;
+        ctx.beginPath();
+        for (let i = 0; i < 46; i++) {
+          const seed = i * 127.3;
+          const x = ((seed * 7919 + time * (40 + (i % 7) * 12) * (1 + windK)) % W2 + W2) % W2;
+          const y = ((seed * 104729 + time * (260 + (i % 5) * 60)) % H2 + H2) % H2;
+          ctx.moveTo(x, y); ctx.lineTo(x + windK * 10, y + 9);
+        }
+        ctx.stroke();
+      }
+      // ночь: синеватое затемнение
+      const nk2 = nightK();
+      if (nk2 > 0.02) {
+        ctx.fillStyle = 'rgba(8,12,40,' + (nk2 * ((DAYNIGHT && DAYNIGHT.maxDark) || 0.45)).toFixed(3) + ')';
+        ctx.fillRect(0, 0, W2, H2);
+      }
+    },
+
+    hud: function (ctx) {
+      const W = engine.W, H = engine.H;
+      ctx.textBaseline = 'middle';
+      // сердца
+      const hs = Math.min(22, W * 0.05);
+      for (let i = 0; i < player.maxHp; i++) drawHeart(ctx, 14 + i * (hs + 4), 14, hs, i < player.hp);
+      // стамина
+      if (stam()) {
+        ctx.fillStyle = 'rgba(0,0,0,0.4)'; engine.rr(14, 20 + hs, 90, 7, 3.5); ctx.fill();
+        ctx.fillStyle = '#8fd14f'; engine.rr(14, 20 + hs, Math.max(2, 90 * player.stamina / stam().max), 7, 3.5); ctx.fill();
+      }
+      // монеты/счёт справа
+      ctx.fillStyle = '#ffd75e'; ctx.beginPath(); ctx.arc(W - 66, 21, 8, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 16px ' + FONT; ctx.textAlign = 'left';
+      ctx.fillText(String(MODE === 'runner' ? engine.score + ' м' : engine.score), W - 52, 22);
+      // жизни/ключи/оружие
+      ctx.font = 'bold 12px ' + FONT; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.textAlign = 'left';
+      let info = [];
+      if (MODE !== 'runner') info.push('✚' + lives);
+      if (player.keysN > 0) info.push('🔑' + player.keysN);
+      if (player.weapons.length || player.tempWeapon) info.push(curWeaponName());
+      ctx.fillText(info.join('  '), 14, 34 + hs + (stam() ? 10 : 0));
+      // временное оружие: полоса оставшегося времени под именем
+      if (player.tempWeapon) {
+        const tw = WEAPONS[player.tempWeapon.id] || {};
+        const frac = Math.max(0, Math.min(1, player.tempWeapon.t / (player.tempWeapon.total || 10)));
+        const bx2 = 14, by2 = 44 + hs + (stam() ? 10 : 0), bw2 = 110, bh2 = 8;
+        ctx.fillStyle = 'rgba(0,0,0,0.45)'; engine.rr(bx2, by2, bw2, bh2, 4); ctx.fill();
+        ctx.fillStyle = tw.color || '#ffd75e'; engine.rr(bx2, by2, Math.max(2, bw2 * frac), bh2, 4); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; engine.rr(bx2, by2, bw2, bh2, 4); ctx.stroke();
+      }
+      // полоса босса
+      const boss = ents.find(e => e.kind === 'enemy' && e.boss && e.bossActive && !e.dead);
+      if (boss) {
+        const bw = W * 0.7, bx = (W - bw) / 2, by = 44;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)'; engine.rr(bx, by, bw, 12, 6); ctx.fill();
+        ctx.fillStyle = '#d9414d'; engine.rr(bx, by, Math.max(4, bw * boss.hp / boss.maxHp), 12, 6); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; engine.rr(bx, by, bw, 12, 6); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 11px ' + FONT; ctx.textAlign = 'center';
+        ctx.fillText(boss.boss.name || 'БОСС', W / 2, by - 8);
+      }
+      // подпись уровня
+      if (MODE === 'levels' && LEVELS.length > 1) {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = 'bold 11px ' + FONT; ctx.textAlign = 'right';
+        ctx.fillText((LB.level || 'Уровень') + ' ' + (levelIdx + 1) + '/' + LEVELS.length, W - 12, H - 10);
+      }
+      // тач-кнопки
+      for (let i = 0; i < btns.length; i++) {
+        const b = btns[i];
+        ctx.fillStyle = vkeys[b.id] ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.16)';
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = 'bold ' + Math.round(b.r * 0.8) + 'px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(b.glyph, b.x, b.y + 1);
+      }
+      // подсказка раннера
+      if (MODE === 'runner' && time < 3) {
+        ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = 'bold 15px ' + FONT; ctx.textAlign = 'center';
+        ctx.fillText(LB.hint || 'Тапай, чтобы прыгать', W / 2, H * 0.32);
+      }
+      // комбо-множитель
+      if (COMBO && combo > 1) {
+        ctx.fillStyle = '#ffd75e'; ctx.font = 'bold 17px ' + FONT; ctx.textAlign = 'center';
+        ctx.fillText('x' + comboMul().toFixed(1) + '  (' + combo + ')', W / 2, 24);
+      }
+      // ресурсы крафта
+      if (CRAFT && CRAFT.resources) {
+        let rx = 14, ry = H - 64;
+        ctx.font = 'bold 12px ' + FONT; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        for (const id in CRAFT.resources) {
+          const n = player.res[id] || 0; if (n <= 0 && !CRAFT.resources[id].always) continue;
+          ctx.fillStyle = CRAFT.resources[id].color || '#ccc';
+          ctx.beginPath(); ctx.arc(rx + 6, ry, 6, 0, 7); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.fillText('×' + n, rx + 16, ry + 1);
+          ry -= 18;
+        }
+      }
+      // тосты
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (let i = 0; i < toasts.length; i++) {
+        const t = toasts[i], a = Math.min(1, t.t / 0.5);
+        ctx.globalAlpha = a;
+        ctx.font = 'bold 14px ' + FONT;
+        const tw2 = ctx.measureText(t.text).width + 22;
+        const ty2 = H * 0.24 - i * 26;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; engine.rr((W - tw2) / 2, ty2 - 11, tw2, 22, 11); ctx.fill();
+        ctx.fillStyle = '#ffe9a0'; ctx.fillText(t.text, W / 2, ty2 + 1);
+        ctx.globalAlpha = 1;
+      }
+      // звёзды и верёвки
+      ctx.font = 'bold 13px ' + FONT; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      if (stars > 0) { ctx.fillStyle = '#ffd75e'; ctx.fillText('⭐ ' + stars, 14, H - 78); }
+      if (player.ropes > 0) { ctx.fillStyle = '#d8b56a'; ctx.fillText('〜 ' + player.ropes, 14, H - 94); }
+      // слоу-мо виньетка
+      if (slowHeld) {
+        ctx.strokeStyle = 'rgba(120,200,255,0.5)'; ctx.lineWidth = 6;
+        ctx.strokeRect(3, 3, W - 6, H - 6);
+      }
+      // карта метроидвании (оверлей на паузе): посещённые экраны, чекпоинты-телепорты, пометки
+      if (mapOpen && MAPCFG) {
+        ctx.fillStyle = 'rgba(4,8,16,0.88)'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 15px ' + FONT; ctx.textAlign = 'center';
+        ctx.fillText('КАРТА — тап: пометка · чекпоинт: телепорт', W / 2, 24);
+        const sxN = Math.max(1, Math.ceil(levelWpx() / viewW)), syN = Math.max(1, Math.ceil(levelHpx() / viewH));
+        const cw2 = Math.min((W - 40) / sxN, (H - 90) / syN, 64);
+        const ox2 = (W - cw2 * sxN) / 2, oy2 = 50;
+        for (let sy = 0; sy < syN; sy++) for (let sx = 0; sx < sxN; sx++) {
+          const vis = visited[sx + ',' + sy];
+          ctx.fillStyle = vis ? 'rgba(90,140,220,0.55)' : 'rgba(255,255,255,0.06)';
+          ctx.fillRect(ox2 + sx * cw2 + 1, oy2 + sy * cw2 + 1, cw2 - 2, cw2 - 2);
+          if (mapMarkers[sx + ',' + sy]) {
+            ctx.fillStyle = '#ffd75e'; ctx.font = 'bold ' + Math.round(cw2 * 0.5) + 'px ' + FONT;
+            ctx.fillText('✖', ox2 + (sx + 0.5) * cw2, oy2 + (sy + 0.55) * cw2);
+          }
+        }
+        // чекпоинты (посещённые экраны) и игрок
+        for (let i = 0; i < ents.length; i++) {
+          const e = ents[i]; if (e.kind !== 'checkpoint') continue;
+          const sx = Math.floor(e.x / viewW), sy = Math.floor(e.y / viewH);
+          if (!visited[sx + ',' + sy]) continue;
+          ctx.fillStyle = e.lit ? '#7f7' : '#8fa';
+          ctx.beginPath(); ctx.arc(ox2 + (sx + 0.5) * cw2, oy2 + (sy + 0.5) * cw2, cw2 * 0.16, 0, 7); ctx.fill();
+        }
+        const psx = Math.floor(player.x / viewW), psy = Math.floor(player.y / viewH);
+        ctx.strokeStyle = '#ffd75e'; ctx.lineWidth = 2;
+        ctx.strokeRect(ox2 + psx * cw2 + 1, oy2 + psy * cw2 + 1, cw2 - 2, cw2 - 2);
+        this._mapGeom = { ox: ox2, oy: oy2, cw: cw2, sxN: sxN, syN: syN };
+      }
+      // roguelite: карточки выбора (мир на паузе)
+      if (choosing) {
+        ctx.fillStyle = 'rgba(5,8,18,0.78)'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 17px ' + FONT; ctx.textAlign = 'center';
+        ctx.fillText(ROGUE.title || 'Выбери усиление', W / 2, H * 0.22);
+        const cw = Math.min(110, W * 0.28), chh = cw * 1.35, gap = (W - cw * choosing.length) / (choosing.length + 1);
+        for (let i = 0; i < choosing.length; i++) {
+          const x = gap + i * (cw + gap), y = H * 0.3;
+          ctx.fillStyle = 'rgba(35,45,80,0.95)'; engine.rr(x, y, cw, chh, 10); ctx.fill();
+          ctx.strokeStyle = engine.accent(); ctx.lineWidth = 2; engine.rr(x, y, cw, chh, 10); ctx.stroke();
+          ctx.fillStyle = '#ffd75e'; ctx.font = 'bold 26px ' + FONT;
+          ctx.fillText(choosing[i].icon || '★', x + cw / 2, y + chh * 0.3);
+          ctx.fillStyle = '#fff'; ctx.font = 'bold 12px ' + FONT;
+          const words = (choosing[i].label || '').split(' ');
+          for (let wl = 0; wl < words.length; wl++) ctx.fillText(words[wl], x + cw / 2, y + chh * 0.55 + wl * 15);
+        }
+      }
+    },
+
+    pointerDown: function (p) {
+      // карта: тап по клетке = пометка; тап по чекпоинту = быстрый телепорт
+      if (mapOpen && MAPCFG) {
+        const g = this._mapGeom;
+        if (g) {
+          const sx = Math.floor((p.x - g.ox) / g.cw), sy = Math.floor((p.y - g.oy) / g.cw);
+          if (sx >= 0 && sx < g.sxN && sy >= 0 && sy < g.syN) {
+            // чекпоинт в этой клетке? → fast travel
+            for (let i = 0; i < ents.length; i++) {
+              const e = ents[i];
+              if (e.kind === 'checkpoint' && Math.floor(e.x / viewW) === sx && Math.floor(e.y / viewH) === sy && visited[sx + ',' + sy]) {
+                player.x = e.x; player.y = e.y - player.h; player.vx = 0; player.vy = 0;
+                mapOpen = false; sfx('exit'); toast('Телепорт');
+                return;
+              }
+            }
+            const mk = sx + ',' + sy;
+            if (mapMarkers[mk]) delete mapMarkers[mk]; else mapMarkers[mk] = true;   // пометка
+            sfx('coin');
+          }
+        }
+        return;
+      }
+      // roguelite: тап по карточке применяет апгрейд и снимает паузу
+      if (choosing) {
+        const W = engine.W, H = engine.H;
+        const cw = Math.min(110, W * 0.28), chh = cw * 1.35, gap = (W - cw * choosing.length) / (choosing.length + 1);
+        for (let i = 0; i < choosing.length; i++) {
+          const x = gap + i * (cw + gap), y = H * 0.3;
+          if (p.x >= x && p.x <= x + cw && p.y >= y && p.y <= y + chh) {
+            applyUpgrade(choosing[i]); choosing = null; return;
+          }
+        }
+        return;
+      }
+      if (MODE === 'runner') { if (!RUN.lanes) vkeys.jump = true; return; }
+      const b = btnAt(p.x, p.y);
+      if (b) { ptrBtn[p.id] = b.id; vkeys[b.id] = true; }
+    },
+    pointerUp: function (e) {
+      if (MODE === 'runner') {
+        vkeys.jump = false;
+        if (e.dist > 28) {
+          if (RUN.lanes) {   // свайп меняет полосу
+            const rows = RUN.lanes.rows || [3, 6, 9];
+            if (player.lane == null) player.lane = (rows.length / 2) | 0;
+            if (e.dir === 'up') player.lane = Math.max(0, player.lane - 1);
+            else if (e.dir === 'down') player.lane = Math.min(rows.length - 1, player.lane + 1);
+            sfx('swap');
+          } else if (e.dir === 'down') player.slideReq = true;   // свайп вниз = подкат
+        }
+        return;
+      }
+      const id = ptrBtn[e.id];
+      if (id) { delete ptrBtn[e.id]; vkeys[id] = false; }
+    },
+    pointerMove: function (p) {
+      // палец уполз с кнопки — отпускаем; заполз на другую — нажимаем
+      const held = ptrBtn[p.id];
+      if (held == null) return;
+      const b = btnAt(p.x, p.y);
+      if (!b || b.id !== held) { vkeys[held] = false; delete ptrBtn[p.id]; if (b) { ptrBtn[p.id] = b.id; vkeys[b.id] = true; } }
+    },
+
+    // ── отладка/тесты (детерминированные прогоны без rAF) ──
+    _state: function () {
+      return { mode: MODE, levelIdx: levelIdx, lives: lives,
+        player: { x: player.x, y: player.y, vx: player.vx, vy: player.vy, hp: player.hp, coins: player.coins,
+                  onGround: player.onGround, keysN: player.keysN, weapons: player.weapons.slice(), abilities: Object.assign({}, player.abilities),
+                  weaponIdx: player.weaponIdx, attackCd: player.attackCd, attackT: player.attackT, climbing: player.climbing, inv: player.inv, facing: player.facing,
+                  tempWeapon: player.tempWeapon ? { id: player.tempWeapon.id, t: player.tempWeapon.t } : null,
+                  gdir: player.gdir, pound: player.pound, grap: player.grap ? { tx: player.grap.tx, ty: player.grap.ty, hang: player.grap.hang } : null,
+                  res: Object.assign({}, player.res), mods: Object.assign({}, player.mods) },
+        combo: combo, choosing: choosing ? choosing.map(u => u.label) : null, night: +nightK().toFixed(2),
+        stars: stars, worldFlags: Object.assign({}, worldFlags), suit: player.suit, carry: !!player.carry,
+        ropes: player.ropes, ropeTiles: Object.keys(ropeTiles).length, traps: trapList.length,
+        pendulums: pendItems.length, mapOpen: mapOpen, visitedN: Object.keys(visited).length, slow: slowHeld,
+        cam: { x: cam.x, y: cam.y },
+        counts: ents.reduce(function (m, e) { m[e.kind] = (m[e.kind] || 0) + 1; return m; }, {}),
+        boss: (function () { const b = ents.find(e => e.boss); return b ? { hp: b.hp, active: b.bossActive } : null; })(),
+        runnerDist: runnerDist, tCols: tCols, tRows: tRows,
+        exits: ents.filter(e => e.kind === 'exit').map(e => ({ x: e.x, y: e.y })),
+        enemies: ents.filter(e => e.kind === 'enemy').map(e => ({ id: e.id, x: Math.round(e.x), y: Math.round(e.y), hp: e.hp, boss: !!e.boss, active: !!e.bossActive })),
+        pickups: ents.filter(e => e.kind === 'pickup').map(e => ({ x: Math.round(e.x), y: Math.round(e.y), type: e.def.pickup, weapon: e.def.weapon || null, fly: !!e.fly })),
+        projs: ents.filter(e => e.kind === 'proj').map(e => ({ x: Math.round(e.x), y: Math.round(e.y), vx: Math.round(e.vx), friendly: e.friendly, pierce: !!e.pierce })) };
+    },
+    _press: function (k) { vkeys[k] = true; },
+    _probeTile: function (tx, ty) { const d = defAt(tx, ty); return { ch: tileAt(tx, ty), solid: solidAt(tx, ty), time: +time.toFixed(2), phase: d && d.phase ? phaseOn(d, tx, ty) : null }; },
+    _release: function (k) { vkeys[k] = false; },
+    _teleport: function (x, y) { player.x = x; player.y = y; player.vx = 0; player.vy = 0; },
+    _cheat: function (o) { if (o && o.inv) player.inv = o.inv; if (o && o.hp) { player.hp = o.hp; player.maxHp = Math.max(player.maxHp, o.hp); } },
+  };
+
+  // ── рисование тайла ──
+  function drawTile(ctx, d, tx, ty) {
+    const x = tx * TS, y = ty * TS;
+    if (d.img) {
+      const img = engine.img(d.img);
+      if (img && img.complete) { ctx.drawImage(img, x, y, TS, TS); return; }
+    }
+    const col = d.color || '#777';
+    if (d.hazard) { // шипы
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const sx = x + i * (TS / 3);
+        ctx.moveTo(sx, y + TS); ctx.lineTo(sx + TS / 6, y + TS * 0.25); ctx.lineTo(sx + TS / 3, y + TS);
+      }
+      ctx.fill(); return;
+    }
+    if (d.oneWay) { ctx.fillStyle = col; ctx.fillRect(x, y, TS, TS * 0.32); ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(x, y + TS * 0.22, TS, TS * 0.1); return; }
+    if (d.ladder) {
+      ctx.strokeStyle = col; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x + 3, y); ctx.lineTo(x + 3, y + TS); ctx.moveTo(x + TS - 3, y); ctx.lineTo(x + TS - 3, y + TS);
+      for (let i = 0; i < 3; i++) { ctx.moveTo(x + 3, y + 2 + i * (TS / 3)); ctx.lineTo(x + TS - 3, y + 2 + i * (TS / 3)); }
+      ctx.stroke(); return;
+    }
+    if (d.grapple) {   // точка крюка — кольцо
+      ctx.strokeStyle = col; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.arc(x + TS / 2, y + TS / 2, TS * 0.3, 0, 7); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.beginPath(); ctx.arc(x + TS / 2, y + TS / 2, TS * 0.12, 0, 7); ctx.fill();
+      return;
+    }
+    if (d.spring) {    // пружина — сжатая спираль на основании
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 1, y + TS * 0.7, TS - 2, TS * 0.3);
+      ctx.strokeStyle = col; ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) { ctx.moveTo(x + 2, y + TS * 0.68 - i * 4); ctx.lineTo(x + TS - 2, y + TS * 0.6 - i * 4); }
+      ctx.stroke();
+      ctx.fillStyle = col; ctx.fillRect(x + 2, y + TS * 0.28, TS - 4, 3);
+      return;
+    }
+    ctx.fillStyle = col; ctx.fillRect(x, y, TS, TS);
+    if ((d.breakable || d.diggable)) { ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 3, y + 4); ctx.lineTo(x + TS * 0.6, y + TS * 0.5); ctx.lineTo(x + TS - 3, y + TS - 4); ctx.stroke(); }
+    if (d.conveyor) {   // стрелки движения ленты
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5;
+      const dir2 = Math.sign(d.conveyor), off = ((time * Math.abs(d.conveyor) * 0.6) % TS) * dir2;
+      ctx.save(); ctx.beginPath(); ctx.rect(x, y, TS, TS); ctx.clip();
+      for (let i = -1; i <= 1; i++) {
+        const ax = x + TS / 2 + i * TS * 0.5 + off;
+        ctx.beginPath(); ctx.moveTo(ax - 3 * dir2, y + TS * 0.3); ctx.lineTo(ax + 2 * dir2, y + TS * 0.5); ctx.lineTo(ax - 3 * dir2, y + TS * 0.7); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (d.trap) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.arc(x + TS / 2 + (d.dir || 1) * TS * 0.22, y + TS / 2, TS * 0.16, 0, 7); ctx.fill(); }
+    if (d.door) { ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.arc(x + TS / 2, y + TS * 0.55, TS * 0.14, 0, 7); ctx.fill(); }
+    else {
+      // лёгкая фаска: светлее сверху, темнее снизу
+      ctx.fillStyle = 'rgba(255,255,255,0.13)'; ctx.fillRect(x, y, TS, 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x, y + TS - 2, TS, 2);
+    }
+  }
+  function drawPickup(ctx, e) {
+    const d = e.def, bob = Math.sin(e.t * 4) * 1.5;
+    const x = e.x, y = e.y + bob, s = e.w;
+    const col = d.color || '#fc3';
+    if (d.pickup === 'coin') {
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s * 0.42, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke();
+    } else if (d.pickup === 'heart') {
+      drawHeartW(ctx, x + s / 2, y + s / 2, s * 0.9, col);
+    } else if (d.pickup === 'key') {
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x + s * 0.35, y + s * 0.4, s * 0.2, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + s * 0.5, y + s * 0.5); ctx.lineTo(x + s * 0.85, y + s * 0.85); ctx.moveTo(x + s * 0.72, y + s * 0.72); ctx.lineTo(x + s * 0.85, y + s * 0.6); ctx.stroke();
+    } else if (d.pickup === 'weapon' && (e.fly || d.label)) {
+      // летящий бонус оружия — светящаяся капсула с буквой (Contra-style)
+      ctx.save();
+      ctx.shadowColor = col; ctx.shadowBlur = 6;
+      ctx.fillStyle = col; rrPath(ctx, x, y + s * 0.12, s, s * 0.76, s * 0.3); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2; rrPath(ctx, x, y + s * 0.12, s, s * 0.76, s * 0.3); ctx.stroke();
+      ctx.fillStyle = '#111'; ctx.font = 'bold ' + Math.round(s * 0.55) + 'px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(d.label || 'W', x + s / 2, y + s / 2 + 0.5);
+    } else { // способность/оружие — ромб
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.moveTo(x + s / 2, y); ctx.lineTo(x + s, y + s / 2); ctx.lineTo(x + s / 2, y + s); ctx.lineTo(x, y + s / 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+  }
+  function drawHeart(ctx, x, y, s, full) {
+    drawHeartW(ctx, x + s / 2, y + s / 2, s, full ? '#e84a5a' : 'rgba(255,255,255,0.25)');
+  }
+  function drawHeartW(ctx, cx, cy, s, col) {
+    const r = s * 0.26;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(cx - r, cy - r * 0.6, r, 0, 7);
+    ctx.arc(cx + r, cy - r * 0.6, r, 0, 7);
+    ctx.moveTo(cx - r * 2, cy - r * 0.3);
+    ctx.lineTo(cx, cy + s * 0.42);
+    ctx.lineTo(cx + r * 2, cy - r * 0.3);
+    ctx.closePath(); ctx.fill();
+  }
+});
+
+Engine.boot(CONFIG);
+</script></body></html>
