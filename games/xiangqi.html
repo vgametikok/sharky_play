@@ -975,7 +975,7 @@ Engine.register('xiangqi', function (engine, cfg) {
   let capR = [], capB = [];              // типы съеденных: capR — потери красных
   let hist = {};                         // повторения позиций
   let gameOn = false;
-  let sel = -1, selMoves = [], lastMv = null;
+  let sel = -1, selMoves = [], selEnemy = false, lastMv = null;
   let anim = null;                       // {f,t,p,tm,dur}
   let thinking = false, thinkT = 0;
   let toastT = 0, toastText = '';
@@ -1254,14 +1254,17 @@ Engine.register('xiangqi', function (engine, cfg) {
         ctx.beginPath(); ctx.arc(sx(i % 9, (i / 9) | 0), sy(i % 9, (i / 9) | 0), cell * 0.46, 0, 7); ctx.stroke();
       });
     }
-    // выбор + доступные ходы
+    // выбор + доступные ходы (свои — зелёные, противника — оранжевые)
     if (sel >= 0) {
-      ctx.strokeStyle = '#ffd75e'; ctx.lineWidth = 3;
+      ctx.strokeStyle = selEnemy ? 'rgba(255,140,70,0.95)' : '#ffd75e'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(sx(sel % 9, (sel / 9) | 0), sy(sel % 9, (sel / 9) | 0), cell * 0.5, 0, 7); ctx.stroke();
       if (SET.m) for (let i = 0; i < selMoves.length; i++) {
         const t = selMoves[i] % 90, X = sx(t % 9, (t / 9) | 0), Y = sy(t % 9, (t / 9) | 0);
         if (bd[t]) { ctx.strokeStyle = 'rgba(224,83,61,0.9)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X, Y, cell * 0.44, 0, 7); ctx.stroke(); }
-        else { ctx.fillStyle = 'rgba(120,220,130,0.8)'; ctx.beginPath(); ctx.arc(X, Y, cell * 0.14, 0, 7); ctx.fill(); }
+        else {
+          ctx.fillStyle = selEnemy ? 'rgba(255,150,60,0.8)' : 'rgba(120,220,130,0.8)';
+          ctx.beginPath(); ctx.arc(X, Y, cell * 0.14, 0, 7); ctx.fill();
+        }
       }
     }
     // шах — пульс вокруг генерала
@@ -1533,7 +1536,7 @@ Engine.register('xiangqi', function (engine, cfg) {
     ctx.font = Math.round(Math.min(W, H) * 0.03) + 'px ' + FONT;
     ctx.fillStyle = 'rgba(244,227,176,0.4)';
     ctx.textBaseline = 'bottom';
-    ctx.fillText('двойной тап по фигуре — подсказка', W / 2, H - 6);
+    ctx.fillText('тап по фигуре — её ходы · двойной тап — подсказка', W / 2, H - 6);
   }
 
   // ═══════════════ ВВОД ═══════════════
@@ -1576,26 +1579,28 @@ Engine.register('xiangqi', function (engine, cfg) {
     lastTap = { t: now, x: x, y: y };
     if (cellI >= 0 && bd[cellI] && isDouble) {
       hintCard = { t: bd[cellI] & 7, black: bd[cellI] > BLACK };
-      // заодно подсветим ходы этой фигуры
-      if (side(bd[cellI]) === 'r' && turn === 'r' && gameOn) {
-        sel = cellI;
-        selMoves = legalMoves(bd, false).filter(function (m) { return ((m / 90) | 0) === cellI; });
+      // заодно подсветим ходы этой фигуры (и своей, и противника)
+      if (gameOn) {
+        sel = cellI; selEnemy = bd[cellI] > BLACK;
+        selMoves = legalMoves(bd, selEnemy).filter(function (m) { return ((m / 90) | 0) === cellI; });
       }
       snd(600, 0.06, 'sine', 0.08);
       lastTap.t = 0;
       return;
     }
-    if (!gameOn || turn !== 'r' || anim || thinking) return;
+    if (!gameOn || anim) return;
     if (cellI < 0) { sel = -1; selMoves = []; return; }
     const p = bd[cellI];
-    if (sel >= 0) {
+    // ход выбранной СВОЕЙ фигурой (только в свой ход)
+    if (sel >= 0 && !selEnemy && turn === 'r' && !thinking) {
       const m = sel * 90 + cellI;
       if (selMoves.indexOf(m) >= 0) { playerMove(m); return; }
     }
-    if (p && side(p) === 'r') {
-      sel = cellI;
-      selMoves = legalMoves(bd, false).filter(function (m) { return ((m / 90) | 0) === cellI; });
-      snd(560, 0.04, 'sine', 0.06);
+    // одиночный тап по ЛЮБОЙ фигуре — показать её возможные ходы
+    if (p) {
+      sel = cellI; selEnemy = side(p) === 'b';
+      selMoves = legalMoves(bd, selEnemy).filter(function (m) { return ((m / 90) | 0) === cellI; });
+      snd(selEnemy ? 440 : 560, 0.04, 'sine', 0.06);
     } else { sel = -1; selMoves = []; }
   }
 
@@ -1646,7 +1651,7 @@ Engine.register('xiangqi', function (engine, cfg) {
     // ── тест-хуки ──
     _state: function () {
       return { ui: ui, turn: turn, gameOn: gameOn, board: serialize(), mc: mc, idle: idle,
-        sel: sel, nMoves: selMoves.length, capR: capR.join(''), capB: capB.join(''),
+        sel: sel, nMoves: selMoves.length, selEnemy: selEnemy, capR: capR.join(''), capB: capB.join(''),
         wins: wins, score: scoreP, set: JSON.parse(JSON.stringify(SET)), horiz: horiz,
         thinking: thinking, hint: hintCard ? INFO[hintCard.t].name : null,
         check: gameOn ? inCheck(bd, turn === 'b') : false };
