@@ -414,10 +414,21 @@ const GAMES_PER_PAGE = 50;
 // ════════ HELPERS ════════
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// CSS-context sanitizer. esc() blocks HTML/attribute breakout but leaves CSS
+// metacharacters (; : ( )) live, so a stored gradient/bg like
+// "#222;background-image:url(//evil)" would inject CSS (tracking-pixel / overlay)
+// into the admin's page. Allow only a bare hex colour or the exact
+// linear-gradient(...) shape the app produces; otherwise fall back to default.
+const cssColor = (v, fallback = '#222') => {
+  const s = String(v ?? '').trim();
+  if (/^#[0-9a-fA-F]{3,8}$/.test(s)) return s;
+  if (/^linear-gradient\(\s*-?\d{1,3}deg\s*(?:,\s*#[0-9a-fA-F]{3,8}(?:\s+\d{1,3}%)?\s*){2,6}\)$/.test(s)) return s;
+  return fallback;
+};
 const slug = s => String(s||'').toLowerCase().trim().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'');
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
 function fmtDate(s){if(!s)return'—';const d=new Date(s);return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'2-digit'});}
-function statusBadge(s){return `<span class="badge b-${s}">${s}</span>`;}
+function statusBadge(s){return `<span class="badge b-${esc(s)}">${esc(s)}</span>`;}
 
 // ════════ AUTH (Supabase Auth + RLS) ════════
 $('#lg-btn').addEventListener('click', doLogin);
@@ -624,7 +635,7 @@ function dashRenderGames(games, gts){
     dashTile(dashNf(tSv),'Избранное',''),
   ].join('');
   const rows = games.map(g=>`<tr class="clickable" data-game="${esc(g.game_id)}">
-    <td><div class="cellflex"><div class="thumb" style="width:30px;height:30px;font-size:14px;background:${esc(g.bg||'#1a1a24')}">${esc(dashGemoji(g.game_id))}</div><div style="font-weight:700">${esc(g.title)}</div></div></td>
+    <td><div class="cellflex"><div class="thumb" style="width:30px;height:30px;font-size:14px;background:${cssColor(g.bg,'#1a1a24')}">${esc(dashGemoji(g.game_id))}</div><div style="font-weight:700">${esc(g.title)}</div></div></td>
     <td class="num">${dashNf(g.impressions)}</td>
     <td class="num">${dashNf(g.sessions_3s)}</td>
     <td class="num">${dashPctCell(g.hook_rate)}</td>
@@ -713,7 +724,7 @@ async function loadGameDetail(id){
 function dashRenderGameDetail(d, gts){
   d = d||{}; const g = d.game||{}; const tt = d.totals||{};
   const head = `<div class="prof-head">
-      <div class="prof-av" style="background:${esc(g.bg||'#222')};border-radius:14px;font-size:28px">${esc(g.emoji||'🎮')}</div>
+      <div class="prof-av" style="background:${cssColor(g.bg)};border-radius:14px;font-size:28px">${esc(g.emoji||'🎮')}</div>
       <div class="prof-meta">
         <h2>${esc(g.title||g.id||'—')}</h2>
         <div class="ph">${esc(g.id||'')} · @${esc(g.author_id||'—')}</div>
@@ -1039,8 +1050,8 @@ function renderGames(){
     pageRows.map(g=>{
       const au=usersByName[g.author_id];
       const thumb = (g.thumbnail_url && g.thumbnail_status==='active')
-        ? `<div class="thumb" style="background:${esc(g.bg)}"><img src="${esc(g.thumbnail_url)}"></div>`
-        : `<div class="thumb" style="background:${esc(g.bg)}">${esc(g.emoji)}</div>`;
+        ? `<div class="thumb" style="background:${cssColor(g.bg)}"><img src="${esc(g.thumbnail_url)}"></div>`
+        : `<div class="thumb" style="background:${cssColor(g.bg)}">${esc(g.emoji)}</div>`;
       return `<tr>
         <td><div class="cellflex">${thumb}<div><div style="font-weight:700">${esc(g.title)}</div><div class="mono" style="opacity:.55;font-size:11px">v${g.version||1}</div></div></div></td>
         <td><code class="idchip">${esc(g.id)}</code></td>
@@ -1304,9 +1315,9 @@ function renderProfiles(){
       const status=u.status||'active';
       const author=isAuthor(u);
       return `<tr class="clickable" data-open="${esc(u.id)}">
-        <td><div class="cellflex"><div class="thumb" style="background:${esc(u.gradient||'#222')}">${esc(u.avatar_emoji||'👤')}</div><div><div style="font-weight:700">${esc(u.display_name)}</div><div class="mono">@${esc(u.username)}</div></div></div></td>
+        <td><div class="cellflex"><div class="thumb" style="background:${cssColor(u.gradient)}">${esc(u.avatar_emoji||'👤')}</div><div><div style="font-weight:700">${esc(u.display_name)}</div><div class="mono">@${esc(u.username)}</div></div></div></td>
         <td>${author?'<span class="badge b-admin">автор</span>':'<span class="mono">юзер</span>'}${u.is_virtual?' <span class="tag">virtual</span>':''}</td>
-        <td><span class="badge b-${u.role}">${esc(u.role)}</span></td>
+        <td><span class="badge b-${esc(u.role)}">${esc(u.role)}</span></td>
         <td>${statusBadge(status)}</td>
         <td>${u.is_adult?'<span class="badge b-adult">18+</span>':'<span class="mono">—</span>'}</td>
         <td>${gameCountByAuthor[u.username]||0}</td>
@@ -1355,7 +1366,7 @@ function renderProfDetail(id){
   const author=isAuthor(u);
   const games = GAMES.filter(g=>g.author_id===u.username);
   const head = `<div class="prof-head">
-    <div class="prof-av" style="background:${esc(u.gradient||'#222')}">${esc(u.avatar_emoji||'👤')}</div>
+    <div class="prof-av" style="background:${cssColor(u.gradient)}">${esc(u.avatar_emoji||'👤')}</div>
     <div class="prof-meta">
       <h2>${esc(u.display_name)}</h2>
       <div class="ph">@${esc(u.username)} · ${esc(u.role)}${author?' · автор':''}</div>
@@ -1399,8 +1410,8 @@ function gamesModerationHTML(games){
   return games.map(g=>{
     const ts=g.thumbnail_status||'active';
     const cover = g.thumbnail_url
-      ? `<div class="thumb" style="width:48px;height:48px;background:${esc(g.bg)};${ts!=='active'?'opacity:.4':''}"><img src="${esc(g.thumbnail_url)}"></div>`
-      : `<div class="thumb" style="width:48px;height:48px;background:${esc(g.bg)}">${esc(g.emoji)}</div>`;
+      ? `<div class="thumb" style="width:48px;height:48px;background:${cssColor(g.bg)};${ts!=='active'?'opacity:.4':''}"><img src="${esc(g.thumbnail_url)}"></div>`
+      : `<div class="thumb" style="width:48px;height:48px;background:${cssColor(g.bg)}">${esc(g.emoji)}</div>`;
     const gbtn=(l,c,a)=>`<button class="btn ${c} sm" data-gact="${a}" data-id="${esc(g.id)}">${l}</button>`;
     const gacts=[];
     if(g.status==='published'||g.status==='draft'||g.status==='rejected') gacts.push(gbtn('Скрыть','yellow','hide'));
@@ -1488,7 +1499,7 @@ async function renderAuthorStats(u, period){
     dashTile(dashNf(tSv),'Избранное',''),
   ].join('');
   const trs = rows.map(g=>`<tr class="clickable" data-pgame="${esc(g.game_id)}">
-    <td><div class="cellflex"><div class="thumb" style="width:28px;height:28px;font-size:13px;background:${esc(g.bg||'#1a1a24')}">${esc(dashGemoji(g.game_id))}</div><div style="font-weight:700">${esc(g.title)}</div></div></td>
+    <td><div class="cellflex"><div class="thumb" style="width:28px;height:28px;font-size:13px;background:${cssColor(g.bg,'#1a1a24')}">${esc(dashGemoji(g.game_id))}</div><div style="font-weight:700">${esc(g.title)}</div></div></td>
     <td class="num">${dashNf(g.impressions)}</td>
     <td class="num">${dashNf(g.sessions_3s)}</td>
     <td class="num">${dashPctCell(g.hook_rate)}</td>

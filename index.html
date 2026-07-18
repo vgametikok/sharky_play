@@ -349,7 +349,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
   <div class="ld-tagline">Swipe and play</div>
   <div class="ld-dots" id="ld-dots"><div class="ld-dot"></div><div class="ld-dot"></div><div class="ld-dot"></div></div>
   <!-- Sharky version — bump here on each release; keep in sync with CHANGELOG.txt -->
-  <div class="ld-version" id="ld-version">Sharky v0.5.2</div>
+  <div class="ld-version" id="ld-version">Sharky v0.5.3</div>
   <div class="ld-error" id="ld-error">
     <div class="ld-error-msg" id="ld-error-msg">Не удалось загрузить. Проверь соединение и попробуй снова.</div>
     <button class="ld-retry" id="ld-retry">Повторить</button>
@@ -656,6 +656,17 @@ function heartSVG(a){const c=a?'#fff':'rgba(255,255,255,.9)',f=a?'#fff':'none';r
 function bookSVG(a){const c=a?'#15151c':'rgba(255,255,255,.9)',f=a?'#15151c':'none';return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;}
 function commentHeartSVG(a){const c=a?'var(--a1)':'rgba(255,255,255,.5)',f=a?'var(--a1)':'none';return `<svg width="16" height="16" viewBox="0 0 24 24" fill="${f}" stroke="${c}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;}
 function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// CSS-context sanitizer. escHtml blocks HTML/attribute breakout but leaves CSS
+// metacharacters (; : ( )) live, so a stored gradient like
+// "#222;background-image:url(//evil)" would inject CSS (tracking-pixel / overlay)
+// into every viewer's page. Allow only a bare hex colour or the exact
+// linear-gradient(...) shape the app produces; otherwise fall back to default.
+function cssColor(v, fallback){
+  const s = String(v==null?'':v).trim();
+  if(/^#[0-9a-fA-F]{3,8}$/.test(s)) return s;
+  if(/^linear-gradient\(\s*-?\d{1,3}deg\s*(?:,\s*#[0-9a-fA-F]{3,8}(?:\s+\d{1,3}%)?\s*){2,6}\)$/.test(s)) return s;
+  return fallback || '#7b5cff';
+}
 
 // ══ AUTH ══
 // Verifies the Telegram session server-side (tg-auth Edge Function) and mints
@@ -1510,7 +1521,7 @@ function renderConnList(type, users) {
     const item = document.createElement('div');
     item.className = 'conn-item';
     item.innerHTML = `
-      <div class="conn-av" style="background:${escHtml(u.gradient || 'linear-gradient(135deg,#7b5cff,#ff3c5f)')}">${escHtml(u.avatar_emoji || '🎮')}</div>
+      <div class="conn-av" style="background:${cssColor(u.gradient, 'linear-gradient(135deg,#7b5cff,#ff3c5f)')}">${escHtml(u.avatar_emoji || '🎮')}</div>
       <div class="conn-info">
         <div class="conn-name">${escHtml(u.display_name)}</div>
         <div class="conn-handle">@${escHtml(u.username)}</div>
@@ -1753,7 +1764,7 @@ function buildSocialHTML(i, g) {
   const a = AUTHORS[g.author_id] || {};
   return `
     <div class="av-wrap ${a.followed?'following':''}" id="avwrap-${i}" onclick="openProfile('${g.author_id}')">
-      <div class="av-ring" style="background:${escHtml(a.ring||'#7b5cff')}"><div class="av-inner">${escHtml(a.emoji||'🎮')}</div></div>
+      <div class="av-ring" style="background:${cssColor(a.ring,'#7b5cff')}"><div class="av-inner">${escHtml(a.emoji||'🎮')}</div></div>
       <div class="av-plus" id="avplus-${i}">${a.followed?'✓':'+'}</div>
     </div>
     <div class="sb-stack">

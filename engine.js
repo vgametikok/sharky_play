@@ -30,7 +30,7 @@ function buildHeadHTML(i, g) {
     : '';
   return `
     <div class="ov-author" onclick="openProfile('${g.author_id}')">
-      <div class="ov-av" style="background:${escHtml(a.ring||'#7b5cff')}">${escHtml(a.emoji||'🎮')}</div>
+      <div class="ov-av" style="background:${cssColor(a.ring||'#7b5cff')}">${escHtml(a.emoji||'🎮')}</div>
       <div class="ov-author-meta">
         <div class="ov-name">${escHtml(a.name||'Sharky')} ${verified}</div>
         ${when ? `<div class="ov-time">${when}</div>` : ''}
