@@ -452,11 +452,15 @@ function genWorld(seed) {
     const cx = Math.floor(40 + rng() * (WORLD_W - 80));
     const wHalf = 6 + Math.floor(rng() * 9), depth = 4 + Math.floor(rng() * 5);
     const rim = surf[cx];
+    // уровень воды не выше НИЖНЕГО из берегов — иначе вода стояла бы стеной в воздухе
+    const bankL = surf[clamp(cx - wHalf - 1, 0, WORLD_W - 1)];
+    const bankR = surf[clamp(cx + wHalf + 1, 0, WORLD_W - 1)];
+    const waterTop = Math.max(bankL, bankR, rim + 1);
     for (let dx = -wHalf; dx <= wHalf; dx++) {
       const x = cx + dx; if (x < 2 || x >= WORLD_W - 2) continue;
       const d = Math.max(1, Math.round(depth * (1 - (dx * dx) / (wHalf * wHalf))));
       for (let y = rim; y < rim + d + 2; y++) if (inW(x, y)) T[idx(x, y)] = T_AIR;
-      for (let y = rim + 1; y < rim + d + 2; y++) if (inW(x, y)) LQ[idx(x, y)] = 8;
+      for (let y = Math.max(rim + 1, waterTop); y < rim + d + 2; y++) if (inW(x, y)) LQ[idx(x, y)] = 8;
     }
   }
   for (let i = 0; i < 120; i++) { // лужи в пещерах
@@ -505,6 +509,15 @@ function genWorld(seed) {
     chests.set(idx(x, y), genLoot(rng, y));
     placed++;
   }
+
+  // 8. Осадить жидкости до стабильности: генерация могла оставить воду/лаву
+  // «стеной» (склоны у озёр, каверны под лужами) — прогоняем симуляцию,
+  // пока всё не успокоится. Детерминировано (в симе нет случайности) —
+  // мир из seed при загрузке сейва осядет так же.
+  for (let i = 0; i < WORLD_W * WORLD_H; i++) if (LQ[i] & 15) lqActive.add(i);
+  let settleTicks = 0;
+  while (lqActive.size > 0 && settleTicks++ < 3000) updateLiquids();
+  lqActive.clear();
 
   genMode = false;
   lightDirty = true;
@@ -591,7 +604,14 @@ function updateLiquids() {
         if (nl && lqIsLava(nv) !== lava) { // контакт сбоку → обсидиан на месте контакта
           setTile(xn, y, T_OBSID); LQ[ni] = 0; moved = true; continue;
         }
-        if (nl < lvl - 1) {
+        // перелив через край: если у соседа есть сток вниз, льём даже при разнице в 1 —
+        // без этого вода стоит отвесной стеной у обрыва/раскопанного берега
+        let pour = false;
+        if (nl < lvl && y + 1 < WORLD_H) {
+          const bi = ni + WORLD_W, bv = LQ[bi], bl = lqLevel(bv);
+          pour = !isSolid(T[bi]) && bl < 8 && (!bl || lqIsLava(bv) === lava);
+        }
+        if (nl < lvl - 1 || (pour && nl < lvl)) {
           LQ[ni] = (lava ? 128 : 0) | (nl + 1);
           lvl--; LQ[i] = lvl ? (lava ? 128 : 0) | lvl : 0;
           markDiff(x, y); markDiff(xn, y);
