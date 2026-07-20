@@ -2423,6 +2423,43 @@ function spriteTile() { return null; } // тайлы всегда процеду
 // Доля высоты кадра до САМОГО НИЖНЕГО непрозрачного пикселя анимации (низ «опорной ноги»).
 // Кадры героя пакуются единым union-bbox на 4 анимации, поэтому в беге/ударе/прыжке
 // персонаж стоит выше в кадре — привязываем к его собственному низу, а не к низу кадра.
+// Высота ТЕЛА персонажа (голова→ноги) в пикселях кадра. Анимации героя рисованы
+// в разном масштабе (idle/run ~73px, кастомная swing ~51px), а раньше масштаб
+// брался по высоте КАДРА → в бою/копании персонаж выглядел мельче. Меряем самый
+// длинный вертикальный «широкий» прогон (тело), продлённый до ног — рукоять/тень
+// кирки (тонкие/короткие) не в счёт.
+const bodyCache = {};
+function animBodyH(key) {
+  if (key in bodyCache) return bodyCache[key];
+  const frames = getAnim(key);
+  if (!frames) return 0;
+  let maxBody = 0;
+  try {
+    for (const im of frames) {
+      const w = im.naturalWidth, h = im.naturalHeight;
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, w, h).data;
+      const THR = Math.max(10, w * 0.18);
+      const wide = new Array(h); let bot = -1;
+      for (let y = 0; y < h; y++) {
+        let mn = w, mx = -1;
+        for (let x = 0; x < w; x++) if (d[(x + y * w) * 4 + 3] > 40) { if (x < mn) mn = x; if (x > mx) mx = x; }
+        wide[y] = mx >= 0 && (mx - mn + 1) >= THR;
+        if (mx >= 0) bot = y;
+      }
+      let bestTop = -1, bestLen = 0, curTop = -1, curLen = 0;
+      for (let y = 0; y < h; y++) {
+        if (wide[y]) { if (curTop < 0) curTop = y; curLen++; if (curLen > bestLen) { bestLen = curLen; bestTop = curTop; } }
+        else { curTop = -1; curLen = 0; }
+      }
+      if (bestTop >= 0) maxBody = Math.max(maxBody, bot - bestTop + 1);
+    }
+  } catch (e) { return 0; }
+  if (frames.length && maxBody) bodyCache[key] = maxBody;
+  return maxBody;
+}
+
 const footCache = {};
 function animFootFrac(key) {
   if (key in footCache) return footCache[key];
@@ -2693,7 +2730,11 @@ function drawPlayer(Z, cx, cy) {
     else if (key === 'hero_jump') fi = Math.min(anim.length - 1, P.vy < 0 ? 1 : anim.length - 2);
     else fi = Math.floor(world.time * (key === 'hero_run' ? 12 : 7)) % anim.length;
     const fr = anim[fi];
-    const h = 2.1 * Z, w = h * (fr.width / fr.height);
+    // масштаб — по высоте ТЕЛА (эталон idle), чтобы персонаж был одного размера
+    // во всех анимациях; кадр всё равно масштабируется целиком (без искажений)
+    const refBody = animBodyH('hero_idle') || animBodyH(key) || 1;
+    const myBody = animBodyH(key) || refBody;
+    const h = 2.1 * Z * (refBody / myBody), w = h * (fr.width / fr.height);
     // низ опорной ноги анимации кладём на ноги игрока (иначе бег/удар/прыжок «всплывают»)
     const foot = animFootFrac(key);
     ctx.drawImage(fr, -w / 2, -foot * h + Z * 0.08, w, h);
