@@ -1,0 +1,792 @@
+<!DOCTYPE html><html lang="ru"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Почему я не зомби?</title>
+<style>
+  :root { --ac:#e7b44c; }
+  html,body{margin:0;width:100vw;height:100vh;overflow:hidden;touch-action:none;background:#000;}
+  canvas{display:block;width:100%;height:100%;}
+</style></head><body>
+<canvas id="c"></canvas>
+<script>
+'use strict';
+const CONFIG = {"genre":"novel","meta":{"title":"Почему я не зомби?"},"theme":{"accent":"#7fd66a","bgTop":"#10160f","bgBottom":"#05080a","hudText":"#cfe6c4","font":"'Georgia', 'Times New Roman', serif","labels":{"over":"КОНЕЦ","again":"Тап — пройти заново (NG+)","scoreUnit":"сцен"}},"rules":{"mode":"untimed"},"novel":{"start":"intro","chars":{"vera":{"name":"Др. Вера","color":"#7fd6c0"},"mark":{"name":"Марк","color":"#e0a060"}},"ends":{"vaccine":{"title":"Вакцина"},"sacrifice":{"title":"Жертва"},"burn":{"title":"Пепел"},"survivor":{"title":"Выживший"},"fall":{"title":"Падение"}},"nodes":{"intro":{"bg":"#0b0f0a","text":"Лаборатория «Меридиан», 40 км от города. Меня прислали снять репортаж о «прорыве века». Уже на проходной пахло не наукой, а страхом.","next":"lobby"},"lobby":{"bg":"#0e1512","who":"vera","text":"Вы журналист? Я — доктор Вера. Улыбнитесь в камеру и… прошу, не спрашивайте лишнего. Не всё здесь так гладко, как в пресс-релизе.","choices":[{"text":"Спросить про слухи об утечках","goto":"tour","set":["probed"],"aff":{"vera":-1}},{"text":"Пообещать честный, тёплый сюжет","goto":"tour","aff":{"vera":1}},{"text":"[Дежавю] «Вера, вы меня уже прививали»","goto":"secret","need":"ng+"}]},"tour":{"bg":"#0e1512","who":"vera","text":"Сектор «С» — живые образцы. Вирус RZ-9 меняет носителя за минуту. Мы близки к вакцине, но начальство торопит испытания на лю… впрочем, идёмте дальше.","next":"alarm"},"alarm":{"bg":"#2a0d0d","text":"СИРЕНА. Красный свет заливает коридор. Ровный женский голос повторяет: «Нарушение биозащиты. Протокол очистки — через десять минут».","next":"corridor"},"corridor":{"bg":"#2a0d0d","who":"mark","text":"Стоять! Я Марк, охрана. Гермодверь закроется через минуту — и всё, что внутри, останется внутри. Там ещё трое живых. Один я не успею.","choices":[{"text":"Помочь вытащить людей","goto":"rescue","set":["helped"],"aff":{"mark":2,"vera":1}},{"text":"Бежать к выходу — это не мои люди","goto":"stairs_alone","set":["ran"],"aff":{"mark":-2}}]},"rescue":{"bg":"#241a0d","text":"Тащим их сквозь дым. Последний — молодой лаборант — цепляется за рукав. На шее рваная рана: «Возьмите меня… пожалуйста… я ещё я…»","choices":[{"text":"Взять его. Никого не бросаю","goto":"elevator","set":["mercy"],"aff":{"vera":1}},{"text":"Он укушен. Оставить","goto":"stairs_group","set":["cold"],"aff":{"mark":1}}]},"elevator":{"bg":"#14100a","text":"В лифте он затих. Потом задышал часто. Потом перестал быть человеком. Тварь бросается, я закрываюсь рукой — зубы рвут кожу. Горячо. Темно.","set":["bitten"],"next":"wound"},"wound":{"bg":"#1a0a0a","text":"Я жду. Минуту, три, пять. Так меняются все — но не я. Рана горит, а я всё ещё думаю, помню, боюсь. Почему я не зомби?","set":["immune"],"next":"stairs_after_bite"},"stairs_after_bite":{"bg":"#0e1512","who":"vera","text":"Вера смотрит на укус, который уже подсыхает: «Тебя укусили — и ты в сознании? Это невозможно. Идём, мне нужна твоя кровь.»","next":"reveal"},"stairs_group":{"bg":"#0e1512","who":"mark","text":"Выводим двоих. Марк кивает: «Правильно. Сентименты в таком месте убивают.» Но я не чувствую правоты — только холод.","next":"reveal_nobite"},"stairs_alone":{"bg":"#0e1512","text":"Бегу один. За спиной крики, потом тишина, потом мягкий стук в закрытую дверь. Я не оборачиваюсь. Впереди — последний лифт.","next":"reveal_nobite"},"reveal":{"bg":"#101d1a","who":"vera","text":"RZ-9 тебя не берёт. Значит, в твоей крови то, что мы искали годами. Есть один стабилизатор: с ним из твоего иммунитета выйдет вакцина. Но синтез — только здесь и вживую.","set":["knows"],"choices":[{"text":"Останусь. Сделаем вакцину","goto":"lab_climax","set":["wants_cure"],"aff":{"vera":1}},{"text":"Нет. Вывези меня","goto":"exit_choice","aff":{"vera":-1}}]},"reveal_nobite":{"bg":"#101d1a","who":"vera","text":"Вера догоняет у лифта: «Образцы вот-вот сгорят по протоколу. Не заберём штамм сейчас — или не уничтожим — и мир получит RZ-9 в подарок. Решай.»","set":["knows"],"choices":[{"text":"Идти за штаммом — ради вакцины","goto":"lab_climax","set":["wants_cure"]},{"text":"Уничтожить лабораторию","goto":"end_burn"},{"text":"К выходу. С меня хватит","goto":"exit_choice"}]},"lab_climax":{"bg":"#0a1410","text":"Сектор образцов. За стеклом — колбы со штаммом и одна ампула стабилизатора. Из-за стеллажа выходит дрожащая девочка лет семи. За ней в коридоре — стон и шорох множества ног.","choices":[{"text":"Стабилизатор — ребёнку, себя прикрою","goto":"end_sacrifice","needAff":{"mark":1}},{"text":"Ввести стабилизатор себе — донести иммунитет живым","goto":"end_vaccine","needAff":{"vera":2}},{"text":"Разбить всё. Ни вируса, ни вакцины","goto":"end_burn"},{"text":"Схватить ампулу и бежать","goto":"end_fall","set":["greed"]}]},"exit_choice":{"bg":"#141414","text":"Двери лифта. Свобода пахнет бензином и дождём. Но за спиной остаётся всё: люди, ответ, вакцина.","choices":[{"text":"Уехать и молчать","goto":"end_survivor"},{"text":"Вернуться. Я не смогу с этим жить","goto":"lab_climax","need":"knows"}]},"secret":{"bg":"#0a0a14","who":"vera","text":"Вера бледнеет: «Откуда вы… Впрочем, вы ведь уже проживали этот день. Три года назад доброволец №0 получил ранний RZ и выжил — потеряв память о неделе здесь. С возвращением домой, Пациент Ноль.» Вот почему я не зомби. Я был первым.","set":["knows","origin"],"aff":{"vera":2},"next":"reveal_fast"},"reveal_fast":{"bg":"#101d1a","who":"vera","text":"Раз ты — исток, стабилизатору точно есть с чем работать. Идём прямо в сектор образцов, времени нет.","set":["wants_cure"],"next":"lab_climax"},"end_vaccine":{"bg":"#e8d27a","who":"vera","text":"Игла входит в вену. Через час моя кровь становится сывороткой. Вера смеётся сквозь слёзы: «Ты не выжил. Ты — лекарство.» Мы запираемся с синтезатором, пока внизу воет тьма. Утром придут военные. Утром будет вакцина.","end":"vaccine","endLabel":"КОНЦОВКА: ВАКЦИНА"},"end_sacrifice":{"bg":"#b0c0d0","text":"Вкалываю стабилизатор девочке и толкаю её в лифт. Двери сходятся на её мокрых глазах. Их много, они голодны, и я больше не боюсь боли — только того, что не увижу финала. Пусть финалом будет она.","end":"sacrifice","endLabel":"КОНЦОВКА: ЖЕРТВА"},"end_burn":{"bg":"#e0531d","text":"Срываю пломбу с газовой линии, щёлкаю зажигалкой Марка. «Меридиан» вспыхивает вместе со штаммом, со мной и с ответом, который никто не должен был получить. Мир не узнает, почему я не стал зомби. Мир просто будет жить.","end":"burn","endLabel":"КОНЦОВКА: ПЕПЕЛ"},"end_survivor":{"bg":"#3a4048","text":"Я выехал за периметр перед самой очисткой. По радио — «локальный инцидент, угрозы нет». Я знаю правду и молчу. Ночами укус чешется, и я думаю о трёх голосах за гермодверью. Я выжил. Кажется, это не то же самое, что жить.","end":"survivor","endLabel":"КОНЦОВКА: ВЫЖИВШИЙ"},"end_fall":{"bg":"#1a0a12","text":"Хватаю ампулу и бегу, расталкивая всех. Без синтезатора стабилизатор — просто стекляшка в кулаке. На парковке я роняю её, и она звенит по бетону. За спиной уже некому меня осудить. Только я и моя целая, никому не нужная кровь.","end":"fall","endLabel":"ПЛОХАЯ КОНЦОВКА"}}}};
+/* ============================================================
+   SHARKY GAME ENGINE — universal core (core.js)
+   ------------------------------------------------------------
+   Общий слой для всех мини-игр ленты Sharky:
+     • canvas + DPR + resize/layout
+     • игровой цикл (loop/update/render)
+     • ввод: pointer (tap/swipe) + клавиатура
+     • звук (beep), частицы (burst)
+     • загрузка base64-ассетов
+     • тематический HUD (счёт + полоса таймера) и экран Game Over
+     • ПРОТОКОЛ Sharky (postMessage): принимает init/start/pause,
+       шлёт ready/score/gameover; автостарт ВНЕ ленты по таймеру.
+
+   Игра = это ядро + один МОДУЛЬ-СЦЕНА (механика, регистрируется
+   через Engine.register) + объект CONFIG (тема/правила/ассеты).
+   Сборщик (build.js) встраивает все три части в один .html —
+   игры в Sharky крутятся в sandbox-iframe через srcdoc, поэтому
+   внешние <script> и относительные ассеты недопустимы.
+
+   ── КОНТРАКТ СЦЕНЫ ──
+   Engine.register('genre', function(engine, cfg){
+     return {
+       init(){},          // одноразовая настройка (ассеты+геометрия готовы)
+       reset(){},         // (пере)собрать игровое состояние; на каждый запуск
+       layout(L){},       // пересчёт геометрии из {W,H,headerH}
+       update(dt){},      // продвинуть механику (таймер ведёт ЯДРО)
+       render(ctx){},     // нарисовать поле (фон/HUD/оверлей рисует ЯДРО)
+       pointerDown(p){},  // p = {x,y} в пикселях canvas
+       pointerUp(e){},    // e = {x,y,downX,downY,dx,dy,dist,dir}
+       pointerMove(p){},
+       key(k){},          // k = event.key
+     };
+   });
+
+   ── API ЯДРА для сцены (engine.*) ──
+     ctx, W, H, headerH, cfg, theme, rules, score   (только чтение)
+     img(name) -> HTMLImageElement
+     beep(freq,dur,type,vol)
+     burst(x,y,opts)                  // частицы (по умолчанию — как в match3)
+     addScore(n) / setScore(v)        // меняет счёт + шлёт его в ленту
+     gameOver()                       // завершить забег (смерть). Таймер тоже завершает.
+     rr(x,y,w,h,r) / accent()         // помощники рисования
+   ============================================================ */
+(function (global) {
+  'use strict';
+
+  // ── canvas / контекст ──
+  let cv, ctx;
+  let W = 360, H = 580, headerH = 70, dpr = 1;
+
+  // ── конфиг / сцена ──
+  let cfg = null, theme = {}, rules = {}, scene = null;
+
+  // ── состояние забега ──
+  let state = 'loading';            // loading | playing | over
+  let running = false, raf = 0, last = 0;
+  let score = 0, best = 0, timeLeft = 0, duration = 0, timed = false;
+  let assetsReady = false, pendingStart = false, gotShell = false;
+
+  // ── ассеты ──
+  const IMG = {}; let imgTotal = 0, imgLoaded = 0;
+
+  // ── звук ──
+  let audioCtx = null;
+
+  // ── частицы ──
+  const parts = [];
+
+  // ── ввод ──
+  let downX = 0, downY = 0, hasDown = false;
+  const pointers = {};        // pointerId → {x,y} точки нажатия (мультитач)
+  const keys = new Set();     // зажатые клавиши (для платформеров и т.п.)
+  const GAME_KEYS = [' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
+  /* ═══════════ CONTROLS: универсальный слой управления (CONFIG.controls) ═══════════
+     Все схемы транслируются в ВИРТУАЛЬНЫЕ КЛАВИШИ → работают с любой сценой.
+     controls = {
+       scheme: 'joystick' | 'tapmove' | 'tapaction' | 'aim' | null(=только кнопки),
+       joystick: { side:'left', radius:0.09, deadzone:0.3 },
+       tapAction: 'jump',                     — что делает тап (схема tapaction)
+       aim: { fire:'attack' | false },        — держишь палец/мышь = огонь в ту сторону
+       buttons: [ {glyph:'▲', action:'jump'} | {glyph:'✕', key:'x'} … ]  — программируемые
+     }
+     Действие → клавиша: */
+  const ACT2KEY = { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown',
+    jump: ' ', attack: 'x', fire: 'x', dash: 'c', hook: 'v', slow: 'g', swap: 'q', map: 'm', bomb: 'x', undo: 'z' };
+  const CTL = { axis: { x: 0, y: 0 }, aim: { x: 0, y: 0, active: false }, mouse: { x: 0, y: 0 },
+    playerScreen: null, scheme: null };
+  let ctlCfg = null, ctlBtns = [], joy = null, tapTarget = null, ctlHeld = {};
+  function actKey(b) { return b.key || ACT2KEY[b.action] || ' '; }
+  function ctlPress(key) { if (!keys.has(key)) { keys.add(key); if (scene && scene.key) scene.key(key); } }
+  function ctlRelease(key) { keys.delete(key); }
+  function initControls(c) {
+    ctlCfg = c || null;
+    if (!ctlCfg) return;
+    CTL.scheme = ctlCfg.scheme || null;
+    layoutCtlButtons();
+  }
+  function layoutCtlButtons() {
+    ctlBtns = [];
+    if (!ctlCfg || !ctlCfg.buttons) return;
+    const r = Math.min(W, H) * 0.075, m = r * 0.7;
+    for (let i = 0; i < ctlCfg.buttons.length; i++) {
+      const b = ctlCfg.buttons[i];
+      // свои координаты (в долях экрана) или авто-дуга справа снизу
+      const x = b.x != null ? b.x * W : W - m - r - (i % 2) * (r * 2.3);
+      const y = b.y != null ? b.y * H : H - m - r - Math.floor(i / 2) * (r * 2.3);
+      ctlBtns.push({ x: x, y: y, r: b.r ? b.r * Math.min(W, H) : r, glyph: b.glyph || '●', key: actKey(b), id: i });
+    }
+  }
+  function ctlDown(p) {   // true = событие съедено слоем управления
+    if (!ctlCfg) return false;
+    for (let i = 0; i < ctlBtns.length; i++) {
+      const b = ctlBtns[i];
+      if ((p.x - b.x) * (p.x - b.x) + (p.y - b.y) * (p.y - b.y) <= b.r * b.r * 1.45) {
+        ctlHeld[p.id] = b.key; ctlPress(b.key); return true;
+      }
+    }
+    const sch = CTL.scheme;
+    if (sch === 'joystick') {
+      const side = (ctlCfg.joystick && ctlCfg.joystick.side) || 'left';
+      const inZone = side === 'any' || (side === 'left' ? p.x < W * 0.55 : p.x > W * 0.45);
+      if (inZone && !joy) { joy = { id: p.id, cx: p.x, cy: p.y }; return true; }
+      return false;
+    }
+    if (sch === 'tapmove') { tapTarget = { x: p.x, y: p.y, id: p.id }; return true; }
+    if (sch === 'tapaction') {
+      const key = ACT2KEY[ctlCfg.tapAction || 'jump'] || ' ';
+      ctlHeld[p.id] = key; ctlPress(key); return true;
+    }
+    if (sch === 'aim') {
+      CTL.aim.x = p.x; CTL.aim.y = p.y; CTL.aim.active = true;
+      const f = ctlCfg.aim && ctlCfg.aim.fire;
+      if (f !== false) { ctlHeld[p.id] = ACT2KEY[f || 'attack'] || 'x'; ctlPress(ctlHeld[p.id]); }
+      return true;
+    }
+    return false;
+  }
+  function ctlMove(p) {
+    CTL.mouse.x = p.x; CTL.mouse.y = p.y;
+    if (!ctlCfg) return;
+    if (joy && p.id === joy.id) {
+      const R = ((ctlCfg.joystick && ctlCfg.joystick.radius) || 0.09) * Math.min(W, H);
+      const dz = (ctlCfg.joystick && ctlCfg.joystick.deadzone) || 0.3;
+      let dx = (p.x - joy.cx) / R, dy = (p.y - joy.cy) / R;
+      const len = Math.hypot(dx, dy);
+      if (len > 1) { dx /= len; dy /= len; }
+      CTL.axis.x = dx; CTL.axis.y = dy;
+      joy.dx = dx; joy.dy = dy;
+      // 8-way → клавиши
+      (dx < -dz ? ctlPress : ctlRelease)('ArrowLeft');
+      (dx > dz ? ctlPress : ctlRelease)('ArrowRight');
+      (dy < -dz ? ctlPress : ctlRelease)('ArrowUp');
+      (dy > dz ? ctlPress : ctlRelease)('ArrowDown');
+    }
+    if (CTL.scheme === 'aim' && CTL.aim.active) { CTL.aim.x = p.x; CTL.aim.y = p.y; }
+    if (CTL.scheme === 'tapmove' && tapTarget && p.id === tapTarget.id) { tapTarget.x = p.x; tapTarget.y = p.y; }
+  }
+  function ctlUp(p) {
+    if (!ctlCfg) return false;
+    let ate = false;
+    if (ctlHeld[p.id]) { ctlRelease(ctlHeld[p.id]); delete ctlHeld[p.id]; ate = true; }
+    if (joy && p.id === joy.id) {
+      joy = null; CTL.axis.x = 0; CTL.axis.y = 0;
+      ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].forEach(ctlRelease);
+      ate = true;
+    }
+    if (CTL.scheme === 'aim') { CTL.aim.active = false; ate = true; }
+    if (CTL.scheme === 'tapmove' && tapTarget && p.id === tapTarget.id) { tapTarget = null; ate = true; }
+    return ate;
+  }
+  // tap-to-move: каждый кадр сравниваем цель с экранной позицией персонажа
+  // (сцена сообщает её через engine.reportPlayerScreen)
+  function ctlUpdate() {
+    if (!ctlCfg || CTL.scheme !== 'tapmove') return;
+    if (!tapTarget || !CTL.playerScreen) {
+      if (!tapTarget) { ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].forEach(ctlRelease); }
+      return;
+    }
+    const px = CTL.playerScreen.x, py = CTL.playerScreen.y;
+    const dx = tapTarget.x - px, dy = tapTarget.y - py;
+    const dead = Math.min(W, H) * 0.04;
+    (dx < -dead ? ctlPress : ctlRelease)('ArrowLeft');
+    (dx > dead ? ctlPress : ctlRelease)('ArrowRight');
+    (dy < -dead * 2.2 ? ctlPress : ctlRelease)('ArrowUp');     // вверх — с большим порогом (прыжок/лестницы)
+    (dy > dead * 2.2 ? ctlPress : ctlRelease)('ArrowDown');
+  }
+  function drawControls() {
+    if (!ctlCfg) return;
+    // кнопки
+    for (let i = 0; i < ctlBtns.length; i++) {
+      const b = ctlBtns[i];
+      ctx.fillStyle = keys.has(b.key) ? 'rgba(255,255,255,0.34)' : 'rgba(255,255,255,0.15)';
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold ' + Math.round(b.r * 0.8) + 'px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(b.glyph, b.x, b.y + 1);
+    }
+    // джойстик
+    if (CTL.scheme === 'joystick') {
+      const R = ((ctlCfg.joystick && ctlCfg.joystick.radius) || 0.09) * Math.min(W, H);
+      if (joy) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(joy.cx, joy.cy, R, 0, 7); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.beginPath(); ctx.arc(joy.cx + (joy.dx || 0) * R, joy.cy + (joy.dy || 0) * R, R * 0.42, 0, 7); ctx.fill();
+      } else {
+        // подсказка-призрак в зоне
+        const side = (ctlCfg.joystick && ctlCfg.joystick.side) || 'left';
+        const gx = side === 'right' ? W * 0.78 : W * 0.22, gy = H * 0.82;
+        ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(gx, gy, R, 0, 7); ctx.stroke();
+        ctx.beginPath(); ctx.arc(gx, gy, R * 0.42, 0, 7); ctx.stroke();
+      }
+    }
+    // маркер tap-to-move
+    if (CTL.scheme === 'tapmove' && tapTarget) {
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 + Math.sin(Date.now() / 130) * 0.3) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(tapTarget.x, tapTarget.y, 12, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(tapTarget.x, tapTarget.y, 3, 0, 7); ctx.fill();
+    }
+    // прицел aim
+    if (CTL.scheme === 'aim' && CTL.aim.active) {
+      ctx.strokeStyle = 'rgba(255,120,120,0.85)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(CTL.aim.x, CTL.aim.y, 11, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(CTL.aim.x - 16, CTL.aim.y); ctx.lineTo(CTL.aim.x + 16, CTL.aim.y);
+      ctx.moveTo(CTL.aim.x, CTL.aim.y - 16); ctx.lineTo(CTL.aim.x, CTL.aim.y + 16); ctx.stroke();
+    }
+  }
+
+  // ── объект, который получает сцена ──
+  const api = {
+    get ctx() { return ctx; },
+    get W() { return W; },
+    get H() { return H; },
+    get headerH() { return headerH; },
+    get cfg() { return cfg; },
+    get theme() { return theme; },
+    get rules() { return rules; },
+    get score() { return score; },
+    get timeLeft() { return timeLeft; },
+    get duration() { return duration; },
+    get state() { return state; },
+    get keys() { return keys; },          // живой Set зажатых клавиш
+    get ctl() { return CTL; },            // слой управления: axis/aim/mouse/scheme
+    reportPlayerScreen: function (x, y) { CTL.playerScreen = { x: x, y: y }; },
+    img: function (name) { return IMG[name]; },
+    beep: beep,
+    burst: burst,
+    addScore: addScore,
+    setScore: setScore,
+    gameOver: gameOver,
+    resetTimer: resetTimer,
+    addTime: addTime,
+    rr: rr,
+    accent: accent,
+  };
+
+  const Engine = {
+    scenes: {},
+    register: function (name, factory) { this.scenes[name] = factory; },
+    boot: boot,
+  };
+  global.Engine = Engine;
+
+  // Диагностика (можно дёрнуть из консоли): текущее состояние движка.
+  Engine.debug = function () {
+    return { state: state, running: running, assetsReady: assetsReady, pendingStart: pendingStart,
+             gotShell: gotShell, imgLoaded: imgLoaded, imgTotal: imgTotal, hasScene: !!scene,
+             W: W, H: H };
+  };
+  // Принудительный одиночный кадр (для тестов в скрытой вкладке, где rAF не тикает).
+  Engine.renderOnce = function () { if (scene && assetsReady) render(); };
+  Engine._ctl = CTL;   // отладка слоя управления
+  Engine._keys = keys;
+  // Принудительный шаг цикла ядра (управление+сцена) — тоже для тестов без rAF.
+  Engine.stepOnce = function (dt) { if (scene && assetsReady) update(dt || 1 / 60); };
+
+  // ════════════════════════════════════════════ BOOT
+  function boot(config) {
+    cfg = config; theme = config.theme || {}; rules = config.rules || {};
+    duration = rules.duration || 60;
+    timed = (rules.mode || 'timed') === 'timed';
+    cv = document.getElementById('c'); ctx = cv.getContext('2d');
+    if (theme.accent) document.documentElement.style.setProperty('--ac', theme.accent);
+    if (theme.bgBottom || theme.bgTop) document.body.style.background = theme.bgBottom || theme.bgTop;
+
+    const factory = Engine.scenes[config.genre];
+    if (!factory) { console.error('Engine: нет сцены для жанра', config.genre); return; }
+    scene = factory(api, config);
+    Engine._scene = scene;   // для отладки/тестов
+    initControls(config.controls);
+
+    window.addEventListener('resize', resize);
+    bindInput();
+    bindProtocol();
+    window.addEventListener('load', function () {
+      loadImages(config.assets || {});
+      // Автостарт ТОЛЬКО вне Sharky. В ленте всегда приходит init -> gotShell=true.
+      setTimeout(function () {
+        if (!gotShell) { if (assetsReady) start(); else pendingStart = true; }
+      }, 400);
+    });
+  }
+
+  // ════════════════════════════════════════════ ГЕОМЕТРИЯ
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = cv.clientWidth || 360; H = cv.clientHeight || 580;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;            // чёткий пиксель-арт
+    headerH = Math.max(48, Math.min(96, H * 0.13));
+    layoutCtlButtons();
+    if (scene && scene.layout) scene.layout({ W: W, H: H, headerH: headerH });
+  }
+
+  // ════════════════════════════════════════════ АССЕТЫ
+  function loadImages(map) {
+    const names = Object.keys(map);
+    imgTotal = names.length; imgLoaded = 0;
+    if (imgTotal === 0) { onReady(); return; }
+    names.forEach(function (n) {
+      const im = new Image();
+      im.onload = im.onerror = function () { imgLoaded++; if (imgLoaded >= imgTotal) onReady(); };
+      const v = map[n];
+      // поддержка готовых data-URL (jpg/webp/png) и «сырого» base64 (по умолч. png)
+      im.src = (typeof v === 'string' && v.lastIndexOf('data:', 0) === 0) ? v : ('data:image/png;base64,' + v);
+      IMG[n] = im;
+    });
+  }
+  function onReady() {
+    resize();
+    try {
+      if (scene.init) scene.init();
+      newRun();
+    } catch (e) { console.error('Engine onReady scene error:', e); }
+    assetsReady = true;
+    try { const v = getComputedStyle(document.documentElement).getPropertyValue('--ac').trim(); if (v) theme.accent = v; } catch (e) {}
+    send({ type: 'ready' });
+    if (pendingStart) start();
+  }
+
+  // ════════════════════════════════════════════ ЖИЗНЕННЫЙ ЦИКЛ
+  function newRun() {
+    score = 0; timeLeft = duration; state = 'playing'; parts.length = 0; overLabel = null;
+    if (scene.reset) scene.reset();
+    send({ type: 'score', value: 0 });
+  }
+  function start() {
+    if (!assetsReady) { pendingStart = true; return; }
+    if (running) return;
+    running = true; last = performance.now();
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+    raf = requestAnimationFrame(loop);
+  }
+  function pause() {
+    running = false; cancelAnimationFrame(raf);
+    if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+  }
+  function restart() {
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+    newRun();
+  }
+  function loop(t) {
+    if (!running) return;
+    const dt = Math.min((t - last) / 1000, 0.05); last = t;
+    try { update(dt); render(); }
+    catch (e) { running = false; console.error('Engine loop error:', e); return; }
+    raf = requestAnimationFrame(loop);
+  }
+  function update(dt) {
+    if (state === 'playing') {
+      ctlUpdate();                                   // tap-to-move → клавиши
+      if (timed) { timeLeft -= dt; if (timeLeft <= 0) { timeLeft = 0; gameOver(); } }
+      if (scene.update) scene.update(dt);
+    }
+    updateParts(dt);
+  }
+  let overLabel = null;   // надпись на экране конца (переопределяет labels.over, напр. «ПОБЕДА»)
+  function gameOver(opts) {
+    if (state === 'over') return;
+    overLabel = (opts && opts.label) || null;
+    state = 'over';
+    send({ type: 'gameover', value: score });
+  }
+  // Сброс таймера раунда (для пораундовых игр). Без аргумента — на полную длительность.
+  function resetTimer(sec) { if (sec) duration = sec; timeLeft = duration; }
+  // Добавить/отнять время (штрафы и бонусы времени)
+  function addTime(sec) { timeLeft = Math.max(0.01, Math.min(duration, timeLeft + sec)); }
+
+  // ════════════════════════════════════════════ СЧЁТ
+  function addScore(n) { setScore(score + n); }
+  function setScore(v) {
+    score = v; if (score > best) best = score;
+    send({ type: 'score', value: score });
+  }
+
+  // ════════════════════════════════════════════ РЕНДЕР
+  function render() {
+    drawBg();
+    if (scene.render) scene.render(ctx);
+    drawParts();
+    if (scene.hud) scene.hud(ctx); else drawHUD();
+    drawControls();                                  // джойстик/кнопки/прицел поверх HUD
+    if (state === 'over') drawOver();
+  }
+  function drawBg() {
+    const bg = theme.bgImage && IMG[theme.bgImage];
+    if (bg && bg.complete && bg.naturalWidth) {
+      // по ширине экрана, верх закреплён наверху, низ обрезается
+      const dh = bg.naturalHeight * (W / bg.naturalWidth);
+      ctx.drawImage(bg, 0, 0, W, dh);
+      if (dh < H) { ctx.fillStyle = theme.bgBottom || '#111'; ctx.fillRect(0, dh, W, H - dh); }
+    } else {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, theme.bgTop || '#222'); g.addColorStop(1, theme.bgBottom || '#111');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+  }
+  function drawHUD() {
+    ctx.textBaseline = 'middle';
+    const cy = headerH / 2;
+    const font = theme.font || "Georgia, serif";
+    let textX = 16;
+    const ico = theme.hudIcon && IMG[theme.hudIcon];
+    if (ico && ico.complete) {
+      const ic = Math.min(34, headerH * 0.5);
+      ctx.drawImage(ico, 12, cy - ic / 2, ic, ic);
+      textX = 16 + ic;
+    }
+    ctx.fillStyle = theme.hudText || '#f4e3b0';
+    ctx.font = 'bold ' + Math.round(headerH * 0.34) + 'px ' + font;
+    ctx.textAlign = 'left'; ctx.fillText(String(score), textX, cy);
+    if (timed) {
+      const bx = W * 0.46, bw = W - bx - 14, by = cy - 7, bh = 14;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; rr(bx, by, bw, bh, 7); ctx.fill();
+      const frac = Math.max(0, timeLeft / duration);
+      ctx.fillStyle = accent(); rr(bx, by, Math.max(2, bw * frac), bh, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(244,227,176,0.6)'; ctx.lineWidth = 1.5; rr(bx, by, bw, bh, 7); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 12px ' + font; ctx.textAlign = 'center';
+      ctx.fillText(Math.ceil(timeLeft) + '', bx + bw / 2, by + bh / 2);
+    }
+  }
+  function drawOver() {
+    const L = theme.labels || {};
+    ctx.fillStyle = 'rgba(10,7,4,0.78)'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const font = theme.font || "Georgia, serif";
+    ctx.fillStyle = accent(); ctx.font = 'bold ' + Math.round(W * 0.085) + 'px ' + font;
+    ctx.fillText(overLabel || L.over || 'GAME OVER', W / 2, H * 0.4);
+    ctx.fillStyle = theme.hudText || '#f4e3b0'; ctx.font = 'bold ' + Math.round(W * 0.13) + 'px ' + font;
+    ctx.fillText(String(score), W / 2, H * 0.52);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = Math.round(W * 0.045) + 'px ' + font;
+    ctx.fillText(L.scoreUnit || 'points', W / 2, H * 0.585);
+    ctx.fillStyle = '#fff'; ctx.font = Math.round(W * 0.05) + 'px ' + font;
+    ctx.fillText(L.again || 'Tap to play again', W / 2, H * 0.7);
+  }
+  function rr(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function accent() { return theme.accent || '#e7b44c'; }
+
+  // ════════════════════════════════════════════ ЧАСТИЦЫ
+  function burst(x, y, o) {
+    o = o || {};
+    if (parts.length > 140) return;
+    const count = o.count || 4, col = o.color || accent(), g = (o.gravity == null ? 300 : o.gravity);
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 120;
+      parts.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40,
+                   life: 0.5 + Math.random() * 0.3, t: 0, s: 2 + Math.random() * 3, g: g, col: col });
+    }
+  }
+  function updateParts(dt) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i]; p.t += dt; if (p.t >= p.life) { parts.splice(i, 1); continue; }
+      p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    }
+  }
+  function drawParts() {
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i], a = Math.max(0, 1 - p.t / p.life);
+      ctx.globalAlpha = a; ctx.fillStyle = p.col;
+      ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ════════════════════════════════════════════ ЗВУК (после первого тапа)
+  function ensureAudio() {
+    if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  }
+  function beep(freq, dur, wtype, vol) {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = wtype || 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(Math.min(vol || 0.15, 0.6), t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur + 0.03);
+  }
+
+  // ════════════════════════════════════════════ ВВОД
+  function localPt(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function bindInput() {
+    cv.addEventListener('pointerdown', function (e) {
+      ensureAudio(); if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+      if (state === 'over') { restart(); return; }
+      const p = localPt(e); p.id = e.pointerId;
+      pointers[e.pointerId] = { x: p.x, y: p.y };
+      downX = p.x; downY = p.y; hasDown = true;   // совместимость со сценами без мультитача
+      if (ctlDown(p)) return;                     // съедено слоем управления
+      if (scene.pointerDown) scene.pointerDown(p);
+    });
+    cv.addEventListener('pointerup', function (e) { endPointer(e, false); });
+    cv.addEventListener('pointercancel', function (e) { endPointer(e, true); });
+    cv.addEventListener('pointermove', function (e) {
+      const p = localPt(e); p.id = e.pointerId;
+      ctlMove(p);
+      if (scene.pointerMove) scene.pointerMove(p);
+    });
+    window.addEventListener('keydown', function (e) {
+      if (GAME_KEYS.indexOf(e.key) !== -1) e.preventDefault();
+      keys.add(e.key);
+      if (scene.key) scene.key(e.key);
+    });
+    window.addEventListener('keyup', function (e) { keys.delete(e.key); });
+    window.addEventListener('blur', function () { keys.clear(); });
+  }
+  function endPointer(e, cancelled) {
+    const start = pointers[e.pointerId]; delete pointers[e.pointerId];
+    if (state === 'over') { hasDown = false; return; }
+    const p = localPt(e);
+    if (ctlUp({ x: p.x, y: p.y, id: e.pointerId })) { hasDown = false; return; }
+    const sx = start ? start.x : downX, sy = start ? start.y : downY;
+    const dx = p.x - sx, dy = p.y - sy, dist = Math.sqrt(dx * dx + dy * dy);
+    const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    if (scene.pointerUp) scene.pointerUp({ x: p.x, y: p.y, id: e.pointerId, downX: sx, downY: sy,
+      dx: dx, dy: dy, dist: dist, dir: dir, had: hasDown, cancelled: !!cancelled });
+    hasDown = false;
+  }
+
+  // ════════════════════════════════════════════ ПРОТОКОЛ SHARKY
+  function send(m) { try { parent.postMessage(m, '*'); } catch (e) {} }
+  function bindProtocol() {
+    window.addEventListener('message', function (e) {
+      const d = e.data || {};
+      if (d.type === 'init') {
+        gotShell = true;
+        if (d.accent) { theme.accent = d.accent; document.documentElement.style.setProperty('--ac', d.accent); }
+      } else if (d.type === 'start') { gotShell = true; start(); }
+      else if (d.type === 'pause') { gotShell = true; pause(); }
+    });
+  }
+
+})(typeof window !== 'undefined' ? window : this);
+
+/* ============================================================
+   СЦЕНА: novel (novel.js) — визуальная новелла
+   ------------------------------------------------------------
+   Ветвящиеся диалоги с выборами, очки симпатии, флаги сюжета,
+   несколько концовок, NG+ (флаги переносятся в новый круг и
+   открывают новые ветки), галерея фонов (CG) и журнал реплик.
+
+   CONFIG.novel = {
+     start:'id',
+     chars:{ alice:{name,color} },
+     ends:{ good:{...} },                     — справочно
+     nodes:{
+       id: { bg:'#цвет'|имя-ассета, who:'alice'|null, text:'…',
+             set:['flag'], aff:{alice:+1},    — эффекты при входе
+             next:'id'                        — либо линейный переход,
+             choices:[{text, goto,            — либо выбор
+                       need:'flag', needNot:'flag',   — условия видимости
+                       needAff:{alice:2},     — порог симпатии
+                       set:['flag'], aff:{alice:1}}],
+             end:'good'                       — терминальный узел (концовка)
+           }
+     }
+   }
+   Счёт = число увиденных узлов + бонус за концовку. Тап = дальше.
+   Кнопки: 📖 журнал, 🖼 галерея (после первой концовки NG+ сохраняет
+   ngFlags и открывает ветки с need:'ng+'.
+   ============================================================ */
+Engine.register('novel', function (engine, cfg) {
+  'use strict';
+  const N = cfg.novel || {};
+  const NODES = N.nodes || {};
+  const CHARS = N.chars || {};
+  const FONT = (cfg.theme && cfg.theme.font) || 'sans-serif';
+
+  let cur = null, W = 360, H = 640;
+  let aff = {}, flags = {}, seen = {}, log = [], gallery = {};
+  let ngPlus = 0, ngFlags = {};            // NG+: круг и переносимые флаги
+  let typing = 0;                          // печатающийся текст
+  let overlay = null;                      // 'log' | 'gallery' | null
+  let choiceRects = [];
+
+  function enter(id) {
+    const nd = NODES[id]; if (!nd) return;
+    cur = id; typing = 0;
+    if (!seen[id]) { seen[id] = 1; engine.addScore(5); }
+    if (nd.set) nd.set.forEach(f => flags[f] = true);
+    if (nd.aff) for (const k in nd.aff) aff[k] = (aff[k] || 0) + nd.aff[k];
+    if (nd.bg) gallery[nd.bg] = true;
+    log.push({ who: nd.who, text: nd.text });
+    if (log.length > 60) log.shift();
+    engine.beep(500, 0.03, 'sine', 0.05);
+  }
+  function choiceOk(c) {
+    if (c.need && !flags[c.need] && !(c.need === 'ng+' && ngPlus > 0)) return false;
+    if (c.needNot && flags[c.needNot]) return false;
+    if (c.needAff) for (const k in c.needAff) if ((aff[k] || 0) < c.needAff[k]) return false;
+    return true;
+  }
+  function pickChoice(c) {
+    if (c.set) c.set.forEach(f => flags[f] = true);
+    if (c.aff) for (const k in c.aff) aff[k] = (aff[k] || 0) + c.aff[k];
+    enter(c.goto);
+  }
+  function finishEnd(nd) {
+    engine.addScore(100);
+    ngPlus++; ngFlags = Object.assign({}, ngFlags, flags);   // NG+: флаги в наследство
+    engine.gameOver({ label: (nd.endLabel || 'КОНЕЦ: ' + nd.end) });
+  }
+
+  return {
+    init: function () {},
+    reset: function () {
+      aff = {}; flags = Object.assign({}, ngFlags); seen = {}; log = []; overlay = null;
+      if (ngPlus > 0) flags['ng+'] = true;
+      enter(N.start || Object.keys(NODES)[0]);
+    },
+    layout: function (L) { W = L.W; H = L.H; },
+
+    update: function (dt) { typing += dt * 40; },
+
+    render: function (ctx) {
+      const nd = NODES[cur]; if (!nd) return;
+      // фон: ассет или цвет
+      const bgImg = nd.bg && engine.img(nd.bg);
+      if (bgImg && bgImg.complete && bgImg.naturalWidth) {
+        const sc = Math.max(W / bgImg.naturalWidth, H / bgImg.naturalHeight);
+        ctx.drawImage(bgImg, 0, 0, bgImg.naturalWidth * sc, bgImg.naturalHeight * sc);
+      } else if (nd.bg && nd.bg[0] === '#') { ctx.fillStyle = nd.bg; ctx.fillRect(0, 0, W, H); }
+
+      // NG+ бейдж
+      if (ngPlus > 0) {
+        ctx.fillStyle = 'rgba(255,215,94,0.9)'; ctx.font = 'bold 12px ' + FONT;
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText('NG+' + ngPlus, 12, 10);
+      }
+
+      // текстовое окно
+      const boxH = H * 0.3, boxY = H - boxH - 14;
+      ctx.fillStyle = 'rgba(10,10,24,0.85)';
+      engine.rr(10, boxY, W - 20, boxH, 12); ctx.fill();
+      ctx.strokeStyle = engine.accent(); ctx.lineWidth = 1.5;
+      engine.rr(10, boxY, W - 20, boxH, 12); ctx.stroke();
+      // имя говорящего
+      const ch = nd.who && CHARS[nd.who];
+      if (ch) {
+        ctx.fillStyle = ch.color || engine.accent();
+        ctx.font = 'bold 15px ' + FONT; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText(ch.name || nd.who, 24, boxY + 10);
+      }
+      // текст с печатанием и переносами
+      ctx.fillStyle = '#fff'; ctx.font = '14px ' + FONT; ctx.textAlign = 'left';
+      const shown = nd.text.slice(0, Math.floor(typing));
+      const words = shown.split(' ');
+      let line = '', ty = boxY + (ch ? 34 : 14);
+      for (let i = 0; i < words.length; i++) {
+        const t2 = line + (line ? ' ' : '') + words[i];
+        if (ctx.measureText(t2).width > W - 48) { ctx.fillText(line, 24, ty); ty += 19; line = words[i]; }
+        else line = t2;
+      }
+      ctx.fillText(line, 24, ty);
+      // индикатор «дальше»
+      if (typing >= nd.text.length && !nd.choices && !nd.end) {
+        ctx.fillStyle = engine.accent();
+        ctx.beginPath();
+        const bx2 = W - 34, by2 = H - 34 + Math.sin(Date.now() / 250) * 2;
+        ctx.moveTo(bx2, by2); ctx.lineTo(bx2 + 10, by2); ctx.lineTo(bx2 + 5, by2 + 8); ctx.closePath(); ctx.fill();
+      }
+
+      // выборы
+      choiceRects = [];
+      if (typing >= nd.text.length && nd.choices) {
+        const list = nd.choices.filter(choiceOk);
+        const chH = 40, gap = 10;
+        let cy = boxY - list.length * (chH + gap) - 8;
+        for (let i = 0; i < list.length; i++) {
+          const c = list[i];
+          ctx.fillStyle = 'rgba(30,34,66,0.94)'; engine.rr(20, cy, W - 40, chH, 10); ctx.fill();
+          ctx.strokeStyle = engine.accent(); ctx.lineWidth = 1.5; engine.rr(20, cy, W - 40, chH, 10); ctx.stroke();
+          ctx.fillStyle = '#fff'; ctx.font = 'bold 13px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(c.text, W / 2, cy + chH / 2 + 1);
+          choiceRects.push({ x: 20, y: cy, w: W - 40, h: chH, c: c });
+          cy += chH + gap;
+        }
+      }
+
+      // мини-кнопки: журнал и галерея
+      ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText('📖', W - 26, 22); ctx.fillText('🖼', W - 58, 22);
+
+      // оверлеи: журнал / галерея
+      if (overlay === 'log') {
+        ctx.fillStyle = 'rgba(5,5,14,0.94)'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 15px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText('ЖУРНАЛ (тап — закрыть)', W / 2, 14);
+        ctx.font = '12px ' + FONT; ctx.textAlign = 'left';
+        let ly = 44;
+        for (let i = Math.max(0, log.length - 16); i < log.length; i++) {
+          const e2 = log[i], nm = e2.who && CHARS[e2.who] ? CHARS[e2.who].name + ': ' : '';
+          ctx.fillStyle = e2.who && CHARS[e2.who] ? (CHARS[e2.who].color || '#ffd75e') : 'rgba(255,255,255,0.7)';
+          const txt = nm + e2.text;
+          ctx.fillText(txt.length > 52 ? txt.slice(0, 52) + '…' : txt, 16, ly);
+          ly += 18;
+        }
+      } else if (overlay === 'gallery') {
+        ctx.fillStyle = 'rgba(5,5,14,0.94)'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 15px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText('ГАЛЕРЕЯ CG (тап — закрыть)', W / 2, 14);
+        const keys = Object.keys(gallery);
+        const cw2 = (W - 60) / 3;
+        for (let i = 0; i < keys.length; i++) {
+          const gx = 20 + (i % 3) * (cw2 + 10), gy = 50 + Math.floor(i / 3) * (cw2 * 0.7 + 10);
+          const im = engine.img(keys[i]);
+          if (im && im.complete && im.naturalWidth) ctx.drawImage(im, gx, gy, cw2, cw2 * 0.7);
+          else { ctx.fillStyle = keys[i][0] === '#' ? keys[i] : '#334'; ctx.fillRect(gx, gy, cw2, cw2 * 0.7); }
+          ctx.strokeStyle = '#889'; ctx.strokeRect(gx, gy, cw2, cw2 * 0.7);
+        }
+      }
+    },
+
+    hud: function () {},   // всё в render
+
+    pointerDown: function (p) {
+      if (overlay) { overlay = null; return; }
+      // мини-кнопки
+      if (p.y < 38 && p.x > W - 42) { overlay = 'log'; return; }
+      if (p.y < 38 && p.x > W - 74 && p.x <= W - 42) { overlay = 'gallery'; return; }
+      const nd = NODES[cur]; if (!nd) return;
+      if (typing < nd.text.length) { typing = nd.text.length; return; }   // раскрыть текст
+      // выбор
+      for (let i = 0; i < choiceRects.length; i++) {
+        const r = choiceRects[i];
+        if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { pickChoice(r.c); return; }
+      }
+      if (nd.choices) return;              // ждём выбора
+      if (nd.end) { finishEnd(nd); return; }
+      if (nd.next) enter(nd.next);
+    },
+
+    _state: function () {
+      return { cur: cur, aff: Object.assign({}, aff), flags: Object.assign({}, flags),
+        seenN: Object.keys(seen).length, logN: log.length, galleryN: Object.keys(gallery).length,
+        ngPlus: ngPlus, overlay: overlay,
+        choices: (NODES[cur] && NODES[cur].choices) ? NODES[cur].choices.filter(choiceOk).map(c => c.text) : [] };
+    },
+    _tap: function (x, y) { this.pointerDown({ x: x, y: y, id: 1 }); },
+    _typeDone: function () { const nd = NODES[cur]; if (nd) typing = nd.text.length; },
+  };
+});
+
+Engine.boot(CONFIG);
+</script></body></html>
