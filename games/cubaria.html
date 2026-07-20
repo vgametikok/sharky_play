@@ -276,8 +276,8 @@ const FOES = {
   slime: { name: 'Слизень', hp: 14, dmg: 8, ai: 'hop', w: 0.9, h: 0.7, coins: 15, drops: [[30, 1, 2, 1]], color: '#58c04e', score: 5 },
   iceslime: { name: 'Ледяной слизень', hp: 20, dmg: 10, ai: 'hop', w: 0.9, h: 0.7, coins: 20, drops: [[30, 1, 2, 1]], color: '#7ec8e8', score: 5 },
   lavaslime: { name: 'Лавовый слизень', hp: 45, dmg: 22, ai: 'hop', w: 0.9, h: 0.7, coins: 60, drops: [[30, 1, 3, 1]], color: '#e86a30', lava: 1, glow: 8, score: 12 },
-  zombie: { name: 'Зомби', hp: 34, dmg: 14, ai: 'walk', w: 0.9, h: 1.85, coins: 40, drops: [[30, 1, 1, 0.3]], color: '#6a8a52', score: 8 },
-  eye: { name: 'Летающий глаз', hp: 26, dmg: 12, ai: 'fly', w: 1.1, h: 0.8, coins: 35, drops: [[31, 1, 2, 0.6]], color: '#c8c8d8', score: 8 },
+  zombie: { name: 'Зомби', hp: 34, dmg: 14, ai: 'walk', w: 0.9, h: 1.85, coins: 40, drops: [[30, 1, 1, 0.3]], color: '#6a8a52', score: 8, burn: 1 },
+  eye: { name: 'Летающий глаз', hp: 26, dmg: 12, ai: 'fly', w: 1.1, h: 0.8, coins: 35, drops: [[31, 1, 2, 0.6]], color: '#c8c8d8', score: 8, burn: 1 },
   bat: { name: 'Летучая мышь', hp: 16, dmg: 10, ai: 'bat', w: 0.8, h: 0.55, coins: 20, drops: [], color: '#6a5a78', score: 6 },
   skeleton: { name: 'Скелет', hp: 42, dmg: 18, ai: 'walk', w: 0.9, h: 1.85, coins: 60, drops: [[32, 1, 3, 0.8]], color: '#d8d8cf', score: 12 },
   worm: { name: 'Пещерный червь', hp: 55, dmg: 16, ai: 'worm', w: 0.7, h: 0.7, coins: 80, drops: [[32, 1, 2, 0.4]], color: '#a86a52', segs: 7, score: 15 },
@@ -1343,6 +1343,7 @@ function spawnFoe(type, x, y, opts) {
     hp: d.hp, hpMax: d.hp, dmg: d.dmg, ai: d.ai, dir: 1, t: Math.random() * 2,
     dead: false, hitBy: 0, coins: d.coins, drops: d.drops, color: d.color,
     glow: d.glow || 0, lava: d.lava || 0, onGround: false, boss: false, score: d.score,
+    burn: d.burn || 0, burnT: 0,
   };
   if (d.ai === 'worm') {
     f.trail = []; f.segs = d.segs; f.inGround = true; f.noGrav = true;
@@ -1402,6 +1403,15 @@ function updateSpawner(dt) {
 }
 let _bnCache = null; // шум биомов для спавнера (инициализируется при генерации мира)
 
+// На враге дневной свет? (нет твёрдой крыши над головой — открытое небо)
+function sunlitFoe(f) {
+  const fx = Math.floor(f.x);
+  if (fx < 0 || fx >= WORLD_W) return false;
+  const headY = Math.floor(f.y - f.h + 0.2);
+  for (let y = headY; y >= 0; y--) if (isSolid(gT(fx, y))) return false;
+  return true;
+}
+
 function updateFoes(dt) {
   for (let i = foes.length - 1; i >= 0; i--) {
     const f = foes[i];
@@ -1419,6 +1429,17 @@ function updateFoes(dt) {
       f.lavaT = (f.lavaT || 0) - dt;
       if (f.lavaT <= 0) { f.lavaT = 0.6; hurtFoe(f, 12, 0, 0); }
     }
+    // ночные твари (зомби, глаза) сгорают на дневном свету — быстро
+    if (f.burn && !f.boss && !f.dead && !isNight() && sunlitFoe(f)) {
+      f.onFire = 1;
+      f.burnT -= dt;
+      // дым/пламя каждый кадр
+      if (Math.random() < 0.6) burst(f.x + (Math.random() - 0.5) * f.w, f.y - f.h * (0.3 + Math.random() * 0.6), Math.random() < 0.5 ? '#ff8a3e' : '#5a5a5a', 1, 2);
+      if (f.burnT <= 0) {
+        f.burnT = 0.3;
+        hurtFoe(f, Math.max(6, Math.ceil(f.hpMax / 4)), 0, 0); // ~1.2 c до золы
+      }
+    } else f.onFire = 0;
     // контактный урон
     if (!P.dead && f.hp > 0) {
       const pr = playerRect();
@@ -2399,6 +2420,34 @@ function getAnim(key) { // ASSETS.key = [url,url,...] или url
 }
 function spriteTile() { return null; } // тайлы всегда процедурные
 
+// Доля высоты кадра до САМОГО НИЖНЕГО непрозрачного пикселя анимации (низ «опорной ноги»).
+// Кадры героя пакуются единым union-bbox на 4 анимации, поэтому в беге/ударе/прыжке
+// персонаж стоит выше в кадре — привязываем к его собственному низу, а не к низу кадра.
+const footCache = {};
+function animFootFrac(key) {
+  if (key in footCache) return footCache[key];
+  const frames = getAnim(key);
+  if (!frames) return 1;
+  let maxB = 0;
+  try {
+    for (const im of frames) {
+      const w = im.naturalWidth, h = im.naturalHeight;
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, w, h).data;
+      let low = h;
+      for (let y = h - 1; y >= 0; y--) {
+        let has = false;
+        for (let x = 0; x < w; x++) if (d[(x + y * w) * 4 + 3] > 30) { has = true; break; }
+        if (has) { low = y + 1; break; }
+      }
+      maxB = Math.max(maxB, low / h);
+    }
+  } catch (e) { return 1; }
+  if (frames.length) footCache[key] = maxB;   // кэшируем только когда кадры реально загрузились
+  return maxB || 1;
+}
+
 // Предзагрузка всех ASSETS при старте (иначе спрайты «выпрыгивают» после первого кадра)
 function preloadAssets() {
   const waits = [];
@@ -2442,6 +2491,12 @@ function drawEntities(Z, cx, cy) {
       ctx.translate(px, py + oy);
       if (f.dir < 0) ctx.scale(-1, 1);
       ctx.drawImage(fr, -w / 2, -h, w, h);
+      if (f.onFire) { // тлеющий оранжевый оверлей по силуэту
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.globalAlpha = 0.3 + Math.random() * 0.25;
+        ctx.fillStyle = '#ff7020';
+        ctx.fillRect(-w / 2, -h, w, h);
+      }
       ctx.restore();
       continue;
     }
@@ -2639,7 +2694,9 @@ function drawPlayer(Z, cx, cy) {
     else fi = Math.floor(world.time * (key === 'hero_run' ? 12 : 7)) % anim.length;
     const fr = anim[fi];
     const h = 2.1 * Z, w = h * (fr.width / fr.height);
-    ctx.drawImage(fr, -w / 2, -h + Z * 0.08, w, h);
+    // низ опорной ноги анимации кладём на ноги игрока (иначе бег/удар/прыжок «всплывают»)
+    const foot = animFootFrac(key);
+    ctx.drawImage(fr, -w / 2, -foot * h + Z * 0.08, w, h);
   } else {
     const w = P.w * Z, h = P.h * Z;
     const legs = Math.abs(P.vx) > 0.5 && P.onGround ? Math.sin(world.time * 12) * 0.18 : 0;
