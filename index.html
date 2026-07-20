@@ -340,6 +340,32 @@ body.immersive .ov-score-wrap{margin-top:2px}
 .settings-login{width:100%;padding:15px;border-radius:14px;background:var(--a4);border:none;color:#fff;font-family:var(--fd);font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s}
 .settings-login:active{opacity:.85}
 .settings-cancel{display:block;margin-top:14px;text-align:center;font-size:13px;color:var(--sub);cursor:pointer;padding:6px}
+/* settings extras: помощь, правовые ссылки, версия */
+.settings-sep{height:1px;background:rgba(255,255,255,.07);margin:16px 0}
+.settings-link{display:flex;align-items:center;gap:11px;padding:13px 2px;color:var(--sub);font-size:14px;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.settings-link:active{color:var(--text)}
+.settings-link .sl-ic{font-size:17px;width:22px;text-align:center;flex-shrink:0}
+.settings-link .sl-ar{margin-left:auto;color:rgba(255,255,255,.28);font-size:16px}
+.settings-ver{text-align:center;color:rgba(255,255,255,.4);font-size:11px;letter-spacing:1.5px;margin-top:16px;font-family:var(--fm);text-transform:uppercase}
+/* ── GENERIC BOTTOM SHEET (жалобы / меню карточки / обратная связь) ── */
+.bsheet{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(12px);z-index:720;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
+.bsheet.show{opacity:1;pointer-events:all}
+.bsheet-inner{width:100%;background:#0f0f14;border-radius:24px 24px 0 0;padding:0 0 var(--safe-bottom);transform:translateY(40px);transition:transform .35s cubic-bezier(.32,.72,0,1)}
+.bsheet.show .bsheet-inner{transform:translateY(0)}
+.bsheet-handle{width:36px;height:4px;background:#2a2a34;border-radius:999px;margin:14px auto 0}
+.bsheet-body{padding:18px 22px 26px}
+.bsheet-title{font-size:17px;font-weight:700;margin-bottom:4px;text-align:center}
+.bsheet-sub{font-size:12.5px;color:var(--sub);text-align:center;margin-bottom:16px;line-height:1.4}
+.bsheet-opt{width:100%;display:flex;align-items:center;gap:13px;padding:14px 16px;border-radius:14px;background:#16161e;border:1.5px solid transparent;color:var(--text);font-family:var(--fd);font-size:15px;font-weight:600;cursor:pointer;margin-bottom:9px;text-align:left;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
+.bsheet-opt:active{background:#1e1e28}
+.bsheet-opt .bo-ic{font-size:19px;width:24px;text-align:center;flex-shrink:0}
+.bsheet-opt.danger{color:var(--a1)}
+.bsheet-ta{width:100%;background:#1a1a22;border:1.5px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 15px;color:var(--text);font-family:var(--fd);font-size:15px;outline:none;min-height:98px;line-height:1.45;resize:none;margin-bottom:13px;-webkit-appearance:none}
+.bsheet-ta:focus{border-color:var(--a4)}
+.bsheet-submit{width:100%;padding:15px;border-radius:14px;background:var(--a4);border:none;color:#fff;font-family:var(--fd);font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.bsheet-submit:active{opacity:.85}
+.bsheet-submit:disabled{opacity:.45}
+.bsheet-cancel{display:block;margin-top:8px;text-align:center;font-size:13px;color:var(--sub);cursor:pointer;padding:8px}
 </style>
 </head>
 <body>
@@ -349,7 +375,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
   <div class="ld-tagline">Swipe and play</div>
   <div class="ld-dots" id="ld-dots"><div class="ld-dot"></div><div class="ld-dot"></div><div class="ld-dot"></div></div>
   <!-- Sharky version — bump here on each release; keep in sync with CHANGELOG.txt -->
-  <div class="ld-version" id="ld-version">Sharky v0.6.5</div>
+  <div class="ld-version" id="ld-version">Sharky v0.7.0</div>
   <div class="ld-error" id="ld-error">
     <div class="ld-error-msg" id="ld-error-msg">Не удалось загрузить. Проверь соединение и попробуй снова.</div>
     <button class="ld-retry" id="ld-retry">Повторить</button>
@@ -363,6 +389,7 @@ body.immersive .ov-score-wrap{margin-top:2px}
 <div id="top-controls">
   <div class="tc-btn" id="tc-hide" title="Скрыть интерфейс"></div>
   <div class="tc-btn" id="tc-pause" title="Пауза"></div>
+  <div class="tc-btn" id="tc-more" title="Ещё"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></div>
 </div>
 
 <!-- NEXT UP (shown only on pause) -->
@@ -533,7 +560,59 @@ body.immersive .ov-score-wrap{margin-top:2px}
     <div class="settings-body">
       <div class="settings-title">Настройки</div>
       <div id="settings-content"></div>
+      <div class="settings-sep"></div>
+      <div class="settings-link" id="set-feedback"><span class="sl-ic">💬</span>Помощь и обратная связь<span class="sl-ar">›</span></div>
+      <a class="settings-link" href="privacy.html" target="_blank" rel="noopener"><span class="sl-ic">🔒</span>Политика конфиденциальности<span class="sl-ar">›</span></a>
+      <a class="settings-link" href="terms.html" target="_blank" rel="noopener"><span class="sl-ic">📄</span>Условия использования<span class="sl-ar">›</span></a>
+      <div class="settings-ver" id="settings-ver">Sharky v0.7.0</div>
       <div class="settings-cancel" id="settings-cancel">Закрыть</div>
+    </div>
+  </div>
+</div>
+
+<!-- CARD MENU (kebab «⋯») -->
+<div class="bsheet" id="cardmenu-modal">
+  <div class="bsheet-inner">
+    <div class="bsheet-handle"></div>
+    <div class="bsheet-body">
+      <div class="bsheet-title">Меню игры</div>
+      <div class="bsheet-sub" id="cardmenu-game"></div>
+      <button class="bsheet-opt" id="cm-share"><span class="bo-ic">🔗</span>Поделиться игрой</button>
+      <button class="bsheet-opt" id="cm-feedback"><span class="bo-ic">🐞</span>Сообщить о проблеме</button>
+      <button class="bsheet-opt danger" id="cm-report"><span class="bo-ic">⚑</span>Пожаловаться на игру</button>
+      <div class="bsheet-cancel" id="cardmenu-cancel">Отмена</div>
+    </div>
+  </div>
+</div>
+
+<!-- REPORT SHEET (жалоба на игру / комментарий) -->
+<div class="bsheet" id="report-modal">
+  <div class="bsheet-inner">
+    <div class="bsheet-handle"></div>
+    <div class="bsheet-body">
+      <div class="bsheet-title">Пожаловаться</div>
+      <div class="bsheet-sub" id="report-sub">Выбери причину — модераторы проверят.</div>
+      <button class="bsheet-opt" data-reason="spam"><span class="bo-ic">🚫</span>Спам или реклама</button>
+      <button class="bsheet-opt" data-reason="abuse"><span class="bo-ic">😡</span>Оскорбления или травля</button>
+      <button class="bsheet-opt" data-reason="sexual"><span class="bo-ic">🔞</span>Контент 18+ / сексуальный</button>
+      <button class="bsheet-opt" data-reason="violence"><span class="bo-ic">⚠️</span>Насилие или опасный контент</button>
+      <button class="bsheet-opt" data-reason="broken" id="report-broken"><span class="bo-ic">🧩</span>Игра не работает</button>
+      <button class="bsheet-opt" data-reason="other"><span class="bo-ic">•••</span>Другое</button>
+      <div class="bsheet-cancel" id="report-cancel">Отмена</div>
+    </div>
+  </div>
+</div>
+
+<!-- FEEDBACK SHEET (обратная связь / баг-репорт) -->
+<div class="bsheet" id="feedback-modal">
+  <div class="bsheet-inner">
+    <div class="bsheet-handle"></div>
+    <div class="bsheet-body">
+      <div class="bsheet-title">Помощь и обратная связь</div>
+      <div class="bsheet-sub">Нашёл баг или есть идея? Напиши — мы читаем всё.</div>
+      <textarea class="bsheet-ta" id="feedback-text" maxlength="1000" placeholder="Опиши проблему или идею…"></textarea>
+      <button class="bsheet-submit" id="feedback-send">Отправить</button>
+      <div class="bsheet-cancel" id="feedback-cancel">Отмена</div>
     </div>
   </div>
 </div>
@@ -1148,6 +1227,14 @@ function buildCommentNode(c, gameIdx, isReply) {
   });
   meta.appendChild(replyBtn);
 
+  if (!isOwn) {
+    const repBtn = document.createElement('span');
+    repBtn.className = 'c-act';
+    repBtn.textContent = 'Пожаловаться';
+    repBtn.addEventListener('click', () => openReport('comment', c.id));
+    meta.appendChild(repBtn);
+  }
+
   if (isOwn) {
     const editBtn = document.createElement('span');
     editBtn.className = 'c-act';
@@ -1664,6 +1751,73 @@ function closeSettings() {
   document.getElementById('settings-modal').classList.remove('show');
 }
 
+// ══ МОДЕРАЦИЯ: меню карточки, жалобы, обратная связь ══
+let reportCtx = null; // {type:'game'|'comment'|'user', id}
+
+function openCardMenu() {
+  const g = GAMES[currentIdx];
+  if (!g) return;
+  document.getElementById('cardmenu-game').textContent = g.title || '';
+  document.getElementById('cardmenu-modal').classList.add('show');
+  tg?.HapticFeedback?.impactOccurred('light');
+}
+function closeCardMenu() { document.getElementById('cardmenu-modal').classList.remove('show'); }
+
+function openReport(type, id) {
+  if (!currentUser) { toast('Войди, чтобы пожаловаться'); showRegModal(); return; }
+  reportCtx = { type, id: String(id) };
+  document.getElementById('report-sub').textContent =
+      type === 'game'    ? 'Жалоба на игру. Выбери причину — модераторы проверят.'
+    : type === 'comment' ? 'Жалоба на комментарий. Выбери причину.'
+    :                      'Выбери причину — модераторы проверят.';
+  document.getElementById('report-broken').style.display = (type === 'game') ? '' : 'none';
+  document.getElementById('report-modal').classList.add('show');
+  tg?.HapticFeedback?.impactOccurred('light');
+}
+function closeReport() { document.getElementById('report-modal').classList.remove('show'); reportCtx = null; }
+
+async function submitReport(reason) {
+  const ctx = reportCtx;
+  if (!ctx || !currentUser) { closeReport(); return; }
+  closeReport();
+  try {
+    const { error } = await db.from('reports').insert({
+      reporter_id: currentUser.id, target_type: ctx.type, target_id: ctx.id, reason
+    });
+    if (error) { console.warn('report insert:', error.message); toast('Не удалось отправить жалобу'); return; }
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+    toast('✅ Спасибо, жалоба отправлена');
+  } catch(e) { console.warn('report ex:', e); toast('Не удалось отправить жалобу'); }
+}
+
+function openFeedback() {
+  closeCardMenu(); closeSettings();
+  if (!currentUser) { toast('Войди, чтобы отправить сообщение'); showRegModal(); return; }
+  document.getElementById('feedback-text').value = '';
+  document.getElementById('feedback-modal').classList.add('show');
+  setTimeout(() => document.getElementById('feedback-text')?.focus(), 300);
+}
+function closeFeedback() { document.getElementById('feedback-modal').classList.remove('show'); }
+
+async function submitFeedback() {
+  if (!currentUser) { closeFeedback(); toast('Войди, чтобы отправить'); showRegModal(); return; }
+  const ta = document.getElementById('feedback-text');
+  const text = (ta.value || '').trim();
+  if (text.length < 2) { toast('Напиши чуть подробнее'); return; }
+  const btn = document.getElementById('feedback-send');
+  btn.disabled = true;
+  const g = GAMES[currentIdx];
+  const context = { game_id: g?.id || null, platform: tg?.platform || 'web', version: '0.7.0', ua: navigator.userAgent };
+  try {
+    const { error } = await db.from('feedback').insert({ user_id: currentUser.id, kind: 'general', text, context });
+    if (error) { console.warn('feedback insert:', error.message); toast('Не удалось отправить'); btn.disabled = false; return; }
+    closeFeedback();
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+    toast('✅ Спасибо! Сообщение отправлено');
+  } catch(e) { console.warn('feedback ex:', e); toast('Не удалось отправить'); }
+  finally { btn.disabled = false; }
+}
+
 function logout() {
   db.auth.signOut();
   currentUser = null;
@@ -1914,6 +2068,23 @@ init();
 // ══ EVENT WIRING ══
 document.getElementById('tc-pause').addEventListener('click', togglePause);
 document.getElementById('tc-hide').addEventListener('click', toggleImmersive);
+// kebab «⋯» → меню карточки; жалобы; обратная связь
+document.getElementById('tc-more').addEventListener('click', openCardMenu);
+document.getElementById('cardmenu-cancel').addEventListener('click', closeCardMenu);
+document.getElementById('cardmenu-modal').addEventListener('click', e => { if (e.target.id === 'cardmenu-modal') closeCardMenu(); });
+document.getElementById('cm-share').addEventListener('click', () => { closeCardMenu(); doShare(currentIdx); });
+document.getElementById('cm-feedback').addEventListener('click', () => { closeCardMenu(); openFeedback(); });
+document.getElementById('cm-report').addEventListener('click', () => { closeCardMenu(); const g = GAMES[currentIdx]; if (g) openReport('game', g.id); });
+document.getElementById('report-cancel').addEventListener('click', closeReport);
+document.getElementById('report-modal').addEventListener('click', e => { if (e.target.id === 'report-modal') closeReport(); });
+document.querySelectorAll('#report-modal .bsheet-opt').forEach(b => b.addEventListener('click', () => submitReport(b.dataset.reason)));
+document.getElementById('set-feedback').addEventListener('click', openFeedback);
+document.getElementById('feedback-cancel').addEventListener('click', closeFeedback);
+document.getElementById('feedback-modal').addEventListener('click', e => { if (e.target.id === 'feedback-modal') closeFeedback(); });
+document.getElementById('feedback-send').addEventListener('click', submitFeedback);
+// свайп по нижнему листу не должен листать ленту (гасим всплытие до навигации в engine.js)
+document.querySelectorAll('.bsheet').forEach(s => ['touchstart','touchmove','touchend']
+  .forEach(ev => s.addEventListener(ev, e => e.stopPropagation(), {passive:true})));
 document.getElementById('ld-retry').addEventListener('click', () => location.reload());
 document.getElementById('d-close').addEventListener('click', closeComments);
 document.getElementById('d-handle').addEventListener('click', closeComments);

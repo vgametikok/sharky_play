@@ -57,6 +57,13 @@ a{color:var(--a4)}
 .navbtn.active{background:var(--panel2);color:var(--text)}
 .navbtn.active::before{content:'';width:3px;height:16px;border-radius:3px;background:var(--a4);margin-left:-12px;margin-right:9px}
 .navbtn .ic{font-size:16px;width:20px;text-align:center}
+.modbadge{display:none;min-width:18px;height:18px;padding:0 5px;margin-left:auto;border-radius:9px;background:var(--a4);color:#fff;font-size:11px;font-weight:700;align-items:center;justify-content:center;font-family:var(--fm)}
+.modbadge.show{display:inline-flex}
+.mod-cell-main{max-width:340px}
+.mod-cell-main .mono{opacity:.55;font-size:11px}
+.mod-reasons{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
+.mod-acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.mod-quote{color:var(--text);opacity:.9}
 .side-foot{margin-top:auto;border-top:1px solid var(--line);padding-top:16px}
 .side-who{font-size:13px;font-weight:700}
 .side-who small{display:block;font-family:var(--fm);font-size:11px;color:var(--sub);font-weight:400}
@@ -96,6 +103,10 @@ a{color:var(--a4)}
 .b-admin{background:rgba(123,92,255,.16);color:var(--a4)}
 .b-user{background:rgba(255,255,255,.08);color:var(--sub2)}
 .b-adult{background:rgba(255,60,95,.18);color:var(--a1)}
+.b-open{background:rgba(255,60,95,.16);color:var(--a1)}
+.b-reviewing{background:rgba(255,228,77,.14);color:var(--a3)}
+.b-resolved{background:rgba(0,229,160,.14);color:var(--a2)}
+.b-dismissed{background:rgba(255,255,255,.08);color:var(--sub2)}
 .rowacts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .empty{padding:40px;text-align:center;color:var(--sub);font-size:14px}
 
@@ -221,6 +232,7 @@ a{color:var(--a4)}
     <button class="navbtn" data-page="games"><span class="ic">🎮</span>Игры</button>
     <button class="navbtn" data-page="add"><span class="ic">＋</span>Добавить</button>
     <button class="navbtn" data-page="profiles"><span class="ic">👤</span>Профили</button>
+    <button class="navbtn" data-page="moderation"><span class="ic">🛡</span>Модерация<span class="modbadge" id="mod-badge"></span></button>
     <div class="side-foot">
       <div class="side-who" id="who">—<small id="who-id"></small></div>
       <button class="btn ghost" id="logout">Выйти</button>
@@ -323,6 +335,18 @@ a{color:var(--a4)}
         <button class="btn ghost sm" id="prof-back" style="margin-bottom:16px">← К списку профилей</button>
         <div id="prof-detail"></div>
       </div>
+    </section>
+
+    <!-- ── PAGE: MODERATION ── -->
+    <section class="page" data-page="moderation">
+      <div class="page-head">
+        <div class="page-title">Модерация <small id="mod-count"></small></div>
+        <div class="seg" id="mod-tabs">
+          <button data-t="reports" class="active">Жалобы</button>
+          <button data-t="feedback">Обратная связь</button>
+        </div>
+      </div>
+      <div id="mod-body"><div class="empty">Загрузка…</div></div>
     </section>
 
   </main>
@@ -471,6 +495,7 @@ document.querySelectorAll('.navbtn').forEach(b=>{
     document.querySelectorAll('.page').forEach(x=>x.classList.toggle('on', x.dataset.page===p));
     if(p==='profiles'){showProfList();}
     if(p==='dashboard'){dashView={mode:'list',gameId:null};loadDashboard();}   // всегда список при заходе
+    if(p==='moderation'){loadModeration();}
   });
 });
 
@@ -483,6 +508,7 @@ async function loadAll(){
   renderProfiles();
   renderAddForm();
   loadDashboard();
+  refreshModBadge();
 }
 async function loadUsers(){
   // SECURITY: полный список юзеров доступен только админу — читаем через
@@ -804,6 +830,135 @@ document.querySelectorAll('#dash-period button').forEach(b=>{
     b.classList.add('active');
     dashPeriod = b.dataset.p;
     loadDashboard();
+  });
+});
+
+// ════════ MODERATION (жалобы + обратная связь) ════════
+let modTab = 'reports';
+const MOD_REASONS = { spam:'Спам/реклама', abuse:'Оскорбления', sexual:'18+ / секс.', violence:'Насилие', broken:'Не работает', other:'Другое' };
+
+async function loadModeration(){ await renderModeration(); refreshModBadge(); }
+async function renderModeration(){
+  $('#mod-body').innerHTML = '<div class="empty">Загрузка…</div>';
+  if(modTab==='reports') await renderReports(); else await renderFeedback();
+}
+
+async function renderReports(){
+  const body = $('#mod-body');
+  const { data, error } = await db.rpc('admin_list_reports', { p_status: null });
+  if(error){ body.innerHTML = `<div class="empty">Ошибка: ${esc(error.message)}</div>`; return; }
+  const rows = data || [];
+  $('#mod-count').textContent = `· ${rows.filter(r=>r.status==='open').length} открытых`;
+  if(!rows.length){ body.innerHTML = '<div class="empty">Жалоб пока нет 🎉</div>'; return; }
+  body.innerHTML = `<table class="tbl"><thead><tr>
+    <th>Объект</th><th>Причина</th><th>От кого</th><th>Когда</th><th>Статус</th><th></th></tr></thead><tbody>${
+    rows.map(r=>{
+      const ico = r.target_type==='game'?'🎮':r.target_type==='comment'?'💬':'👤';
+      let title = r.target_title!=null ? esc(String(r.target_title)) : '<span class="mono">— недоступно —</span>';
+      if(r.target_type==='comment') title = `<span class="mod-quote">«${title}»</span>`;
+      const extra = r.open_same_target>1 ? ` <span class="badge b-open">ещё ${r.open_same_target-1}</span>` : '';
+      const hiddenTag = r.comment_hidden===true ? ' <span class="badge b-hidden">скрыт</span>' : '';
+      const gStat = (r.target_type==='game'&&r.game_status) ? ` ${statusBadge(r.game_status)}` : '';
+      return `<tr>
+        <td class="mod-cell-main">${ico} ${title}${extra}${hiddenTag}${gStat}
+          <div class="mono">${esc(r.target_type)} · ${esc(String(r.target_id).slice(0,20))}</div></td>
+        <td>${esc(MOD_REASONS[r.reason]||r.reason)}${r.note?`<div class="mono" style="opacity:.6">${esc(r.note)}</div>`:''}</td>
+        <td>${r.reporter_name?esc(r.reporter_name):'—'}<div class="mono">${r.reporter_handle?'@'+esc(r.reporter_handle):''}</div></td>
+        <td class="mono">${fmtDate(r.created_at)}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td>${reportActions(r)}</td></tr>`;
+    }).join('')}</tbody></table>`;
+  body.querySelectorAll('button[data-ract]').forEach(b=>b.addEventListener('click',()=>onReportAct(b.dataset)));
+}
+
+function reportActions(r){
+  const a = [];
+  if(r.target_type==='comment'){
+    if(r.comment_hidden===true) a.push(`<button class="btn ghost sm" data-ract="unhide" data-cid="${esc(r.target_id)}">Вернуть коммент</button>`);
+    else if(r.comment_hidden===false) a.push(`<button class="btn sm" data-ract="hide" data-cid="${esc(r.target_id)}">Скрыть коммент</button>`);
+  }
+  if(r.target_type==='game' && r.game_status && !['hidden','deleted'].includes(r.game_status)){
+    a.push(`<button class="btn sm" data-ract="hidegame" data-gid="${esc(r.target_id)}">Скрыть игру</button>`);
+  }
+  if(r.status==='open' || r.status==='reviewing'){
+    a.push(`<button class="btn ghost sm" data-ract="resolve" data-id="${r.id}">✓ Решено</button>`);
+    a.push(`<button class="btn ghost sm" data-ract="dismiss" data-id="${r.id}">Отклонить</button>`);
+  } else {
+    a.push(`<button class="btn ghost sm" data-ract="reopen" data-id="${r.id}">↩ Открыть</button>`);
+  }
+  return `<div class="mod-acts">${a.join('')}</div>`;
+}
+
+async function onReportAct(d){
+  try {
+    if(d.ract==='hide' || d.ract==='unhide'){
+      const { error } = await db.rpc('admin_hide_comment', { p_id: d.cid, p_hidden: d.ract==='hide' });
+      if(error) throw error; toast(d.ract==='hide'?'Комментарий скрыт':'Комментарий возвращён');
+    } else if(d.ract==='hidegame'){
+      const { error } = await db.from('games').update({ status:'hidden' }).eq('id', d.gid);
+      if(error) throw error;
+      const g = GAMES.find(x=>x.id===d.gid); if(g) g.status='hidden';
+      toast('Игра скрыта');
+    } else {
+      const status = d.ract==='resolve'?'resolved':d.ract==='dismiss'?'dismissed':'open';
+      const { error } = await db.rpc('admin_resolve_report', { p_id: d.id, p_status: status });
+      if(error) throw error; toast('Обновлено');
+    }
+  } catch(e){ toast('Ошибка: '+(e.message||e)); return; }
+  renderReports(); refreshModBadge();
+}
+
+async function renderFeedback(){
+  const body = $('#mod-body');
+  const { data, error } = await db.rpc('admin_list_feedback', { p_status: null });
+  if(error){ body.innerHTML = `<div class="empty">Ошибка: ${esc(error.message)}</div>`; return; }
+  const rows = data || [];
+  $('#mod-count').textContent = `· ${rows.filter(r=>r.status==='open').length} открытых`;
+  if(!rows.length){ body.innerHTML = '<div class="empty">Обращений пока нет</div>'; return; }
+  body.innerHTML = `<table class="tbl"><thead><tr>
+    <th>Сообщение</th><th>Контекст</th><th>От кого</th><th>Когда</th><th>Статус</th><th></th></tr></thead><tbody>${
+    rows.map(f=>{
+      const c = f.context || {};
+      const ctx = [c.game_id?('🎮 '+esc(c.game_id)):'', esc(c.platform||''), c.version?('v'+esc(c.version)):''].filter(Boolean).join(' · ');
+      return `<tr>
+        <td class="mod-cell-main"><div class="mod-quote">${esc(f.text)}</div></td>
+        <td class="mono" style="font-size:11px;opacity:.7">${ctx}</td>
+        <td>${f.user_name?esc(f.user_name):'—'}<div class="mono">${f.user_handle?'@'+esc(f.user_handle):''}</div></td>
+        <td class="mono">${fmtDate(f.created_at)}</td>
+        <td>${statusBadge(f.status)}</td>
+        <td><div class="mod-acts">${
+          f.status==='open'
+            ? `<button class="btn ghost sm" data-fact="resolve" data-id="${f.id}">✓ Решено</button>`
+            : `<button class="btn ghost sm" data-fact="reopen" data-id="${f.id}">↩ Открыть</button>`
+        }</div></td></tr>`;
+    }).join('')}</tbody></table>`;
+  body.querySelectorAll('button[data-fact]').forEach(b=>b.addEventListener('click',async()=>{
+    const status = b.dataset.fact==='resolve'?'resolved':'open';
+    const { error } = await db.rpc('admin_resolve_feedback', { p_id: b.dataset.id, p_status: status });
+    if(error){ toast('Ошибка: '+error.message); return; }
+    toast('Обновлено'); renderFeedback(); refreshModBadge();
+  }));
+}
+
+async function refreshModBadge(){
+  try {
+    const { data, error } = await db.rpc('admin_moderation_counts');
+    if(error) return;
+    const n = (data?.open_reports||0) + (data?.open_feedback||0);
+    const badge = $('#mod-badge');
+    if(!badge) return;
+    badge.textContent = n>99?'99+':String(n);
+    badge.classList.toggle('show', n>0);
+  } catch(e){}
+}
+
+document.querySelectorAll('#mod-tabs button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    if(b.dataset.t===modTab) return;
+    document.querySelectorAll('#mod-tabs button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    modTab = b.dataset.t;
+    renderModeration();
   });
 });
 

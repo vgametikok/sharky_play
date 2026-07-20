@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<title>Политика конфиденциальности — Sharky</title>
+<style>
+  :root{--bg:#0d080f;--panel:#16121c;--text:#f2eef5;--sub:#a99fb5;--ac:#ff3c5f;--line:rgba(255,255,255,.09)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font-family:'Space Grotesk',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+       line-height:1.62;font-size:16px;-webkit-text-size-adjust:100%}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 22px 80px}
+  .brand{font-size:26px;font-weight:700;letter-spacing:-1px;margin-bottom:4px}
+  .brand span{color:var(--ac)}
+  h1{font-size:26px;font-weight:700;letter-spacing:-.5px;margin:22px 0 6px}
+  .updated{color:var(--sub);font-size:13px;margin-bottom:28px}
+  h2{font-size:18px;font-weight:700;margin:34px 0 10px;letter-spacing:-.2px}
+  p,li{color:#e2dbe8}
+  a{color:var(--ac);text-decoration:none}
+  a:hover{text-decoration:underline}
+  ul{padding-left:20px;margin:8px 0}
+  li{margin:5px 0}
+  .note{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin:18px 0;color:var(--sub);font-size:14px}
+  .foot{margin-top:44px;padding-top:20px;border-top:1px solid var(--line);color:var(--sub);font-size:13px;display:flex;gap:18px;flex-wrap:wrap}
+  code{background:var(--panel);padding:1px 6px;border-radius:6px;font-size:13px}
+  .back{display:inline-block;margin-bottom:20px;color:var(--sub);font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">Shar<span>ky</span></div>
+  <h1>Политика конфиденциальности</h1>
+  <div class="updated">Редакция от 20 июля 2026 г.</div>
+
+  <p>Настоящая Политика описывает, какие данные собирает мини-приложение <strong>Sharky</strong>
+  («лента мини-игр в Telegram», далее — «Сервис»), зачем и как мы их используем. Пользуясь
+  Сервисом, вы соглашаетесь с условиями этой Политики.</p>
+
+  <div class="note">Оператор Сервиса: проект <strong>Sharky</strong>. Контакт по вопросам данных
+  и приватности: <a href="mailto:vgametikok@gmail.com">vgametikok@gmail.com</a>.
+  <br>Реквизиты юридического лица оператора будут указаны здесь до публичного запуска.</div>
+
+  <h2>1. Какие данные мы собираем</h2>
+  <p>Sharky запускается как Telegram Mini App. При открытии Telegram передаёт нам базовые
+  данные вашего профиля, а также мы фиксируем действия внутри Сервиса:</p>
+  <ul>
+    <li><strong>Идентификатор и профиль Telegram:</strong> ваш Telegram ID, @username, отображаемое имя,
+        язык интерфейса, признак Telegram Premium, тип платформы (Android/iOS/Web/Desktop),
+        источник перехода (параметр реферальной ссылки).</li>
+    <li><strong>Действия в Сервисе:</strong> какие игры вы открывали и сколько времени были в них
+        активны (обезличенная аналитика вовлечённости), лайки, сохранённые игры, подписки,
+        комментарии и репосты.</li>
+    <li><strong>Технические данные сессии:</strong> время открытия приложения, служебные метки
+        для работы ленты.</li>
+  </ul>
+  <p>Мы <strong>не собираем</strong> геолокацию, номер телефона, адрес электронной почты (кроме
+  случая, когда вы сами напишете нам), паспортные и платёжные данные.</p>
+
+  <h2>2. Зачем мы используем данные</h2>
+  <ul>
+    <li>чтобы Сервис работал: авторизация через Telegram, показ ленты, сохранение лайков и подписок;</li>
+    <li>чтобы улучшать подбор игр и рекомендации;</li>
+    <li>чтобы вести агрегированную статистику (сколько людей играет, какие игры популярны);</li>
+    <li>для модерации: рассмотрение жалоб и обеспечение безопасности сообщества.</li>
+  </ul>
+
+  <h2>3. Правовое основание</h2>
+  <p>Мы обрабатываем данные на основании вашего согласия (даётся при использовании Сервиса) и
+  нашего законного интереса в обеспечении работы и безопасности Сервиса.</p>
+
+  <h2>4. Где хранятся данные и кому передаются</h2>
+  <p>Данные хранятся в облачной инфраструктуре <strong>Supabase</strong> (управляемый PostgreSQL).
+  Мы привлекаем следующих обработчиков:</p>
+  <ul>
+    <li><strong>Telegram</strong> — платформа, через которую вы получаете доступ к Сервису;</li>
+    <li><strong>Supabase</strong> — хранение и обработка данных Сервиса.</li>
+  </ul>
+  <p>Мы <strong>не продаём</strong> ваши данные и не передаём их третьим лицам для рекламы.</p>
+
+  <h2>5. Локальное хранилище</h2>
+  <p>Сервис использует <code>localStorage</code> вашего устройства для сохранения игрового
+  прогресса, рекордов и настроек интерфейса. Эти данные остаются на устройстве и не являются
+  cookie для отслеживания.</p>
+
+  <h2>6. Срок хранения</h2>
+  <p>Данные профиля и социальных действий хранятся, пока вы пользуетесь Сервисом. Вы можете
+  запросить удаление своих данных — см. раздел 7.</p>
+
+  <h2>7. Ваши права</h2>
+  <p>Вы вправе запросить доступ к своим данным, их исправление или удаление. Для этого напишите на
+  <a href="mailto:vgametikok@gmail.com">vgametikok@gmail.com</a> с того Telegram-аккаунта или укажите
+  свой @username. Мы обработаем запрос в разумный срок.</p>
+
+  <h2>8. Дети</h2>
+  <p>Сервис предназначен для казуальной аудитории и не ориентирован на детей младше 12 лет. Если
+  вы считаете, что ребёнок предоставил нам данные без согласия родителей, напишите нам — мы их удалим.</p>
+
+  <h2>9. Изменения Политики</h2>
+  <p>Мы можем обновлять эту Политику. Актуальная редакция всегда доступна по этому адресу; дата
+  вверху страницы отражает последнее обновление.</p>
+
+  <h2>10. Контакты</h2>
+  <p>Вопросы о конфиденциальности: <a href="mailto:vgametikok@gmail.com">vgametikok@gmail.com</a>.</p>
+
+  <div class="foot">
+    <a href="terms.html">Условия использования</a>
+    <a href="index.html">← Вернуться в Sharky</a>
+  </div>
+</div>
+</body>
+</html>
