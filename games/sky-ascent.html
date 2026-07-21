@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="ru"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>Ввысь</title>
+<title>Skyward</title>
 <style>
   :root { --ac:#e7b44c; }
   html,body{margin:0;width:100vw;height:100vh;overflow:hidden;touch-action:none;background:#000;}
@@ -10,7 +10,7 @@
 <canvas id="c"></canvas>
 <script>
 'use strict';
-const CONFIG = {"genre":"platformer","meta":{"title":"Ввысь"},"assets":{"player":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADEAAAAxCAYAAABznEEcAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAIXSURBVGhD3ZgxSgRBEEX3GmamBoKGImKiBnqCRRBNPYCBeALPYKZgIJgYbCBs4CEMjE0UE0EEQVh5Tf+lKXqGWVGmaj982OmdHf/rqp6ecfCfGh2sTG6P1pPzUDwB8X69O/kc7cQFITgA8s1wLR4IoanE9/AsQfCZsTAwtBImPBACkcfHG8n5dH9ipp9PV5ObIDCVcblWCCUAQbTZJQgt1BXi4+012dUamaUKXy9PCWBzddlXFWaFwEDs723Hr0RYCKw1sbS4MHW+VH+yEF1AZCriAqLcH2aFcH2HagNhj6ACehzJl+hfPEpYCLkGgl0BSFeHW1WI0sw+5tz8M39idptgaDk5n+5HhFb4prZi3O3sE+zu/CS5DG37nzG3a+DxYZw2LnZi3aEsgMxacPUuAYB2XpmZBoKwNQjspho1ACoiiFp42S0EAG0Qel2Veweh70sAfH95MV0PNQi+K49DQrivBABYreQeoqkKcwdhA2NXELVbqyC0JtxD8MdrAGEhSoCQEBYgFITWhAUgFAAyQGVoIEqQkBDYDQQiYAnAMeMWgkduAnNsIZiMdLG+VEKUM2rf6BTaQrh5nwBEFShF0BICA4p5x+A3jOXT+1UNQKJVBKIqyL23UVcBaMPPFURbBV2JoDWAMFVATRBhqoBqEG7uSF1lIXrfnX8jCxGqjaRaJVz916+L9MxkHaqtqEST8yl/pMHgB8Drung8WWZvAAAAAElFTkSuQmCC","moth":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC8AAAAvCAYAAABzJ5OsAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAI2SURBVGhD1ZixSgNREEWDBgMJAcHCNP6BvSKWtkGstPcTYmMpKFgIllaWKWwtrPwBP8DaQvwD+5XzeFfGxyamUHLfhWHX3X1wZvbOvI2d/9Zw0G+I/Gc96q31mtvLaYpud6WuBPq99Wa8f14nPJUXPFGNhVT1CE98Pn54JwCcwCM81uHe4d5Vw1vJj/toFrjgz7aum6eDl3Tc3Bh5JQDgLHiqLXhL+6hJ2+BJjLCFL20TE5ic3n37nuA8L/PQPPgy7CqPaMRFErCER3HOtyVgC47UnITgSYiGtpzxUeXUIayrLQFZwrOrUvn8iK+AZCwKXD63h6fqJ6OHBB8btAp47HJx/Jq+W0p4wu57RqLq05u3FFS5DR4bWU4boAAniRI+vglLeFUeOCLCc88WPlrmN3i7xp0HzznATCDdy8s8VMLHSvOJwCZl3az35+/NZPycADXnd7aPvOFj1YEHVlUnAAaehOz8Dtw8eI1NeT4v8xBAWIadtQ1e/gee87zMQwAtAo/nreCjZYAHnCblekwA69g17KLwVBx47uelyxdQER5oADkCGxPgGpGXLl+CB5zAHsATJbySykuXrxJetlACqjbndjM+wmvScB1geZ9rsk1a5KIIHysLKLbRzmoJ3x+uJvhYdST46HtLeDao3cHlD7A2eN5Svu0jKh6rjqqBb5N2VIHb/tegFG8BcJpV8HZ+nyXBC7wauyD5XfBlP1irrHzV8IR+y+ZHfIVtAOVYRn7kD9TpfAGNHlS4ZTPE1AAAAABJRU5ErkJggg=="},"theme":{"accent":"#ffd24a","bgTop":"#8fd4f0","bgBottom":"#e8b7d8","font":"'Segoe UI', system-ui, sans-serif","labels":{"over":"СОРВАЛСЯ","win":"ВЕРШИНА!","again":"Тап — заново","scoreUnit":"монет","level":"Ярус"}},"rules":{"mode":"untimed"},"platformer":{"tileSize":16,"viewTilesX":13,"mode":"levels","physics":{"gravity":1450,"moveSpeed":128,"jumpVel":430,"dashSpeed":300,"dashTime":0.16},"saveCheckpoint":true,"player":{"w":0.7,"h":0.92,"hp":3,"lives":3,"color":"#ff7a4d","abilities":{"doubleJump":true},"checkpointHeal":true,"anims":{"idle":{"imgs":["player"],"fps":1,"w":1.4,"h":1.6}}},"enemies":{"moth":{"w":0.8,"h":0.7,"hp":1,"dmg":1,"speed":42,"ai":"fly","fly":true,"range":5,"score":40,"color":"#b06fd1","stompable":true,"anims":{"idle":{"imgs":["moth"],"fps":1,"w":1.3,"h":1.2}}}},"legend":{"#":{"tile":true,"solid":true,"color":"#c9a06a"},"=":{"tile":true,"solid":true,"color":"#d9b382"},"-":{"tile":true,"oneWay":true,"color":"#e8c79a"},"Z":{"tile":true,"solid":true,"phase":[1.7,1],"phaseStagger":0.3,"color":"#c7b0e0"},"v":{"tile":true,"solid":true,"spring":660,"color":"#6fd0a0"},"^":{"tile":true,"hazard":1,"color":"#d85a5a"},"P":{"player":true},"E":{"exit":true,"color":"#7ce0a0"},"S":{"checkpoint":true},"C":{"pickup":"coin","value":10,"color":"#ffd24a"},"M":{"platform":true,"dx":3,"dy":0,"speed":42,"wTiles":3,"color":"#d9b382"},"f":{"enemy":"moth"}},"levels":[{"map":["#           #","#           #","#    SEC    #","#   =====   #","#      C    #","#     ---   #","#           #","#           #","#           #","#    M      #","#           #","#           #","#  C        #","# =v=       #","#           #","#           #","#           #","#   ---     #","#           #","#     f     #","#     SC    #","#     ZZZ   #","#           #","#           #","#           #","#       --- #","#           #","#           #","#      C    #","#      M    #","#           #","#           #","#           #","#   ---     #","#           #","# f         #","#  C        #","# ---       #","#           #","#           #","#           #","#   =v=     #","#           #","#           #","#     SC    #","#     ---   #","#           #","#           #","#           #","#        M  #","#           #","#           #","#      C    #","#     ---   #","#           #","#           #","#           #","#   ---     #","#           #","#           #","#  C        #","# ---       #","#           #","#  C  P  C  #","#############","#############"]}]}};
+const CONFIG = {"genre":"platformer","meta":{"title":"Skyward"},"assets":{"player":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADEAAAAxCAYAAABznEEcAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAIXSURBVGhD3ZgxSgRBEEX3GmamBoKGImKiBnqCRRBNPYCBeALPYKZgIJgYbCBs4CEMjE0UE0EEQVh5Tf+lKXqGWVGmaj982OmdHf/rqp6ecfCfGh2sTG6P1pPzUDwB8X69O/kc7cQFITgA8s1wLR4IoanE9/AsQfCZsTAwtBImPBACkcfHG8n5dH9ipp9PV5ObIDCVcblWCCUAQbTZJQgt1BXi4+012dUamaUKXy9PCWBzddlXFWaFwEDs723Hr0RYCKw1sbS4MHW+VH+yEF1AZCriAqLcH2aFcH2HagNhj6ACehzJl+hfPEpYCLkGgl0BSFeHW1WI0sw+5tz8M39idptgaDk5n+5HhFb4prZi3O3sE+zu/CS5DG37nzG3a+DxYZw2LnZi3aEsgMxacPUuAYB2XpmZBoKwNQjspho1ACoiiFp42S0EAG0Qel2Veweh70sAfH95MV0PNQi+K49DQrivBABYreQeoqkKcwdhA2NXELVbqyC0JtxD8MdrAGEhSoCQEBYgFITWhAUgFAAyQGVoIEqQkBDYDQQiYAnAMeMWgkduAnNsIZiMdLG+VEKUM2rf6BTaQrh5nwBEFShF0BICA4p5x+A3jOXT+1UNQKJVBKIqyL23UVcBaMPPFURbBV2JoDWAMFVATRBhqoBqEG7uSF1lIXrfnX8jCxGqjaRaJVz916+L9MxkHaqtqEST8yl/pMHgB8Drung8WWZvAAAAAElFTkSuQmCC","moth":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC8AAAAvCAYAAABzJ5OsAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAI2SURBVGhD1ZixSgNREEWDBgMJAcHCNP6BvSKWtkGstPcTYmMpKFgIllaWKWwtrPwBP8DaQvwD+5XzeFfGxyamUHLfhWHX3X1wZvbOvI2d/9Zw0G+I/Gc96q31mtvLaYpud6WuBPq99Wa8f14nPJUXPFGNhVT1CE98Pn54JwCcwCM81uHe4d5Vw1vJj/toFrjgz7aum6eDl3Tc3Bh5JQDgLHiqLXhL+6hJ2+BJjLCFL20TE5ic3n37nuA8L/PQPPgy7CqPaMRFErCER3HOtyVgC47UnITgSYiGtpzxUeXUIayrLQFZwrOrUvn8iK+AZCwKXD63h6fqJ6OHBB8btAp47HJx/Jq+W0p4wu57RqLq05u3FFS5DR4bWU4boAAniRI+vglLeFUeOCLCc88WPlrmN3i7xp0HzznATCDdy8s8VMLHSvOJwCZl3az35+/NZPycADXnd7aPvOFj1YEHVlUnAAaehOz8Dtw8eI1NeT4v8xBAWIadtQ1e/gee87zMQwAtAo/nreCjZYAHnCblekwA69g17KLwVBx47uelyxdQER5oADkCGxPgGpGXLl+CB5zAHsATJbySykuXrxJetlACqjbndjM+wmvScB1geZ9rsk1a5KIIHysLKLbRzmoJ3x+uJvhYdST46HtLeDao3cHlD7A2eN5Svu0jKh6rjqqBb5N2VIHb/tegFG8BcJpV8HZ+nyXBC7wauyD5XfBlP1irrHzV8IR+y+ZHfIVtAOVYRn7kD9TpfAGNHlS4ZTPE1AAAAABJRU5ErkJggg=="},"theme":{"accent":"#ffd24a","bgTop":"#8fd4f0","bgBottom":"#e8b7d8","font":"'Segoe UI', system-ui, sans-serif","labels":{"over":"YOU FELL","win":"SKY LIMIT!","again":"Tap to climb again","scoreUnit":"m","level":"Tier"}},"rules":{"mode":"untimed"},"platformer":{"tileSize":16,"viewTilesX":13,"mode":"climb","physics":{"gravity":1450,"moveSpeed":134,"jumpVel":452,"dashSpeed":300,"dashTime":0.16},"player":{"w":0.7,"h":0.92,"hp":1,"lives":1,"color":"#ff7a4d","abilities":{"doubleJump":true},"anims":{"idle":{"imgs":["player"],"fps":1,"w":1.4,"h":1.6},"run":{"imgs":["player"],"fps":1,"w":1.4,"h":1.6},"jump":{"imgs":["player"],"fps":1,"w":1.4,"h":1.6},"fall":{"imgs":["player"],"fps":1,"w":1.4,"h":1.6}}},"enemies":{"moth":{"w":0.8,"h":0.7,"hp":1,"dmg":1,"speed":40,"ai":"fly","fly":true,"range":5,"score":40,"color":"#b06fd1","stompable":true,"anims":{"idle":{"imgs":["moth"],"fps":1,"w":1.3,"h":1.2}}}},"legend":{"=":{"tile":true,"solid":true,"color":"#d9b382"},"-":{"tile":true,"oneWay":true,"color":"#e8c79a"},"v":{"tile":true,"solid":true,"spring":690,"color":"#6fd0a0"},"C":{"pickup":"coin","value":10,"color":"#ffd24a"},"f":{"enemy":"moth"}},"climb":{"width":13,"gap":3,"spread":3,"platW":3,"springChance":0.16,"enemyChance":0.15,"enemy":"f","oneWay":"-","ground":"=","spring":"v","coin":"C"}}};
 /* ============================================================
    SHARKY GAME ENGINE — universal core (core.js)
    ------------------------------------------------------------
@@ -678,6 +678,14 @@ Engine.register('platformer', function (engine, cfg) {
   let collected = {}, openedDoors = {};                // собранные пикапы / открытые двери (по ключу тайла)
   let curLevelRows = null;                             // карта текущего уровня (для респауна врагов)
   let runnerDist = 0, runnerSpeed = 0;
+  // ── climb: бесконечный вертикальный подъём (Doodle Jump / Icy Tower) ──
+  const CLIMB = P.climb || {};
+  let climbW = 0, climbCamX = 0, climbTopTy = 0, climbLastX = 0, climbStartY = 0, climbBest = 0, climbIdx = 0;
+  // ── раннер: выбор сложности + боссы (RUN.difficulties / RUN.bosses) ──
+  let rDiff = null;                                    // выбранная сложность (null = ждём выбора)
+  let rDiffMul = { speed: 1, ramp: 1, max: 1, score: 1, bossEvery: 1, bossHp: 1 };
+  let rDiffRects = [];                                 // хитбоксы карточек выбора (screen px)
+  let rBoss = null, rBossN = 0, rBossNextM = 0, rBossWarnT = 0;
   let bubbleNpc = null, bubbleT = 0;
   let btns = [], ptrBtn = {}, vkeys = {};              // тач-кнопки
   let prevIn = {};                                     // фронты нажатий
@@ -732,12 +740,12 @@ Engine.register('platformer', function (engine, cfg) {
   // ════════════════════════════════ ТАЙЛЫ
   function L(ch) { return LEGEND[ch]; }
   function tileAt(tx, ty) {
-    if (MODE === 'runner') { const c = rMap.get(tx + ',' + ty); return c || ' '; }
+    if (MODE === 'runner' || MODE === 'climb') { const c = rMap.get(tx + ',' + ty); return c || ' '; }
     if (ty < 0 || ty >= tRows || tx < 0 || tx >= tCols) return ' ';
     return grid[ty][tx];
   }
   function setTile(tx, ty, ch) {
-    if (MODE === 'runner') { rMap.set(tx + ',' + ty, ch); return; }
+    if (MODE === 'runner' || MODE === 'climb') { rMap.set(tx + ',' + ty, ch); return; }
     if (ty >= 0 && ty < tRows && tx >= 0 && tx < tCols) grid[ty][tx] = ch;
   }
   function defAt(tx, ty) {
@@ -782,7 +790,7 @@ Engine.register('platformer', function (engine, cfg) {
     if (d.once) openedDoors['u' + key] = true;
   }
   function levelWpx() { return MODE === 'runner' ? Infinity : tCols * TS; }
-  function levelHpx() { return (MODE === 'runner' ? rRows : tRows) * TS; }
+  function levelHpx() { return MODE === 'climb' ? Infinity : (MODE === 'runner' ? rRows : tRows) * TS; }
 
   // ════════════════════════════════ СУЩНОСТИ
   function spawnFromChar(ch, tx, ty, keyPrefix) {
@@ -906,6 +914,75 @@ Engine.register('platformer', function (engine, cfg) {
     appendChunks(Math.ceil((viewW * 3) / TS));
     respawnPt = { x: TS * 2, y: 0 };
     player.x = TS * 2; player.y = (rRows - 4) * TS; player.vx = 0; player.vy = 0;
+    // сложность и боссы
+    rDiff = (RUN.difficulties && RUN.difficulties.length) ? null : {};
+    rDiffMul = { speed: 1, ramp: 1, max: 1, score: 1, bossEvery: 1, bossHp: 1 };
+    rBoss = null; rBossN = 0; rBossWarnT = 0;
+    rBossNextM = (RUN.bosses && RUN.bosses.every) || 0;
+  }
+  function pickDiff(px2, py2) {
+    for (let i = 0; i < rDiffRects.length; i++) {
+      const r = rDiffRects[i];
+      if (px2 >= r.x && px2 <= r.x + r.w && py2 >= r.y && py2 <= r.y + r.h) {
+        const d = RUN.difficulties[i];
+        rDiff = d;
+        rDiffMul = Object.assign({ speed: 1, ramp: 1, max: 1, score: 1, bossEvery: 1, bossHp: 1 }, d.mul || {});
+        runnerSpeed = RUN.speed * rDiffMul.speed;
+        rBossNextM = Math.round(((RUN.bosses && RUN.bosses.every) || 0) * rDiffMul.bossEvery);
+        toast(d.label + (d.mul && d.mul.score > 1 ? ('  · ' + (LB.scoreWord || 'очки') + ' ×' + d.mul.score) : ''));
+        sfx('coin');
+        return true;
+      }
+    }
+    return false;
+  }
+  // ── раннер-босс: держится у правого края экрана, кидает дуги динамита ──
+  function spawnRunnerBoss() {
+    const B = RUN.bosses, def = B.list[rBossN % B.list.length];
+    const cyc = Math.floor(rBossN / B.list.length);
+    const hp = Math.max(1, Math.round((def.hp || 10) * Math.pow(B.hpMul || 1.3, cyc) * rDiffMul.bossHp));
+    rBoss = { def: def, hp: hp, maxHp: hp, t: 0, throwT: 1.1, flash: 0,
+      w: (def.w || 4.2) * TS, h: (def.h || 4.2) * TS,
+      sx: viewW + TS * 3, x: cam.x + viewW + TS * 3, y: levelHpx() * (def.y || 0.28) };
+  }
+  function updateRunnerBoss(dt) {
+    const def = rBoss.def;
+    rBoss.t += dt; if (rBoss.flash > 0) rBoss.flash -= dt;
+    // держится на ЭКРАННОЙ позиции (не отстаёт от камеры): лерпим смещение от cam.x
+    const targSx = viewW * (def.xAnchor || 0.72) - rBoss.w / 2 + Math.sin(rBoss.t * 0.7) * viewW * 0.04;
+    rBoss.sx += (targSx - rBoss.sx) * Math.min(1, dt * 2.4);
+    rBoss.x = cam.x + rBoss.sx;
+    // вертикаль — от высоты МИРА (rRows*TS), не экрана: одинаково на любом вьюпорте
+    rBoss.y = levelHpx() * (def.y || 0.28) + Math.sin(rBoss.t / (def.period || 2.4) * 6.283) * TS * (def.amp || 1.1);
+    if (overlap(player, rBoss)) hurtPlayer(def.dmg || 1, -1);
+    rBoss.throwT -= dt;
+    if (rBoss.throwT <= 0 && engine.state === 'playing') {
+      const th = def.throw || {};
+      const cd = th.cd || [1.5, 2.3];
+      rBoss.throwT = cd[0] + Math.random() * (cd[1] - cd[0]);
+      const T = th.flight || 0.85;
+      const tx2 = player.x + runnerSpeed * T * (0.5 + Math.random() * 0.55);
+      const ty2 = player.y + player.h;
+      const g = th.grav || 820;
+      const bx = rBoss.x + rBoss.w * 0.25, by = rBoss.y + rBoss.h * 0.5;
+      ents.push({ kind: 'proj', x: bx, y: by, w: 7, h: 7,
+        vx: (tx2 - bx) / T, vy: (ty2 - by) / T - 0.5 * g * T,
+        dmg: th.dmg || 1, friendly: false, life: 3.2, pierce: false, hitSet: null,
+        color: th.color || '#ff7a30', grav: g, img: th.img || null, boom: (th.boomR || 1.15) * TS });
+      sfx('shoot');
+    }
+  }
+  function killRunnerBoss() {
+    const def = rBoss.def;
+    burstAt(rBoss.x + rBoss.w / 2, rBoss.y + rBoss.h / 2, { count: 26, color: '#ffb347' });
+    shakeT = 0.3; shakePow = 5; sfx('slam');
+    engine.addScore(Math.round((def.score || 400) * rDiffMul.score));
+    toast((def.name || 'Босс') + ' ' + (LB.defeated || 'повержен') + '!');
+    const hy = player.y - TS * 2.5;
+    ents.push({ kind: 'pickup', key: null, t: 0, def: { pickup: 'heart', img: def.dropImg, color: '#ff6b7e' },
+      x: cam.x + viewW * 0.7, y: hy, w: TS * 0.7, h: TS * 0.7, fly: true, fvx: 0, baseY: hy, life: 7 });
+    rBoss = null; rBossN++;
+    rBossNextM = runnerDist + Math.round(((RUN.bosses.every) || 400) * rDiffMul.bossEvery);
   }
   function appendChunks(untilTx) {
     let guard = 0;
@@ -1003,9 +1080,66 @@ Engine.register('platformer', function (engine, cfg) {
     rows[cy] = rows[cy].slice(0, cx) + ch + rows[cy].slice(cx + 1);
   }
 
+  // ════════════════════════════════ CLIMB — бесконечный подъём, генерится в рантайме
+  // Каждый ярус — устойчивая сквозная площадка в пределах прыжка от предыдущей →
+  // путь ВСЕГДА проходим. Пружины/бонус-площадки/враги — только сверх основного пути.
+  function placeClimb(ch, tx, ty) {
+    if (ch === ' ') return;
+    if (spawnFromChar(ch, tx, ty, 'c' + tx + '_' + ty)) return;   // монеты/враги/движ.платформы → ent
+    if (L(ch) && L(ch).tile) rMap.set(tx + ',' + ty, ch);         // площадки/пружины → тайл
+  }
+  function climbReset() {
+    rMap = new Map(); ents = []; respawnPt = null;
+    climbW = CLIMB.width || VIEW_TX;
+    climbCamX = 0; climbIdx = 0;
+    const pw3 = CLIMB.platW || 3;
+    for (let tx = 0; tx < climbW; tx++) placeClimb(CLIMB.ground || '=', tx, 0);   // стартовая площадка во всю ширину
+    const sx = Math.max(1, (climbW >> 1) - 1);
+    const pw = PLDEF.w * TS, ph = PLDEF.h * TS;
+    player.x = sx * TS + (TS - pw) / 2; player.y = -ph; player.vx = 0; player.vy = 0;
+    respawnPt = { x: player.x, y: player.y };
+    climbLastX = sx; climbTopTy = 0;
+    climbStartY = player.y; climbBest = player.y;
+    climbGenTo(-70);
+  }
+  function climbGenTo(targetTy) {
+    const stepY = CLIMB.gap || 3, maxDX = CLIMB.spread || 3, pw3 = CLIMB.platW || 3;
+    let guard = 0;
+    while (climbTopTy > targetTy && guard++ < 500) {
+      const ny = climbTopTy - stepY;
+      let nx = climbLastX + (Math.floor(Math.random() * (maxDX * 2 + 1)) - maxDX);
+      nx = Math.max(1, Math.min(climbW - 1 - pw3, nx));
+      for (let i = 0; i < pw3; i++) placeClimb(CLIMB.oneWay || '-', nx + i, ny);   // ОСНОВНОЙ путь (устойчивый)
+      if (climbIdx > 5 && Math.random() < (CLIMB.springChance || 0.14)) placeClimb(CLIMB.spring || 'v', nx + (pw3 >> 1), ny);
+      if (climbIdx % 2 === 0) placeClimb(CLIMB.coin || 'C', nx + (pw3 >> 1), ny - 1);
+      if (climbIdx > 8 && Math.random() < 0.22) {                                  // бонус-площадка у стены (не на пути)
+        const side = nx < climbW / 2 ? (climbW - 1 - pw3) : 1;
+        for (let i = 0; i < Math.min(pw3, 2); i++) placeClimb(CLIMB.oneWay || '-', side + i, ny);
+        placeClimb(CLIMB.coin || 'C', side, ny - 1);
+      }
+      if (climbIdx > 10 && Math.random() < (CLIMB.enemyChance || 0.16) && CLIMB.enemy)
+        placeClimb(CLIMB.enemy, (Math.random() < 0.5 ? 1 : climbW - 2), ny - 1);
+      climbLastX = nx; climbTopTy = ny; climbIdx++;
+    }
+  }
+  function climbEnsure() { climbGenTo(Math.floor((cam.y - viewH) / TS)); }
+  function climbAfter(dt) {
+    if (player.y < climbBest) climbBest = player.y;
+    const h = Math.floor((climbStartY - climbBest) / TS);
+    if (h > engine.score) engine.setScore(h);
+    const minX = TS * 0.15, maxX = climbW * TS - player.w - TS * 0.15;   // невидимая ограда шахты
+    if (player.x < minX) { player.x = minX; if (player.vx < 0) player.vx = 0; }
+    if (player.x > maxX) { player.x = maxX; if (player.vx > 0) player.vx = 0; }
+    if (player.y > cam.y + viewH + TS * 3) killPlayer();                 // сорвался вниз
+    const cutY = cam.y + viewH + TS * 5;                                 // чистка ушедшего вниз
+    for (const k of rMap.keys()) { const ci = k.indexOf(','); if (parseInt(k.slice(ci + 1), 10) * TS > cutY) rMap.delete(k); }
+    for (let i = ents.length - 1; i >= 0; i--) if (ents[i].y > cutY) ents.splice(i, 1);
+  }
+
   function loadLevel() {
     collected = {}; openedDoors = {};
     if (MODE === 'runner') { runnerReset(); }
+    else if (MODE === 'climb') { climbReset(); }
     else if (MODE === 'caves') { _cavesSeed = (Math.random() * 1e9) | 0; cavesReset(); }
     else buildDesigned(LEVELS[levelIdx].map);
     // челленджи уровня: без урона / все монеты / скорость
@@ -1411,12 +1545,15 @@ Engine.register('platformer', function (engine, cfg) {
         p.x += e.pdx; p.y += e.pdy;
       }
     }
-    // шипы/опасные тайлы
+    // шипы/опасные тайлы (+ hazardHigh: балка на уровне головы — спасает только подкат)
     const tx0 = Math.floor(p.x / TS), tx1 = Math.floor((p.x + p.w) / TS);
     const ty0 = Math.floor(p.y / TS), ty1 = Math.floor((p.y + p.h) / TS);
+    const sliding = p.h < PLDEF.h * TS * 0.8;
     for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
       const d = defAt(tx, ty);
-      if (d && d.hazard) hurtPlayer(d.hazard, (p.x + p.w / 2 < (tx + 0.5) * TS) ? -1 : 1);
+      if (!d) continue;
+      if (d.hazard) hurtPlayer(d.hazard, (p.x + p.w / 2 < (tx + 0.5) * TS) ? -1 : 1);
+      else if (d.hazardHigh && !sliding) hurtPlayer(d.hazardHigh, (p.x + p.w / 2 < (tx + 0.5) * TS) ? -1 : 1);
     }
     // двери: открываем ключом
     if (p.keysN > 0) {
@@ -1484,7 +1621,7 @@ Engine.register('platformer', function (engine, cfg) {
     const r = w.size || 3;
     const pr = { kind: 'proj', x: cx - r, y: cy - r, w: r * 2, h: r * 2, vx: vx, vy: vy,
       dmg: w.dmg || 1, friendly: !!friendly, life: w.life || 2, pierce: !!w.pierce, hitSet: null,
-      color: w.color || (friendly ? '#ffe08a' : '#ff7070'), grav: w.grav || 0 };
+      color: w.color || (friendly ? '#ffe08a' : '#ff7070'), grav: w.grav || 0, img: w.img || null };
     ents.push(pr);
   }
   // выстрел игрока: count снарядов веером на w.spread радиан
@@ -1687,7 +1824,7 @@ Engine.register('platformer', function (engine, cfg) {
       case 'rope': p.ropes = (p.ropes || 0) + (d.value || 3); sfx('coin'); break;
       case 'star': stars++; toast('⭐ Звезда!'); sfx('power'); break;
       case 'magnet': p.magnetT = d.dur || 8; toast('🧲 Магнит!'); sfx('power'); break;
-      case 'boost': p.boostT = d.dur || 3; p.inv = Math.max(p.inv, d.dur || 3); toast('⚡ Ускорение!'); sfx('power'); break;
+      case 'boost': p.boostT = d.dur || 3; p.inv = Math.max(p.inv, d.dur || 3); toast(d.label || '⚡ Ускорение!'); sfx('power'); break;
       case 'shield': p.shield = true; toast('🛡 Щит!'); sfx('power'); break;
       case 'resource': {
         const id = d.res || 'res';
@@ -1756,6 +1893,8 @@ Engine.register('platformer', function (engine, cfg) {
       // выстрел/удар перекрывает позу, если такая анимация есть
       if (player.attackT > 0 && def.anims.attack) name = 'attack';
       else if (player.shootT > 0 && def.anims.shoot) name = 'shoot';
+      // подкат перекрывает всё (физически поза лёжа)
+      if (player.h < PLDEF.h * TS * 0.85 && def.anims.slide) name = 'slide';
     } else {
       if (Math.abs(e.vx) > 5 || Math.abs(e.vy || 0) > 5) name = 'run';
     }
@@ -1825,7 +1964,8 @@ Engine.register('platformer', function (engine, cfg) {
       loadLevel();
       // возобновление с сохранённого костра (соулслайк/climber)
       if (SAVE_CP) { const sv = engine.loadState && engine.loadState(); if (sv && sv.cp) { respawnPt = { x: sv.cp[0], y: sv.cp[1] }; playerToRespawn(); ents.forEach(function (e) { if (e.kind === 'checkpoint' && Math.abs(e.x - sv.cp[0]) < TS && Math.abs(e.y - sv.cp[1]) < TS) e.lit = true; }); } }
-      cam.x = Math.max(0, player.x - viewW / 2); cam.y = 0;
+      if (MODE === 'climb') { cam.x = climbCamX; cam.y = player.y + player.h / 2 - viewH * 0.62; }
+      else { cam.x = Math.max(0, player.x - viewW / 2); cam.y = 0; }
     },
     layout: function (Lx) {
       scale = Lx.W / (VIEW_TX * TS);
@@ -1837,6 +1977,7 @@ Engine.register('platformer', function (engine, cfg) {
       time += dt;
       for (let i = toasts.length - 1; i >= 0; i--) { toasts[i].t -= dt; if (toasts[i].t <= 0) toasts.splice(i, 1); }
       if (choosing) return;                            // roguelite: мир на паузе до выбора
+      if (MODE === 'runner' && RUN.difficulties && RUN.difficulties.length && !rDiff) return;   // ждём выбор сложности
       if (COMBO && COMBO.decay && combo > 0) { comboT += dt; if (comboT > COMBO.decay) { combo = 0; comboT = 0; } }
       // отложенные переходы (смена уровня / респаун) — безопасно в начале кадра
       if (pendingLevel) { pendingLevel = false; loadLevel(); }
@@ -1888,7 +2029,7 @@ Engine.register('platformer', function (engine, cfg) {
 
       // раннер: разгон и дистанция (+бустеры)
       if (MODE === 'runner') {
-        runnerSpeed = Math.min(RUN.maxSpeed, runnerSpeed + RUN.ramp * dt);
+        runnerSpeed = Math.min(RUN.maxSpeed * rDiffMul.max, runnerSpeed + RUN.ramp * rDiffMul.ramp * dt);
         if (player.boostT > 0) { player.boostT -= dt; runnerSpeed *= 1.8; }   // временное ускорение
         if (player.magnetT > 0) {                                             // магнит: монеты слетаются
           player.magnetT -= dt;
@@ -1902,9 +2043,20 @@ Engine.register('platformer', function (engine, cfg) {
           }
         }
         const m = Math.floor(player.x / TS);
-        if (m > runnerDist) { runnerDist = m; engine.setScore(runnerDist); }
+        if (m > runnerDist) { runnerDist = m; engine.setScore(Math.floor(runnerDist * rDiffMul.score)); }
         appendChunks(Math.floor((cam.x + viewW * 2.5) / TS));
         runnerCleanup();
+        // боссы раннера
+        const B = RUN.bosses;
+        if (B && B.list && B.list.length && rBossNextM > 0) {
+          if (!rBoss && rBossWarnT <= 0 && runnerDist >= rBossNextM) {
+            rBossWarnT = 1.6;
+            toast('⚠ ' + (B.list[rBossN % B.list.length].name || 'БОСС'));
+            shakeT = 0.2; shakePow = 2; sfx('hurt');
+          }
+          if (rBossWarnT > 0) { rBossWarnT -= dt; if (rBossWarnT <= 0 && !rBoss) spawnRunnerBoss(); }
+          if (rBoss) updateRunnerBoss(dt);
+        }
       }
 
       // ── летающие бонусы оружия (Contra-style: пролетают через экран) ──
@@ -1937,6 +2089,8 @@ Engine.register('platformer', function (engine, cfg) {
         e.pdx = nx - e.x; e.pdy = ny - e.y; e.x = nx; e.y = ny;
       }
 
+      if (MODE === 'climb') climbEnsure();   // догенерить ярусы выше камеры
+
       updatePlayer(dt, cur);
 
       // сущности
@@ -1947,7 +2101,15 @@ Engine.register('platformer', function (engine, cfg) {
           e.life -= dt; if (e.grav) e.vy += e.grav * dt;
           e.x += e.vx * dt; e.y += e.vy * dt;
           const tx = Math.floor((e.x + 3) / TS), ty = Math.floor((e.y + 3) / TS);
-          if (e.life <= 0 || solidAt(tx, ty)) { e.dead = true; burstAt(e.x, e.y, { count: 3, color: e.color }); }
+          if (e.life <= 0 || solidAt(tx, ty)) {
+            e.dead = true; burstAt(e.x, e.y, { count: e.boom ? 16 : 3, color: e.color });
+            if (e.boom) {                              // взрыв (динамит босса): урон в радиусе
+              shakeT = Math.max(shakeT, 0.16); shakePow = Math.max(shakePow, 3); sfx('slam');
+              const pcx = player.x + player.w / 2, pcy = player.y + player.h / 2;
+              if (Math.hypot(pcx - e.x, pcy - e.y) < e.boom + Math.max(player.w, player.h) * 0.5)
+                hurtPlayer(e.dmg || 1, Math.sign(pcx - e.x) || 1);
+            }
+          }
         } else if (e.kind === 'item' && !e.held) {
           // брошенный/лежащий предмет (Spelunky): физика + урон врагам в полёте
           e.vy += PH.gravity * dt; e.vy = Math.min(e.vy, PH.maxFall);
@@ -1997,6 +2159,13 @@ Engine.register('platformer', function (engine, cfg) {
           }
         } else if (e.kind === 'proj') {
           if (e.friendly) {
+            // пули игрока достают раннер-босса
+            if (rBoss && overlap(e, rBoss)) {
+              rBoss.hp -= e.dmg; rBoss.flash = 0.12; e.dead = true;
+              burstAt(e.x, e.y, { count: 5, color: '#ffd75e' }); sfx('hit');
+              if (rBoss.hp <= 0) killRunnerBoss();
+              continue;
+            }
             for (let j = 0; j < ents.length; j++) {
               const t = ents[j];
               if (t.kind === 'enemy' && !t.dead && overlap(e, t)) {
@@ -2051,13 +2220,19 @@ Engine.register('platformer', function (engine, cfg) {
         player.facing = engine.ctl.aim.x >= psc.x ? 1 : -1;
 
       // ── камера ──
-      const targetX = player.x + player.w / 2 - viewW / 2 + player.facing * TS * 1.5;
-      const targetY = player.y + player.h / 2 - viewH * 0.55;
-      cam.x += (targetX - cam.x) * Math.min(1, dt * 8);
-      cam.y += (targetY - cam.y) * Math.min(1, dt * 6);
-      const maxX = levelWpx() - viewW, maxY = levelHpx() - viewH;
-      cam.x = MODE === 'runner' ? Math.max(cam.x, player.x - viewW * 0.4) : Math.max(0, Math.min(isFinite(maxX) ? maxX : cam.x, cam.x));
-      cam.y = maxY <= 0 ? maxY / 2 : Math.max(0, Math.min(maxY, cam.y));
+      if (MODE === 'climb') {
+        cam.x = climbCamX;
+        cam.y = Math.min(cam.y, player.y + player.h / 2 - viewH * 0.62);   // ратчет: только вверх
+      } else {
+        const targetX = player.x + player.w / 2 - viewW / 2 + player.facing * TS * 1.5;
+        const targetY = player.y + player.h / 2 - viewH * 0.55;
+        cam.x += (targetX - cam.x) * Math.min(1, dt * 8);
+        cam.y += (targetY - cam.y) * Math.min(1, dt * 6);
+        const maxX = levelWpx() - viewW, maxY = levelHpx() - viewH;
+        cam.x = MODE === 'runner' ? Math.max(cam.x, player.x - viewW * 0.4) : Math.max(0, Math.min(isFinite(maxX) ? maxX : cam.x, cam.x));
+        cam.y = maxY <= 0 ? maxY / 2 : Math.max(0, Math.min(maxY, cam.y));
+      }
+      if (MODE === 'climb') climbAfter(dt);   // счёт-высота, ограда, срыв вниз, чистка
       if (shakeT > 0) { shakeT -= dt; shakeOX = (Math.random() * 2 - 1) * shakePow; shakeOY = (Math.random() * 2 - 1) * shakePow; }
       else { shakeOX = 0; shakeOY = 0; }
 
@@ -2146,7 +2321,16 @@ Engine.register('platformer', function (engine, cfg) {
           else drawEnt(ctx, e, e.def, false);
           if (e.boss && e.bossActive) { /* полоса HP — в hud */ }
         } else if (e.kind === 'npc') drawEnt(ctx, e, e.def, false);
-        else if (e.kind === 'proj') { ctx.fillStyle = e.color; ctx.beginPath(); ctx.arc(e.x + 3, e.y + 3, 3.2, 0, 7); ctx.fill(); }
+        else if (e.kind === 'proj') {
+          const pim = e.img && engine.img(e.img);
+          if (pim && pim.complete && pim.naturalWidth) {
+            const pw = Math.max(e.w, 8) * 1.6, ph2 = pw * (pim.naturalHeight / pim.naturalWidth);
+            ctx.save(); ctx.imageSmoothingEnabled = false;
+            if (e.vx < 0) { ctx.translate(e.x + e.w / 2, 0); ctx.scale(-1, 1); ctx.translate(-(e.x + e.w / 2), 0); }
+            ctx.drawImage(pim, e.x + e.w / 2 - pw / 2, e.y + e.h / 2 - ph2 / 2, pw, ph2);
+            ctx.restore();
+          } else { ctx.fillStyle = e.color; ctx.beginPath(); ctx.arc(e.x + 3, e.y + 3, 3.2, 0, 7); ctx.fill(); }
+        }
         else if (e.kind === 'pickup') drawPickup(ctx, e);
         else if (e.kind === 'item') {
           ctx.fillStyle = e.def.color || '#c8a05a';
@@ -2167,6 +2351,17 @@ Engine.register('platformer', function (engine, cfg) {
           ctx.fillStyle = e.lit ? '#7f7' : '#888';
           ctx.beginPath(); ctx.moveTo(e.x + 4, e.y + 2); ctx.lineTo(e.x + 14, e.y + 5); ctx.lineTo(e.x + 4, e.y + 9); ctx.closePath(); ctx.fill();
         }
+      }
+
+      // раннер-босс (мировые координаты; спрайт смотрит влево — на игрока)
+      if (rBoss) {
+        const bim = rBoss.def.img && engine.img(rBoss.def.img);
+        ctx.save();
+        if (rBoss.flash > 0) ctx.globalAlpha = 0.55;
+        ctx.imageSmoothingEnabled = false;
+        if (bim && bim.complete && bim.naturalWidth) ctx.drawImage(bim, rBoss.x, rBoss.y, rBoss.w, rBoss.h);
+        else { ctx.fillStyle = rBoss.def.color || '#8a3a3a'; rrPath(ctx, rBoss.x, rBoss.y, rBoss.w, rBoss.h, 4); ctx.fill(); }
+        ctx.restore();
       }
 
       // игрок (мигает в i-frames)
@@ -2243,7 +2438,7 @@ Engine.register('platformer', function (engine, cfg) {
       ctx.fillStyle = '#ffd75e'; ctx.beginPath(); ctx.arc(W - 66, 21, 8, 0, 7); ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke();
       ctx.fillStyle = '#fff'; ctx.font = 'bold 16px ' + FONT; ctx.textAlign = 'left';
-      ctx.fillText(String(MODE === 'runner' ? engine.score + ' м' : engine.score), W - 52, 22);
+      ctx.fillText(String(MODE === 'runner' ? engine.score + ' ' + (LB.distUnit || 'м') : engine.score), W - 52, 22);
       // жизни/ключи/оружие
       ctx.font = 'bold 12px ' + FONT; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.textAlign = 'left';
       let info = [];
@@ -2270,6 +2465,44 @@ Engine.register('platformer', function (engine, cfg) {
         ctx.fillStyle = '#fff'; ctx.font = 'bold 11px ' + FONT; ctx.textAlign = 'center';
         ctx.fillText(boss.boss.name || 'БОСС', W / 2, by - 8);
       }
+      // полоса раннер-босса
+      if (rBoss) {
+        const bw = W * 0.7, bx = (W - bw) / 2, by = 44;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)'; engine.rr(bx, by, bw, 12, 6); ctx.fill();
+        ctx.fillStyle = '#d9414d'; engine.rr(bx, by, Math.max(4, bw * rBoss.hp / rBoss.maxHp), 12, 6); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; engine.rr(bx, by, bw, 12, 6); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 11px ' + FONT; ctx.textAlign = 'center';
+        ctx.fillText(rBoss.def.name || 'БОСС', W / 2, by - 8);
+      }
+      // бейдж выбранной сложности
+      if (MODE === 'runner' && rDiff && rDiff.label) {
+        ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = 'bold 11px ' + FONT; ctx.textAlign = 'right';
+        ctx.fillText(rDiff.label + (rDiffMul.score !== 1 ? ' ×' + rDiffMul.score : ''), W - 12, H - 10);
+      }
+      // оверлей выбора сложности (мир на паузе)
+      if (MODE === 'runner' && RUN.difficulties && RUN.difficulties.length && !rDiff) {
+        ctx.fillStyle = 'rgba(8,5,12,0.78)'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = (cfg.theme && cfg.theme.accent) || '#ffd75e';
+        ctx.font = 'bold ' + Math.round(W * 0.062) + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(LB.diffTitle || 'ВЫБЕРИ СЛОЖНОСТЬ', W / 2, H * 0.2);
+        rDiffRects = [];
+        const n = RUN.difficulties.length;
+        const cw2 = Math.min(W * 0.78, 330), chh = Math.min(74, H * 0.11), gap = 16;
+        let cy = H * 0.30;
+        for (let i = 0; i < n; i++) {
+          const d = RUN.difficulties[i];
+          const cx2 = (W - cw2) / 2;
+          ctx.fillStyle = 'rgba(30,24,40,0.95)'; engine.rr(cx2, cy, cw2, chh, 12); ctx.fill();
+          ctx.strokeStyle = d.color || ((cfg.theme && cfg.theme.accent) || '#ffd75e');
+          ctx.lineWidth = 2; engine.rr(cx2, cy, cw2, chh, 12); ctx.stroke();
+          ctx.fillStyle = d.color || '#fff'; ctx.font = 'bold 17px ' + FONT;
+          ctx.fillText(d.label, W / 2, cy + chh * 0.34);
+          ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = '12px ' + FONT;
+          ctx.fillText(d.desc || '', W / 2, cy + chh * 0.7);
+          rDiffRects.push({ x: cx2, y: cy, w: cw2, h: chh });
+          cy += chh + gap;
+        }
+      }
       // подпись уровня
       if (MODE === 'levels' && LEVELS.length > 1) {
         ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = 'bold 11px ' + FONT; ctx.textAlign = 'right';
@@ -2285,8 +2518,9 @@ Engine.register('platformer', function (engine, cfg) {
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(b.glyph, b.x, b.y + 1);
       }
-      // подсказка раннера
-      if (MODE === 'runner' && time < 3) {
+      // подсказка раннера (не поверх оверлея сложности; первые ~25 метров)
+      const diffPending = RUN.difficulties && RUN.difficulties.length && !rDiff;
+      if (MODE === 'runner' && !diffPending && runnerDist < 25) {
         ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = 'bold 15px ' + FONT; ctx.textAlign = 'center';
         ctx.fillText(LB.hint || 'Тапай, чтобы прыгать', W / 2, H * 0.32);
       }
@@ -2412,7 +2646,11 @@ Engine.register('platformer', function (engine, cfg) {
         }
         return;
       }
-      if (MODE === 'runner') { if (!RUN.lanes) vkeys.jump = true; return; }
+      if (MODE === 'runner') {
+        if (RUN.difficulties && RUN.difficulties.length && !rDiff) { pickDiff(p.x, p.y); return; }
+        if (!RUN.lanes) vkeys.jump = true;
+        return;
+      }
       const b = btnAt(p.x, p.y);
       if (b) { ptrBtn[p.id] = b.id; vkeys[b.id] = true; }
     },
@@ -2458,12 +2696,24 @@ Engine.register('platformer', function (engine, cfg) {
         counts: ents.reduce(function (m, e) { m[e.kind] = (m[e.kind] || 0) + 1; return m; }, {}),
         boss: (function () { const b = ents.find(e => e.boss); return b ? { hp: b.hp, active: b.bossActive } : null; })(),
         runnerDist: runnerDist, tCols: tCols, tRows: tRows,
+        rDiff: rDiff ? (rDiff.label || 'default') : null,
+        rBoss: rBoss ? { name: rBoss.def.name, hp: rBoss.hp, maxHp: rBoss.maxHp, x: Math.round(rBoss.x), y: Math.round(rBoss.y) } : null,
+        rBossN: rBossN, rBossNextM: rBossNextM,
         exits: ents.filter(e => e.kind === 'exit').map(e => ({ x: e.x, y: e.y })),
         enemies: ents.filter(e => e.kind === 'enemy').map(e => ({ id: e.id, x: Math.round(e.x), y: Math.round(e.y), hp: e.hp, boss: !!e.boss, active: !!e.bossActive })),
         pickups: ents.filter(e => e.kind === 'pickup').map(e => ({ x: Math.round(e.x), y: Math.round(e.y), type: e.def.pickup, weapon: e.def.weapon || null, fly: !!e.fly })),
         projs: ents.filter(e => e.kind === 'proj').map(e => ({ x: Math.round(e.x), y: Math.round(e.y), vx: Math.round(e.vx), friendly: e.friendly, pierce: !!e.pierce })) };
     },
     _press: function (k) { vkeys[k] = true; },
+    _forceDiff: function (i) {   // тест: выбрать сложность без UI
+      const d = RUN.difficulties && RUN.difficulties[i]; if (!d) return false;
+      rDiff = d;
+      rDiffMul = Object.assign({ speed: 1, ramp: 1, max: 1, score: 1, bossEvery: 1, bossHp: 1 }, d.mul || {});
+      runnerSpeed = RUN.speed * rDiffMul.speed;
+      rBossNextM = Math.round(((RUN.bosses && RUN.bosses.every) || 0) * rDiffMul.bossEvery);
+      return true;
+    },
+    _forceBoss: function () { rBossWarnT = 0; spawnRunnerBoss(); return !!rBoss; },
     _probeTile: function (tx, ty) { const d = defAt(tx, ty); return { ch: tileAt(tx, ty), solid: solidAt(tx, ty), time: +time.toFixed(2), phase: d && d.phase ? phaseOn(d, tx, ty) : null }; },
     _release: function (k) { vkeys[k] = false; },
     _teleport: function (x, y) { player.x = x; player.y = y; player.vx = 0; player.vy = 0; },
@@ -2478,6 +2728,12 @@ Engine.register('platformer', function (engine, cfg) {
       if (img && img.complete) { ctx.drawImage(img, x, y, TS, TS); return; }
     }
     const col = d.color || '#777';
+    if (d.hazardHigh) { // балка-семафор: верхняя половина клетки (под ней подкатываются)
+      ctx.fillStyle = col; ctx.fillRect(x, y, TS, TS * 0.42);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y + TS * 0.3, TS, TS * 0.12);
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x, y, TS, 2);
+      return;
+    }
     if (d.hazard) { // шипы
       ctx.fillStyle = col;
       ctx.beginPath();
@@ -2535,6 +2791,15 @@ Engine.register('platformer', function (engine, cfg) {
     const d = e.def, bob = Math.sin(e.t * 4) * 1.5;
     const x = e.x, y = e.y + bob, s = e.w;
     const col = d.color || '#fc3';
+    if (d.img) {                     // спрайт пикапа (data-gated)
+      const im = engine.img(d.img);
+      if (im && im.complete && im.naturalWidth) {
+        const sc = d.imgScale || 1.25, dw = s * sc, dh = s * sc;
+        ctx.save(); ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(im, x + (s - dw) / 2, y + (s - dh) / 2, dw, dh);
+        ctx.restore(); return;
+      }
+    }
     if (d.pickup === 'coin') {
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s * 0.42, 0, 7); ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke();
