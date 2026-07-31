@@ -21,7 +21,7 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
 
 /* ── Меню ── */
 .menuBox { flex:1; display:flex; flex-direction:column; justify-content:center;
-  gap:10px; padding:20px 22px; max-width:420px; width:100%; margin:0 auto; }
+  gap:9px; padding:16px 22px; max-width:420px; width:100%; margin:0 auto; }
 .logoRow { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
 #logoCv { width:64px; height:64px; }
 .logoT h1 { font-size:26px; letter-spacing:-.5px; }
@@ -50,6 +50,21 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
   font-size:14px; font-weight:600; cursor:pointer; }
 .chip.on { border-color:var(--ac); color:var(--ac); background:rgba(217,164,65,.1); }
 .lbl { color:var(--sub); font-size:13px; margin-bottom:-8px; }
+/* ── Настройки: сетка скинов ── */
+.setPanel { justify-content:flex-start; padding-top:14px; gap:11px;
+  overflow-y:auto; touch-action:pan-y; }
+.skins { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.skCard { display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:6px 6px 5px; background:var(--bg1); border:1px solid var(--line);
+  border-radius:12px; cursor:pointer; font:inherit; }
+.skCard:active { transform:scale(.97); }
+.skCard.on { border-color:var(--ac); }
+.skCard canvas { display:block; border-radius:6px; }
+.skCard span { font-size:11.5px; font-weight:600; color:var(--sub); white-space:nowrap; }
+.skCard.on span { color:var(--ac); }
+.setRow { display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:8px 10px 8px 14px; background:var(--bg1); border:1px solid var(--line);
+  border-radius:12px; font-size:14.5px; font-weight:600; }
 .pbtn { padding:14px; width:100%; border:none; border-radius:14px; background:var(--ac);
   color:#14100a; font:inherit; font-size:16px; font-weight:700; cursor:pointer; }
 .pbtn:active { transform:scale(.97); }
@@ -144,6 +159,17 @@ body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity
       <button class="mbtn" id="bCreate"><span class="ic">🔑</span><span>Создать комнату<small>позови друга по коду — с любого устройства</small></span></button>
       <button class="mbtn" id="bJoin"><span class="ic">🔗</span><span>Войти по коду<small>друг уже создал комнату</small></span></button>
       <button class="mbtn" id="bHot"><span class="ic">👥</span><span>На одном устройстве<small>вдвоём за одним экраном</small></span></button>
+      <button class="mbtn" id="bSet"><span class="ic">⚙️</span><span>Настройки<small>скины доски и фигур, звук</small></span></button>
+    </div>
+  </div>
+
+  <div class="scr" id="scrSet">
+    <div class="panel setPanel">
+      <h2>Настройки</h2>
+      <div class="lbl">Скин — только ваш: соперник видит свой</div>
+      <div class="skins" id="skins"></div>
+      <div class="setRow">Звук<button class="chip" id="sSnd">Вкл</button></div>
+      <button class="gbtn" id="bBackSet">← Назад</button>
     </div>
   </div>
 
@@ -559,7 +585,6 @@ const BOARD={
   cv:$('bd'),ctx:null,size:0,cell:0,dpr:1,flip:false,
   sel:-1,legal:[],last:null,dirty:true,
   anims:[],drag:null,
-  COL_L:'#e8e0c7',COL_D:'#6e8f58',COL_LT:'#6e8f58',COL_DT:'#e8e0c7',
   init(){this.ctx=this.cv.getContext('2d');},
   resize(){
     const wrap=$('boardWrap');
@@ -591,23 +616,23 @@ const BOARD={
     c.font=`600 ${Math.round(cell*.18)}px system-ui`;
     for(let r=0;r<8;r++)for(let f=0;f<8;f++){
       const x=sqOf(f,r),[px,py]=this.xyOf(x),lt=((f+r)&1)===1;
-      c.fillStyle=lt?this.COL_L:this.COL_D;
+      c.fillStyle=lt?SK.lt:SK.dk;
       c.fillRect(px,py,cell+.6,cell+.6);
       const scrF=this.flip?7-f:f,scrR=this.flip?r:7-r;
       if(scrR===7){ // буквы внизу
-        c.fillStyle=lt?this.COL_LT:this.COL_DT;
+        c.fillStyle=lt?SK.dk:SK.lt;
         c.textAlign='right';c.textBaseline='bottom';
         c.fillText('abcdefgh'[f],px+cell-cell*.07,py+cell-cell*.04);
       }
       if(scrF===0){ // цифры слева
-        c.fillStyle=lt?this.COL_LT:this.COL_DT;
+        c.fillStyle=lt?SK.dk:SK.lt;
         c.textAlign='left';c.textBaseline='top';
         c.fillText(String(r+1),px+cell*.07,py+cell*.05);
       }
     }
     // подсветки
     if(this.last){
-      c.fillStyle='rgba(222,196,62,.42)';
+      c.fillStyle=SK.hl;
       for(const x of[this.last.f,this.last.t]){
         const[px,py]=this.xyOf(x);c.fillRect(px,py,cell,cell);
       }
@@ -615,12 +640,12 @@ const BOARD={
     if(GAME.s&&!GAME.over&&inCheck(GAME.s,GAME.s.turn)){
       const kx=GAME.s.kings[kIdx(GAME.s.turn)],[px,py]=this.xyOf(kx);
       const g=c.createRadialGradient(px+cell/2,py+cell/2,cell*.12,px+cell/2,py+cell/2,cell*.62);
-      g.addColorStop(0,'rgba(224,60,60,.75)');g.addColorStop(1,'rgba(224,60,60,0)');
+      g.addColorStop(0,`rgba(${SK.ck},.75)`);g.addColorStop(1,`rgba(${SK.ck},0)`);
       c.fillStyle=g;c.fillRect(px,py,cell,cell);
     }
     if(this.sel>=0){
       const[px,py]=this.xyOf(this.sel);
-      c.fillStyle='rgba(255,255,255,.28)';c.fillRect(px,py,cell,cell);
+      c.fillStyle=SK.sel;c.fillRect(px,py,cell,cell);
     }
     // фигуры (кроме анимируемых и перетаскиваемой)
     const hideSet=new Set();
@@ -636,10 +661,10 @@ const BOARD={
       for(const m of this.legal){
         const[px,py]=this.xyOf(m.t);
         if(m.cap!==0){
-          c.strokeStyle='rgba(20,24,18,.5)';c.lineWidth=cell*.07;
+          c.strokeStyle=SK.dot;c.lineWidth=cell*.07;
           c.beginPath();c.arc(px+cell/2,py+cell/2,cell*.44,0,7);c.stroke();
         }else{
-          c.fillStyle='rgba(20,24,18,.34)';
+          c.fillStyle=SK.dot;
           c.beginPath();c.arc(px+cell/2,py+cell/2,cell*.14,0,7);c.fill();
         }
       }
@@ -679,69 +704,382 @@ const BOARD={
     this.dirty=true;
   }};
 
-/* Векторные фигуры */
-function drawPiece(c,p,cx,cy,cell){
-  const s=cell*.92,white=p>0,ap=Math.abs(p);
-  const FILL=white?'#f6f2e9':'#2e2c29',LINE=white?'#3a352e':'#cfc9bd';
+/* ── [5.5] Скины ────────────────────────────────────────────────
+   Скин = доска + палитра сторон + набор фигур. Выбор ЛОКАЛЬНЫЙ:
+   по сети не передаётся — соперник видит свой набор.
+   Фигуры рисуются в единичном квадрате 0..1 (ctx уже сдвинут и
+   отмасштабирован), S = палитра стороны {f:заливка, l:контур, a:акцент}. */
+
+const fp=(c,fn)=>{c.beginPath();fn();c.closePath();c.fill();c.stroke();};
+const sp=(c,fn,w)=>{const o=c.lineWidth;if(w)c.lineWidth=w;c.beginPath();fn();c.stroke();c.lineWidth=o;};
+const el=(c,x,y,rx,ry)=>fp(c,()=>c.ellipse(x,y,rx,ry,0,0,7));
+const ci=(c,x,y,r)=>el(c,x,y,r,r);
+const pg=(c,p)=>fp(c,()=>{c.moveTo(p[0],p[1]);for(let i=2;i<p.length;i+=2)c.lineTo(p[i],p[i+1]);});
+// деталь контурным цветом (глаз, прорезь, узор)
+const mk=(c,S,fn)=>{c.fillStyle=S.l;c.beginPath();fn();c.closePath();c.fill();c.fillStyle=S.f;};
+const dt=(c,S,x,y,r)=>mk(c,S,()=>c.arc(x,y,r,0,7));
+// акцентная заливка (молния, урей)
+const ac=(c,S,fn)=>{c.fillStyle=S.a||S.f;fp(c,fn);c.fillStyle=S.f;};
+// «брус»: толстая линия с обводкой — мечи, анкх, лучи
+const bar=(c,S,x1,y1,x2,y2,w)=>{
+  c.strokeStyle=S.l;c.lineWidth=w+.05;sp(c,()=>{c.moveTo(x1,y1);c.lineTo(x2,y2);});
+  c.strokeStyle=S.f;c.lineWidth=w;sp(c,()=>{c.moveTo(x1,y1);c.lineTo(x2,y2);});
+  c.strokeStyle=S.l;c.lineWidth=.045;};
+const ring=(c,S,x,y,r,w)=>{
+  c.strokeStyle=S.l;c.lineWidth=w+.05;sp(c,()=>c.arc(x,y,r,0,7));
+  c.strokeStyle=S.f;c.lineWidth=w;sp(c,()=>c.arc(x,y,r,0,7));
+  c.strokeStyle=S.l;c.lineWidth=.045;};
+// подставки
+const BASE={
+  round(c){fp(c,()=>{c.moveTo(.20,.92);c.lineTo(.80,.92);c.quadraticCurveTo(.84,.80,.72,.78);
+    c.lineTo(.28,.78);c.quadraticCurveTo(.16,.80,.20,.92);});},
+  block(c){pg(c,[.18,.93,.82,.93,.77,.80,.23,.80]);},
+  hex(c){pg(c,[.22,.87,.50,.95,.78,.87,.50,.79]);},
+  slab(c){pg(c,[.15,.93,.85,.93,.85,.84,.15,.84]);},
+};
+// классическая конская голова (переиспользуется тремя скинами)
+const horse=c=>fp(c,()=>{c.moveTo(.63,.78);c.bezierCurveTo(.66,.55,.62,.38,.55,.26);
+  c.lineTo(.52,.13);c.lineTo(.44,.24);c.bezierCurveTo(.36,.26,.28,.34,.24,.44);
+  c.quadraticCurveTo(.22,.50,.28,.51);c.lineTo(.38,.47);
+  c.quadraticCurveTo(.42,.52,.38,.58);c.bezierCurveTo(.34,.66,.33,.72,.34,.78);});
+
+/* Классика — стаунтон */
+const PC_CLA={
+  [P](c,S){BASE.round(c);
+    fp(c,()=>{c.moveTo(.32,.78);c.quadraticCurveTo(.36,.55,.44,.47);c.lineTo(.56,.47);
+      c.quadraticCurveTo(.64,.55,.68,.78);});
+    el(c,.5,.44,.15,.055);ci(c,.5,.30,.13);},
+  [NN](c,S){BASE.round(c);horse(c);dt(c,S,.445,.315,.022);},
+  [BB](c,S){BASE.round(c);
+    fp(c,()=>{c.moveTo(.36,.78);c.quadraticCurveTo(.40,.62,.45,.55);c.lineTo(.55,.55);
+      c.quadraticCurveTo(.60,.62,.64,.78);});
+    el(c,.5,.53,.14,.05);
+    fp(c,()=>{c.moveTo(.5,.14);c.bezierCurveTo(.62,.24,.66,.36,.60,.47);
+      c.quadraticCurveTo(.5,.53,.40,.47);c.bezierCurveTo(.34,.36,.38,.24,.5,.14);});
+    sp(c,()=>{c.moveTo(.47,.26);c.lineTo(.56,.37);},.035);
+    ci(c,.5,.115,.045);},
+  [RR](c,S){BASE.round(c);
+    pg(c,[.34,.78,.36,.40,.64,.40,.66,.78]);
+    pg(c,[.28,.40,.72,.40,.72,.32,.28,.32]);
+    pg(c,[.28,.32,.28,.16,.38,.16,.38,.24,.45,.24,.45,.16,.55,.16,.55,.24,.62,.24,.62,.16,.72,.16,.72,.32]);},
+  [QQ](c,S){BASE.round(c);
+    fp(c,()=>{c.moveTo(.35,.78);c.quadraticCurveTo(.40,.60,.43,.46);c.lineTo(.57,.46);
+      c.quadraticCurveTo(.60,.60,.65,.78);});
+    el(c,.5,.45,.17,.055);
+    pg(c,[.40,.44,.28,.20,.40,.32,.5,.16,.60,.32,.72,.20,.60,.44]);
+    for(const b of[[.28,.185],[.5,.145],[.72,.185]])ci(c,b[0],b[1],.035);},
+  [KK](c,S){BASE.round(c);
+    fp(c,()=>{c.moveTo(.35,.78);c.quadraticCurveTo(.40,.62,.42,.50);c.lineTo(.58,.50);
+      c.quadraticCurveTo(.60,.62,.65,.78);});
+    el(c,.5,.49,.17,.055);
+    fp(c,()=>{c.moveTo(.42,.48);c.quadraticCurveTo(.34,.40,.36,.32);
+      c.quadraticCurveTo(.38,.24,.46,.26);c.lineTo(.54,.26);
+      c.quadraticCurveTo(.62,.24,.64,.32);c.quadraticCurveTo(.66,.40,.58,.48);});
+    sp(c,()=>{c.moveTo(.5,.245);c.lineTo(.5,.07);},.05);
+    sp(c,()=>{c.moveTo(.435,.145);c.lineTo(.565,.145);},.05);},
+};
+
+/* Средневековые воины */
+const PC_MED={
+  [P](c,S){BASE.block(c);                       // пехотинец с копьём
+    bar(c,S,.79,.22,.75,.84,.045);
+    pg(c,[.815,.08,.85,.22,.78,.22]);
+    fp(c,()=>{c.moveTo(.33,.80);c.lineTo(.31,.53);c.quadraticCurveTo(.5,.47,.69,.53);c.lineTo(.67,.80);});
+    ci(c,.5,.36,.135);
+    sp(c,()=>{c.moveTo(.40,.37);c.lineTo(.60,.37);},.05);},
+  [NN](c,S){BASE.block(c);horse(c);             // конь в барде
+    sp(c,()=>{c.moveTo(.30,.43);c.lineTo(.47,.23);},.03);
+    fp(c,()=>{c.moveTo(.54,.17);c.quadraticCurveTo(.74,.10,.79,.27);
+      c.quadraticCurveTo(.68,.21,.62,.31);c.quadraticCurveTo(.61,.21,.54,.17);});
+    dt(c,S,.445,.315,.022);},
+  [BB](c,S){BASE.block(c);                      // лучник
+    sp(c,()=>c.arc(.40,.48,.34,-1.05,1.05),.045);          // лук
+    sp(c,()=>{c.moveTo(.575,.19);c.lineTo(.575,.77);},.025); // тетива
+    fp(c,()=>{c.moveTo(.19,.80);c.quadraticCurveTo(.23,.46,.37,.29);
+      c.quadraticCurveTo(.51,.46,.53,.80);});
+    ci(c,.37,.25,.115);
+    sp(c,()=>{c.moveTo(.42,.44);c.lineTo(.56,.48);},.045);},// рука на тетиве
+  [RR](c,S){BASE.block(c);                      // башня
+    pg(c,[.30,.80,.33,.30,.67,.30,.70,.80]);
+    pg(c,[.27,.30,.27,.14,.37,.14,.37,.22,.45,.22,.45,.14,.55,.14,.55,.22,.63,.22,.63,.14,.73,.14,.73,.30]);
+    mk(c,S,()=>{c.moveTo(.47,.40);c.lineTo(.53,.40);c.lineTo(.53,.58);c.lineTo(.50,.64);c.lineTo(.47,.58);});},
+  [QQ](c,S){BASE.block(c);                      // королева с мечом
+    bar(c,S,.80,.34,.80,.88,.04);
+    sp(c,()=>{c.moveTo(.72,.42);c.lineTo(.88,.42);},.045);
+    fp(c,()=>{c.moveTo(.28,.80);c.quadraticCurveTo(.32,.52,.42,.42);c.lineTo(.58,.42);
+      c.quadraticCurveTo(.68,.52,.72,.80);});
+    ci(c,.5,.34,.105);
+    pg(c,[.37,.29,.39,.14,.44,.23,.50,.10,.56,.23,.61,.14,.63,.29]);},
+  [KK](c,S){BASE.block(c);                      // король с вонзённым мечом
+    fp(c,()=>{c.moveTo(.26,.80);c.quadraticCurveTo(.30,.50,.40,.40);c.lineTo(.60,.40);
+      c.quadraticCurveTo(.70,.50,.74,.80);});
+    bar(c,S,.50,.46,.50,.86,.05);
+    sp(c,()=>{c.moveTo(.39,.54);c.lineTo(.61,.54);},.05);
+    ci(c,.5,.30,.11);
+    pg(c,[.36,.25,.36,.13,.43,.19,.50,.10,.57,.19,.64,.13,.64,.25]);
+    sp(c,()=>{c.moveTo(.50,.10);c.lineTo(.50,.02);},.045);
+    sp(c,()=>{c.moveTo(.44,.06);c.lineTo(.56,.06);},.045);},
+};
+
+/* Киберпанк — гранёные неоновые глифы */
+const PC_CYB={
+  [P](c,S){BASE.hex(c);
+    pg(c,[.50,.28,.66,.44,.60,.74,.40,.74,.34,.44]);
+    dt(c,S,.5,.50,.075);
+    sp(c,()=>{c.moveTo(.5,.28);c.lineTo(.5,.15);},.04);ci(c,.5,.11,.045);},
+  [NN](c,S){BASE.hex(c);
+    pg(c,[.36,.76,.30,.50,.20,.46,.27,.35,.40,.33,.44,.14,.52,.26,.58,.12,.67,.36,.65,.60,.67,.76]);
+    dt(c,S,.42,.34,.03);
+    sp(c,()=>{c.moveTo(.34,.48);c.lineTo(.46,.44);},.028);},
+  [BB](c,S){BASE.hex(c);
+    pg(c,[.50,.12,.70,.44,.50,.76,.30,.44]);
+    mk(c,S,()=>{c.moveTo(.5,.30);c.lineTo(.60,.44);c.lineTo(.5,.58);c.lineTo(.40,.44);});},
+  [RR](c,S){BASE.hex(c);
+    pg(c,[.32,.76,.32,.22,.68,.22,.68,.76]);
+    pg(c,[.29,.22,.29,.12,.39,.12,.39,.18,.61,.18,.61,.12,.71,.12,.71,.22]);
+    for(const y of[.34,.46,.58])sp(c,()=>{c.moveTo(.39,y);c.lineTo(.61,y);},.03);},
+  [QQ](c,S){BASE.hex(c);
+    pg(c,[.30,.46,.33,.14,.42,.32,.50,.08,.58,.32,.67,.14,.70,.46]);
+    pg(c,[.34,.46,.66,.46,.60,.76,.40,.76]);
+    dt(c,S,.5,.59,.075);},
+  [KK](c,S){BASE.hex(c);
+    sp(c,()=>c.arc(.50,.34,.30,0,7),.028);        // орбита-нимб
+    pg(c,[.38,.76,.38,.30,.50,.14,.62,.30,.62,.76]);
+    bar(c,S,.50,.38,.50,.66,.05);
+    bar(c,S,.38,.51,.62,.51,.05);},
+};
+
+/* Боги Олимпа */
+const PC_GRK={
+  [P](c,S){BASE.slab(c);                        // гоплит: щит и копьё
+    bar(c,S,.74,.14,.70,.86,.04);
+    pg(c,[.755,.04,.79,.16,.715,.16]);
+    ci(c,.44,.50,.24);
+    sp(c,()=>{c.moveTo(.44,.34);c.lineTo(.34,.64);},.035);
+    sp(c,()=>{c.moveTo(.44,.34);c.lineTo(.54,.64);},.035);},
+  [NN](c,S){BASE.slab(c);horse(c);              // пегас
+    fp(c,()=>{c.moveTo(.54,.34);c.quadraticCurveTo(.76,.16,.94,.32);
+      c.quadraticCurveTo(.80,.32,.78,.44);c.quadraticCurveTo(.68,.40,.64,.52);
+      c.quadraticCurveTo(.58,.44,.54,.34);});
+    dt(c,S,.445,.315,.022);},
+  [BB](c,S){BASE.slab(c);                       // колонна
+    pg(c,[.38,.84,.41,.28,.59,.28,.62,.84]);
+    for(const x of[.455,.50,.545])sp(c,()=>{c.moveTo(x,.33);c.lineTo(x,.80);},.022);
+    pg(c,[.33,.28,.67,.28,.67,.21,.33,.21]);
+    fp(c,()=>{c.moveTo(.36,.21);c.quadraticCurveTo(.5,.10,.64,.21);});},
+  [RR](c,S){BASE.slab(c);                       // храм
+    for(const x of[.28,.45,.62])pg(c,[x,.84,x,.36,x+.10,.36,x+.10,.84]);
+    pg(c,[.22,.36,.78,.36,.78,.28,.22,.28]);
+    pg(c,[.16,.28,.50,.08,.84,.28]);},
+  [QQ](c,S){BASE.slab(c);                       // коринфский шлем Афины
+    fp(c,()=>{c.moveTo(.32,.26);c.quadraticCurveTo(.46,-.07,.84,.08);
+      c.quadraticCurveTo(.62,.12,.46,.30);});
+    fp(c,()=>{c.moveTo(.30,.46);c.quadraticCurveTo(.32,.18,.54,.18);
+      c.quadraticCurveTo(.74,.20,.72,.46);c.quadraticCurveTo(.72,.66,.62,.78);
+      c.lineTo(.52,.78);c.quadraticCurveTo(.58,.60,.50,.52);
+      c.lineTo(.38,.54);c.lineTo(.36,.72);c.lineTo(.30,.72);});
+    mk(c,S,()=>{c.moveTo(.34,.38);c.lineTo(.47,.34);c.lineTo(.47,.44);c.lineTo(.34,.46);});},
+  [KK](c,S){BASE.slab(c);                       // Зевс с молнией
+    ac(c,S,()=>{c.moveTo(.80,.10);c.lineTo(.66,.40);c.lineTo(.75,.40);
+      c.lineTo(.63,.74);c.lineTo(.86,.34);c.lineTo(.75,.34);});
+    fp(c,()=>{c.moveTo(.22,.84);c.quadraticCurveTo(.26,.56,.38,.48);c.lineTo(.56,.48);
+      c.quadraticCurveTo(.66,.56,.68,.84);});
+    ci(c,.45,.34,.13);
+    fp(c,()=>{c.moveTo(.33,.36);c.quadraticCurveTo(.36,.62,.45,.64);
+      c.quadraticCurveTo(.54,.62,.57,.36);c.quadraticCurveTo(.45,.46,.33,.36);});
+    sp(c,()=>{c.moveTo(.32,.25);c.quadraticCurveTo(.45,.16,.58,.25);},.035);},
+};
+
+/* Древний Египет */
+const PC_EGY={
+  [P](c,S){BASE.slab(c);                        // анкх
+    bar(c,S,.50,.40,.50,.86,.085);
+    bar(c,S,.31,.53,.69,.53,.085);
+    ring(c,S,.5,.27,.13,.085);},
+  [NN](c,S){BASE.slab(c);                       // Анубис
+    pg(c,[.34,.80,.30,.54,.14,.52,.14,.44,.34,.38,.38,.22,.44,.08,.52,.28,.58,.10,.66,.32,.68,.56,.64,.80]);
+    dt(c,S,.34,.45,.028);
+    sp(c,()=>{c.moveTo(.32,.68);c.lineTo(.66,.64);},.03);},
+  [BB](c,S){BASE.slab(c);                       // обелиск
+    pg(c,[.40,.84,.43,.22,.57,.22,.60,.84]);
+    pg(c,[.43,.22,.50,.08,.57,.22]);
+    for(const y of[.38,.50,.62])sp(c,()=>{c.moveTo(.455,y);c.lineTo(.545,y);},.025);},
+  [RR](c,S){BASE.slab(c);                       // пирамида
+    pg(c,[.14,.84,.50,.14,.86,.84]);
+    sp(c,()=>{c.moveTo(.50,.14);c.lineTo(.66,.84);},.028);
+    for(const q of[[.44,.15],[.62,.24]])sp(c,()=>{c.moveTo(.5-q[1],q[0]);c.lineTo(.5+q[1],q[0]);},.022);},
+  [QQ](c,S){BASE.slab(c);                       // Нефертити
+    fp(c,()=>{c.moveTo(.30,.84);c.quadraticCurveTo(.34,.64,.44,.58);c.lineTo(.56,.58);
+      c.quadraticCurveTo(.66,.64,.70,.84);});
+    el(c,.50,.42,.115,.145);
+    fp(c,()=>{c.moveTo(.35,.38);c.lineTo(.33,.14);c.quadraticCurveTo(.50,.06,.67,.14);c.lineTo(.65,.38);});
+    sp(c,()=>{c.moveTo(.345,.28);c.lineTo(.655,.28);},.035);},
+  [KK](c,S){BASE.slab(c);                       // фараон в немесе
+    fp(c,()=>{c.moveTo(.22,.84);c.lineTo(.29,.42);c.quadraticCurveTo(.34,.16,.50,.16);
+      c.quadraticCurveTo(.66,.16,.71,.42);c.lineTo(.78,.84);});
+    sp(c,()=>{c.moveTo(.28,.52);c.lineTo(.25,.80);},.03);
+    sp(c,()=>{c.moveTo(.72,.52);c.lineTo(.75,.80);},.03);
+    pg(c,[.455,.60,.545,.60,.535,.82,.465,.82]);   // церемониальная борода
+    el(c,.50,.48,.13,.16);
+    dt(c,S,.445,.45,.028);dt(c,S,.555,.45,.028);
+    sp(c,()=>{c.moveTo(.46,.57);c.lineTo(.54,.57);},.025);
+    ac(c,S,()=>{c.moveTo(.50,.31);c.quadraticCurveTo(.42,.25,.485,.19);
+      c.quadraticCurveTo(.565,.21,.54,.29);});},   // урей
+};
+
+/* Космофлот */
+const PC_SPC={
+  [P](c,S){                                      // зонд
+    pg(c,[.10,.44,.34,.44,.34,.60,.10,.60]);
+    pg(c,[.66,.44,.90,.44,.90,.60,.66,.60]);
+    ci(c,.5,.52,.17);
+    sp(c,()=>{c.moveTo(.5,.35);c.lineTo(.5,.21);},.035);ci(c,.5,.17,.05);
+    dt(c,S,.5,.52,.07);},
+  [NN](c,S){                                     // истребитель
+    pg(c,[.50,.08,.88,.72,.62,.64,.50,.80,.38,.64,.12,.72]);
+    mk(c,S,()=>c.ellipse(.5,.36,.07,.12,0,0,7));},
+  [BB](c,S){                                     // крейсер
+    pg(c,[.61,.50,.82,.78,.61,.72]);
+    pg(c,[.39,.50,.18,.78,.39,.72]);
+    fp(c,()=>{c.moveTo(.50,.06);c.quadraticCurveTo(.63,.38,.61,.68);c.lineTo(.39,.68);
+      c.quadraticCurveTo(.37,.38,.50,.06);});
+    dt(c,S,.5,.30,.06);
+    ci(c,.5,.74,.07);},
+  [RR](c,S){                                     // орбитальная станция
+    el(c,.5,.34,.32,.09);el(c,.5,.64,.32,.09);
+    pg(c,[.41,.84,.41,.16,.59,.16,.59,.84]);
+    ci(c,.5,.12,.055);},
+  [QQ](c,S){                                     // корабль-матка
+    fp(c,()=>{c.moveTo(.20,.56);c.quadraticCurveTo(.50,.88,.80,.56);});
+    el(c,.5,.52,.42,.13);
+    fp(c,()=>{c.moveTo(.28,.48);c.quadraticCurveTo(.50,.12,.72,.48);});
+    for(const x of[.28,.50,.72])dt(c,S,x,.52,.033);},
+  [KK](c,S){                                     // командное ядро
+    pg(c,[.40,.86,.60,.86,.56,.66,.44,.66]);
+    ci(c,.5,.46,.25);
+    sp(c,()=>c.ellipse(.5,.46,.42,.11,0,0,7),.05);
+    sp(c,()=>{c.moveTo(.5,.21);c.lineTo(.5,.07);},.035);ci(c,.5,.05,.04);
+    dt(c,S,.5,.46,.09);},
+};
+
+/* Лес и звери */
+const PC_FNA={
+  [P](c,S){                                      // мышь
+    ci(c,.30,.38,.14);ci(c,.70,.38,.14);
+    ci(c,.5,.58,.23);
+    dt(c,S,.41,.54,.03);dt(c,S,.59,.54,.03);dt(c,S,.5,.68,.045);
+    sp(c,()=>{c.moveTo(.5,.72);c.lineTo(.5,.78);},.022);},
+  [NN](c,S){BASE.round(c);horse(c);              // конь
+    sp(c,()=>{c.moveTo(.54,.20);c.quadraticCurveTo(.68,.36,.63,.62);},.04);
+    dt(c,S,.445,.315,.022);},
+  [BB](c,S){                                     // лиса
+    pg(c,[.22,.44,.18,.10,.46,.32]);
+    pg(c,[.78,.44,.82,.10,.54,.32]);
+    fp(c,()=>{c.moveTo(.5,.88);c.quadraticCurveTo(.20,.58,.22,.36);
+      c.quadraticCurveTo(.5,.28,.78,.36);c.quadraticCurveTo(.80,.58,.5,.88);});
+    dt(c,S,.38,.50,.032);dt(c,S,.62,.50,.032);dt(c,S,.5,.72,.04);},
+  [RR](c,S){                                     // дерево
+    pg(c,[.40,.88,.42,.48,.58,.48,.60,.88]);
+    ci(c,.30,.42,.19);ci(c,.70,.42,.19);ci(c,.50,.25,.21);
+    sp(c,()=>{c.moveTo(.50,.62);c.lineTo(.37,.50);},.03);},
+  [QQ](c,S){                                     // олень
+    for(const d of[-1,1]){
+      sp(c,()=>{c.moveTo(.5+d*.11,.44);c.lineTo(.5+d*.23,.16);},.035);
+      sp(c,()=>{c.moveTo(.5+d*.17,.30);c.lineTo(.5+d*.31,.25);},.03);
+      sp(c,()=>{c.moveTo(.5+d*.20,.23);c.lineTo(.5+d*.27,.09);},.03);}
+    el(c,.27,.53,.09,.05);el(c,.73,.53,.09,.05);
+    fp(c,()=>{c.moveTo(.5,.88);c.quadraticCurveTo(.30,.74,.32,.52);
+      c.quadraticCurveTo(.5,.42,.68,.52);c.quadraticCurveTo(.70,.74,.5,.88);});
+    dt(c,S,.40,.60,.03);dt(c,S,.60,.60,.03);dt(c,S,.5,.80,.05);},
+  [KK](c,S){                                     // лев
+    fp(c,()=>{const n=11,R=.31,T=Math.PI*2;
+      for(let i=0;i<n;i++){
+        const a=i/n*T,a2=(i+.5)/n*T,a3=(i+1)/n*T;
+        if(i===0)c.moveTo(.5+Math.cos(a)*R,.53+Math.sin(a)*R);
+        c.quadraticCurveTo(.5+Math.cos(a2)*(R+.09),.53+Math.sin(a2)*(R+.09),
+                           .5+Math.cos(a3)*R,.53+Math.sin(a3)*R);}});
+    ci(c,.5,.53,.20);
+    dt(c,S,.43,.49,.03);dt(c,S,.57,.49,.03);dt(c,S,.5,.60,.04);
+    sp(c,()=>{c.moveTo(.5,.63);c.lineTo(.5,.68);},.025);},
+};
+
+/* Пиксель-арт: '#' — тело, 'o' — деталь контурным цветом */
+const PIX={
+  [P]:['..........','..........','...####...','..######..','..######..',
+       '...####...','..######..','.########.','##########','##########'],
+  [NN]:['...##.....','..####....','.######...','########..','##o.####..',
+        '#...####..','....####..','...#####..','.#######..','##########'],
+  [BB]:['....##....','...####...','..###o##..','..##o###..','..#o####..',
+        '...####...','..######..','...####...','.########.','##########'],
+  [RR]:['.##.##.##.','.########.','..######..','..######..','..######..',
+        '..######..','..######..','.########.','##########','##########'],
+  [QQ]:['#.#.##.#.#','.#.####.#.','.########.','..######..','..######..',
+        '..######..','..######..','.########.','##########','##########'],
+  [KK]:['....##....','....##....','..######..','....##....','...####...',
+        '..######..','..######..','.########.','##########','##########'],
+};
+function pixDraw(c,S,rows){
+  const n=rows[0].length,m=rows.length,u=1/n,v=.94/m,y0=.06;
+  c.fillStyle=S.l;                                 // силуэт-обводка
+  for(let r=0;r<m;r++)for(let q=0;q<n;q++)if(rows[r][q]!=='.')
+    c.fillRect(q*u-.014,y0+r*v-.014,u+.028,v+.028);
+  c.fillStyle=S.f;                                 // с нахлёстом: без швов между пикселями
+  for(let r=0;r<m;r++)for(let q=0;q<n;q++)if(rows[r][q]==='#')
+    c.fillRect(q*u-.004,y0+r*v-.004,u+.008,v+.008);
+  c.fillStyle=S.f;
+}
+const PC_PIX={};
+for(const k of[P,NN,BB,RR,QQ,KK])PC_PIX[k]=(c,S)=>pixDraw(c,S,PIX[k]);
+
+const SKINS={
+  classic:{n:'Классика',lt:'#e8e0c7',dk:'#6e8f58',
+    w:{f:'#f6f2e9',l:'#3a352e',a:'#d9a441'},b:{f:'#2e2c29',l:'#cfc9bd',a:'#d9a441'},
+    hl:'rgba(222,196,62,.45)',sel:'rgba(255,255,255,.30)',dot:'rgba(20,24,18,.34)',
+    ck:'224,60,60',pc:PC_CLA},
+  med:{n:'Средневековье',lt:'#ddc7a0',dk:'#8a6a45',
+    w:{f:'#f4ecd8',l:'#4a3a28',a:'#c0392b'},b:{f:'#3b322a',l:'#d8c9a8',a:'#c0392b'},
+    hl:'rgba(214,164,54,.48)',sel:'rgba(255,248,220,.32)',dot:'rgba(40,26,14,.36)',
+    ck:'196,50,40',pc:PC_MED},
+  cyber:{n:'Киберпанк',lt:'#22304a',dk:'#141c2c',glow:1,
+    w:{f:'#0b1422',l:'#5ff2ff',a:'#5ff2ff'},b:{f:'#190c20',l:'#ff5ec8',a:'#ff5ec8'},
+    hl:'rgba(95,242,255,.24)',sel:'rgba(255,94,200,.30)',dot:'rgba(150,235,255,.55)',
+    ck:'255,60,120',pc:PC_CYB},
+  greek:{n:'Олимп',lt:'#f2ecdd',dk:'#5b86a8',
+    w:{f:'#faf6ec',l:'#6b6355',a:'#d9b166'},b:{f:'#4a3b2a',l:'#e2c48a',a:'#e2c48a'},
+    hl:'rgba(217,177,102,.5)',sel:'rgba(255,255,255,.34)',dot:'rgba(30,44,58,.34)',
+    ck:'214,72,60',pc:PC_GRK},
+  egypt:{n:'Египет',lt:'#f0dfbb',dk:'#4e8f86',
+    w:{f:'#f8efd9',l:'#6a4b2a',a:'#e0b756'},b:{f:'#2b3550',l:'#e0b756',a:'#e0b756'},
+    hl:'rgba(224,183,86,.5)',sel:'rgba(255,252,235,.34)',dot:'rgba(40,40,30,.34)',
+    ck:'208,64,52',pc:PC_EGY},
+  space:{n:'Космофлот',lt:'#2a3654',dk:'#171f33',glow:1,
+    w:{f:'#dff0ff',l:'#5aa8d8',a:'#8fe3ff'},b:{f:'#f0824a',l:'#a8412a',a:'#ffb877'},
+    hl:'rgba(120,190,255,.26)',sel:'rgba(255,255,255,.24)',dot:'rgba(190,225,255,.5)',
+    ck:'255,90,90',pc:PC_SPC},
+  fauna:{n:'Лес и звери',lt:'#eee0be',dk:'#7d8f4f',
+    w:{f:'#f7efdb',l:'#5a4326',a:'#c9752e'},b:{f:'#4a3524',l:'#e6d3ae',a:'#c9752e'},
+    hl:'rgba(200,180,60,.45)',sel:'rgba(255,255,240,.32)',dot:'rgba(40,34,16,.34)',
+    ck:'200,60,44',pc:PC_FNA},
+  pixel:{n:'Пиксель',lt:'#d8cf9e',dk:'#5a7a52',
+    w:{f:'#fbf6e4',l:'#2f2a22',a:'#d9a441'},b:{f:'#3a3630',l:'#e8e2cf',a:'#d9a441'},
+    hl:'rgba(240,208,64,.45)',sel:'rgba(255,255,255,.30)',dot:'rgba(24,26,18,.36)',
+    ck:'220,60,50',pc:PC_PIX},
+};
+for(const id in SKINS)SKINS[id].id=id;
+let SK=SKINS.classic;
+
+function drawPiece(c,p,cx,cy,cell,sk){
+  sk=sk||SK;
+  const fn=sk.pc[Math.abs(p)];
+  if(!fn)return;
+  const s=cell*.92,S=p>0?sk.w:sk.b;
   c.save();
+  if(sk.glow){c.shadowColor=S.l;c.shadowBlur=cell*.13;}
   c.translate(cx-s/2,cy-s/2);
   c.scale(s,s);
   c.lineWidth=.045;c.lineJoin='round';c.lineCap='round';
-  c.fillStyle=FILL;c.strokeStyle=LINE;
-  const path=fn=>{c.beginPath();fn();c.closePath();c.fill();c.stroke();};
-  const ell=(x,y,rx,ry)=>{c.beginPath();c.ellipse(x,y,rx,ry,0,0,7);c.closePath();c.fill();c.stroke();};
-  // общая подставка
-  path(()=>{c.moveTo(.20,.92);c.lineTo(.80,.92);c.quadraticCurveTo(.84,.80,.72,.78);
-    c.lineTo(.28,.78);c.quadraticCurveTo(.16,.80,.20,.92);});
-  if(ap===P){
-    path(()=>{c.moveTo(.32,.78);c.quadraticCurveTo(.36,.55,.44,.47);c.lineTo(.56,.47);
-      c.quadraticCurveTo(.64,.55,.68,.78);});
-    ell(.5,.44,.15,.055);
-    c.beginPath();c.arc(.5,.30,.13,0,7);c.closePath();c.fill();c.stroke();
-  }else if(ap===RR){
-    path(()=>{c.moveTo(.34,.78);c.lineTo(.36,.40);c.lineTo(.64,.40);c.lineTo(.66,.78);});
-    path(()=>{c.moveTo(.28,.40);c.lineTo(.72,.40);c.lineTo(.72,.32);c.lineTo(.28,.32);});
-    path(()=>{c.moveTo(.28,.32);c.lineTo(.28,.16);c.lineTo(.38,.16);c.lineTo(.38,.24);
-      c.lineTo(.45,.24);c.lineTo(.45,.16);c.lineTo(.55,.16);c.lineTo(.55,.24);
-      c.lineTo(.62,.24);c.lineTo(.62,.16);c.lineTo(.72,.16);c.lineTo(.72,.32);});
-  }else if(ap===NN){
-    path(()=>{c.moveTo(.63,.78);c.bezierCurveTo(.66,.55,.62,.38,.55,.26);
-      c.lineTo(.52,.13);c.lineTo(.44,.24);
-      c.bezierCurveTo(.36,.26,.28,.34,.24,.44);
-      c.quadraticCurveTo(.22,.50,.28,.51);c.lineTo(.38,.47);
-      c.quadraticCurveTo(.42,.52,.38,.58);c.bezierCurveTo(.34,.66,.33,.72,.34,.78);});
-    c.fillStyle=LINE;
-    c.beginPath();c.arc(.445,.315,.022,0,7);c.fill(); // глаз
-    c.fillStyle=FILL;
-  }else if(ap===BB){
-    path(()=>{c.moveTo(.36,.78);c.quadraticCurveTo(.40,.62,.45,.55);c.lineTo(.55,.55);
-      c.quadraticCurveTo(.60,.62,.64,.78);});
-    ell(.5,.53,.14,.05);
-    path(()=>{c.moveTo(.5,.14);c.bezierCurveTo(.62,.24,.66,.36,.60,.47);
-      c.quadraticCurveTo(.5,.53,.40,.47);c.bezierCurveTo(.34,.36,.38,.24,.5,.14);});
-    c.beginPath();c.moveTo(.47,.26);c.lineTo(.56,.37);c.lineWidth=.035;
-    c.strokeStyle=white?'#3a352e':'#cfc9bd';c.stroke();c.lineWidth=.045;
-    c.beginPath();c.arc(.5,.115,.045,0,7);c.closePath();c.fill();c.stroke();
-  }else if(ap===QQ){
-    path(()=>{c.moveTo(.35,.78);c.quadraticCurveTo(.40,.60,.43,.46);c.lineTo(.57,.46);
-      c.quadraticCurveTo(.60,.60,.65,.78);});
-    ell(.5,.45,.17,.055);
-    path(()=>{c.moveTo(.40,.44);c.lineTo(.28,.20);c.lineTo(.40,.32);c.lineTo(.5,.16);
-      c.lineTo(.60,.32);c.lineTo(.72,.20);c.lineTo(.60,.44);});
-    for(const[bx,by]of[[.28,.185],[.5,.145],[.72,.185]]){
-      c.beginPath();c.arc(bx,by,.035,0,7);c.closePath();c.fill();c.stroke();
-    }
-  }else if(ap===KK){
-    path(()=>{c.moveTo(.35,.78);c.quadraticCurveTo(.40,.62,.42,.50);c.lineTo(.58,.50);
-      c.quadraticCurveTo(.60,.62,.65,.78);});
-    ell(.5,.49,.17,.055);
-    path(()=>{c.moveTo(.42,.48);c.quadraticCurveTo(.34,.40,.36,.32);
-      c.quadraticCurveTo(.38,.24,.46,.26);c.lineTo(.54,.26);
-      c.quadraticCurveTo(.62,.24,.64,.32);c.quadraticCurveTo(.66,.40,.58,.48);});
-    c.lineWidth=.05;
-    c.beginPath();c.moveTo(.5,.245);c.lineTo(.5,.07);c.stroke();
-    c.beginPath();c.moveTo(.435,.145);c.lineTo(.565,.145);c.stroke();
-  }
+  c.fillStyle=S.f;c.strokeStyle=S.l;
+  fn(c,S);
   c.restore();
 }
 
@@ -1566,29 +1904,85 @@ $('bResign').onclick=()=>{
   showAsk('Сдаться?',()=>ROOM.resign(),null,'Да','Отмена');
 };
 $('bDraw').onclick=()=>{if(ROOM.phase==='playing'&&!GAME.over)ROOM.offerDraw();};
-$('bSnd').onclick=()=>{
-  SND.on=!SND.on;
-  $('bSnd').textContent=SND.on?'🔊':'🔇';
-  if(SND.on){SND.ensure();SND.resume();}else SND.suspend();
-};
+$('bSnd').onclick=()=>toggleSound();
 
-/* ── [11] Логотип ──────────────────────────────────────────────── */
-(function(){
+/* ── [11] Настройки: скины и звук ──────────────────────────────
+   Выбор игрока локальный: в сеть не уходит, соперник видит свой скин.
+   Хранится облачным сейвом Sharky (на вебе переживает перезагрузку
+   и следует за аккаунтом; в ленте оболочка сейвы не поддерживает —
+   тогда просто дефолт). ── */
+function toggleSound(save){
+  SND.on=!SND.on;
+  if(SND.on){SND.ensure();SND.resume();}else SND.suspend();
+  syncSoundUI();
+  if(save!==false)savePrefs();
+}
+function syncSoundUI(){
+  $('bSnd').textContent=SND.on?'🔊':'🔇';
+  const b=$('sSnd');
+  b.textContent=SND.on?'Вкл':'Выкл';
+  b.classList.toggle('on',SND.on);
+}
+function applySkin(id,save){
+  if(!SKINS[id])return;
+  SK=SKINS[id];
+  BOARD.dirty=true;
+  drawLogo();
+  markSkinCards();
+  if(save)savePrefs();
+}
+function markSkinCards(){
+  for(const card of $('skins').children)card.classList.toggle('on',SKINS[card.dataset.id]===SK);
+}
+function buildSkins(){
+  const host=$('skins');
+  host.replaceChildren();
+  const CELL=30;
+  for(const id in SKINS){
+    const sk=SKINS[id];
+    const card=document.createElement('button');
+    card.className='skCard';card.dataset.id=id;
+    const cv=document.createElement('canvas');
+    cv.width=CELL*3*2;cv.height=CELL*2;
+    cv.style.width=CELL*3+'px';cv.style.height=CELL+'px';
+    const c=cv.getContext('2d');
+    c.setTransform(2,0,0,2,0,0);
+    [[sk.lt,KK],[sk.dk,-QQ],[sk.lt,NN]].forEach((cell,i)=>{
+      c.fillStyle=cell[0];c.fillRect(i*CELL,0,CELL+.5,CELL);
+      drawPiece(c,cell[1],i*CELL+CELL/2,CELL*.54,CELL,sk);
+    });
+    const nm=document.createElement('span');
+    nm.textContent=sk.n;
+    card.append(cv,nm);
+    card.onclick=()=>{SND.ensure();applySkin(id,true);};
+    host.append(card);
+  }
+  markSkinCards();
+}
+function drawLogo(){
   const c=$('logoCv').getContext('2d');
   c.setTransform(2,0,0,2,0,0);
-  c.fillStyle='#151c25';
+  c.clearRect(0,0,64,64);
   c.beginPath();
-  const r=14;
-  c.roundRect?c.roundRect(2,2,60,60,r):c.rect(2,2,60,60);
-  c.fill();
-  c.strokeStyle='rgba(255,255,255,.14)';c.lineWidth=1.5;c.stroke();
-  const ac=getComputedStyle(document.documentElement).getPropertyValue('--ac').trim()||'#d9a441';
-  c.fillStyle=ac;
+  if(c.roundRect)c.roundRect(2,2,60,60,14);else c.rect(2,2,60,60);
+  c.fillStyle=SK.dk;c.fill();
+  c.save();c.clip();
+  c.fillStyle=SK.lt;c.globalAlpha=.6;
   for(let i=0;i<4;i++)for(let j=0;j<4;j++)
-    if((i+j)%2===0){c.globalAlpha=.16;c.fillRect(6+i*13,6+j*13,13,13);}
-  c.globalAlpha=1;
-  drawPiece(c,NN,32,36,52);
-})();
+    if((i+j)%2===0)c.fillRect(6+i*13,6+j*13,13,13);
+  c.globalAlpha=1;c.restore();
+  c.strokeStyle='rgba(255,255,255,.14)';c.lineWidth=1.5;c.stroke();
+  drawPiece(c,NN,32,36,50);
+}
+function savePrefs(){post({type:'sharky-progress-save',data:{skin:SK.id,snd:SND.on?1:0}});}
+function loadPrefs(d){
+  if(!d||typeof d!=='object')return;
+  if(d.skin)applySkin(d.skin,false);
+  if(d.snd===0&&SND.on)toggleSound(false);
+}
+$('bSet').onclick=()=>{SND.ensure();showScreen('scrSet');};
+$('bBackSet').onclick=()=>showScreen('scrMenu');
+$('sSnd').onclick=()=>toggleSound();
 
 /* ── [12] Цикл, resize, протокол Sharky ────────────────────────── */
 let running=false,raf=0,lastClockTxt=0,flagT=0;
@@ -1640,13 +2034,18 @@ window.addEventListener('message',e=>{
   }
   if(d.type==='start')start();
   if(d.type==='pause')pause();
+  if(d.type==='sharky-progress')loadPrefs(d.data);
 });
 window.addEventListener('resize',()=>{BOARD.resize();BOARD.dirty=true;});
 window.addEventListener('load',()=>{
   BOARD.init();
   BOARD.resize();
   $('netDot').textContent='';
+  buildSkins();
+  drawLogo();
+  syncSoundUI();
   post({type:'ready'});
+  post({type:'sharky-progress-load'});   // вернёт сохранённый скин, если оболочка умеет
   // В оболочке (iframe) ждём 'start' — предзагруженные карточки ленты не должны
   // крутить циклы. Прямое открытие top-level — стартуем сами.
   if(window.parent===window)start();
