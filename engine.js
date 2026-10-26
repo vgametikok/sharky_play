@@ -91,13 +91,15 @@ function buildDeck() {
 // iframe.src would show the game as raw TEXT. For cross-origin sources we fetch the
 // HTML and inject it via srcdoc, which always renders as a real page. Same-origin
 // games (GitHub Pages, served as text/html) keep using src unchanged.
+const GAMES_CDN = 'https://sharky-games.vgametikok.workers.dev';
+function isCdnGame(g) { return typeof g.src === 'string' && g.src.startsWith(GAMES_CDN + '/'); }
 function loadGameInto(iframe, g) {
   // Cache-busting по версии игры: после обновления (games.version++) игроки
   // получают свежий файл, а не закешированный HTTP-кешем старый.
   const url = g.src + (g.src.includes('?') ? '&' : '?') + 'v=' + (g.version || 1);
   let cross = false;
   try { cross = new URL(g.src, location.href).origin !== location.origin; } catch(e) { cross = true; }
-  if (!cross) { iframe.src = url; return; }
+  if (!cross || isCdnGame(g)) { iframe.src = url; return; } // R2 builds: real src, no srcdoc
   fetch(url)
     .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.text(); })
     .then(html => { iframe.srcdoc = html; })
@@ -122,6 +124,12 @@ function preload(idx) {
     // Critical for untrusted uploaded/UGC games. Do NOT add allow-same-origin here —
     // combined with allow-scripts it would let a game remove its own sandbox.
     iframe.setAttribute('sandbox', 'allow-scripts');
+    // Exception: multi-file R2 builds are served from a SEPARATE origin (GAMES_CDN), so
+    // allow-same-origin there only gives the game its own storage, never the app's.
+    if (isCdnGame(g)) {
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-pointer-lock allow-popups');
+      iframe.allow = 'autoplay; fullscreen; gamepad; gyroscope; accelerometer';
+    }
     iframe.setAttribute('scrolling', 'no');
     let done = false;
     const timer = setTimeout(() => {
