@@ -388,7 +388,7 @@ a{color:var(--a4)}
 <div class="modal" id="update-modal">
   <div class="modal-box">
     <div class="modal-head"><h2 id="um-title">Обновить игру</h2><button class="x" data-close>✕</button></div>
-    <div class="fld"><label>Новый HTML-файл игры (пусто — только сброс прогресса)</label><input type="file" id="um-file" accept=".html,text/html"></div>
+    <div class="fld"><label>Новый HTML-файл игры (пусто — только сброс прогресса)</label><input type="file" id="um-file" accept=".html,text/html,.zip,application/zip"></div>
     <div class="fld"><label>Что нового (заметка к версии)</label><input type="text" id="um-note" maxlength="300" placeholder="исправлен баг, добавлены уровни…"></div>
     <div class="fld"><label>Прогресс игроков (облачные сейвы)</label>
       <label style="display:flex;gap:8px;align-items:center;font-weight:400;cursor:pointer"><input type="radio" name="um-prog" id="um-keep" checked> сохранить</label>
@@ -989,6 +989,7 @@ function gameFormHTML(p){
     <input id="${p}_src" placeholder="https://… или games/my-game.html">
     <div class="upl">
       <label class="filelabel">📎 Загрузить .html<input type="file" accept=".html,text/html" id="${p}_srcfile"></label>
+      <label class="filelabel">🗜️ Загрузить .zip (многофайловый билд)<input type="file" accept=".zip,application/zip" id="${p}_zipfile"></label>
       <span class="upl-status" id="${p}_srcstatus"></span>
     </div>
   </div>
@@ -1010,6 +1011,7 @@ function wireGameForm(p, onChange){
   });
   // uploads
   $(`#${p}_srcfile`).addEventListener('change',e=>uploadFile(e.target.files[0],'games',p,'src',onChange));
+  $(`#${p}_zipfile`).addEventListener('change',e=>uploadZipToForm(e.target.files[0],p,onChange));
   $(`#${p}_thumbfile`).addEventListener('change',e=>uploadFile(e.target.files[0],'thumbnails',p,'thumbnail_url',onChange));
   if(onChange){
     ['title','emoji'].forEach(k=>$(`#${p}_${k}`).addEventListener('input',onChange));
@@ -1029,6 +1031,50 @@ function genId(filename){
 function setUploadBusy(on){
   ['#add-now','#add-to-queue','#save-all','#em-save'].forEach(s=>{const el=$(s);if(el)el.disabled=on;});
 }
+// ══ Многофайловые билды: zip → Worker sharky-games (R2), распаковка на сервере ══
+// Пока только админ (Worker проверяет is_admin()); позже — автор игры.
+const GAMES_CDN = 'https://sharky-games.vgametikok.workers.dev';
+const ZIP_PART = 50*1024*1024;
+async function uploadBuildZip(file, gameId, version, onStatus){
+  const {data:{session}} = await db.auth.getSession();
+  const token = session && session.access_token;
+  if(!token) throw new Error('сессия истекла — войдите заново');
+  const H = {'Authorization':'Bearer '+token};
+  const q = `game_id=${encodeURIComponent(gameId)}&version=${version}`;
+  const call = async (op, opt) => {
+    const r = await fetch(`${GAMES_CDN}/api/upload/${op}?${q}${opt.extra||''}`, {method:opt.method||'POST', headers:{...H, ...(opt.json?{'Content-Type':'application/json'}:{})}, body:opt.body});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||('HTTP '+r.status));
+    return d;
+  };
+  const {uploadId} = await call('start', {});
+  const parts = [];
+  try{
+    const n = Math.max(1, Math.ceil(file.size/ZIP_PART));
+    for(let i=0;i<n;i++){
+      onStatus&&onStatus(`загрузка ${i+1}/${n}…`);
+      parts.push(await call('part', {method:'PUT', extra:`&upload_id=${encodeURIComponent(uploadId)}&part=${i+1}`, body:file.slice(i*ZIP_PART,(i+1)*ZIP_PART)}));
+    }
+    onStatus&&onStatus('распаковка на сервере…');
+    return await call('complete', {json:true, body:JSON.stringify({uploadId, parts})});
+  }catch(e){ call('abort',{json:true, body:JSON.stringify({uploadId})}).catch(()=>{}); throw e; }
+}
+async function uploadZipToForm(file, p, onChange){
+  if(!file) return;
+  const idf = $(`#${p}_id`);
+  let id = slug(idf.value);
+  if(!id){ id = genId(file.name.replace(/\.zip$/i,'')); idf.value = id; idf.dataset.touched='1'; }
+  const statusEl = $(`#${p}_srcstatus`);
+  statusEl.className='upl-status busy'; setUploadBusy(true);
+  try{
+    const r = await uploadBuildZip(file, id, 1, t=>{ statusEl.innerHTML='<span class="spin"></span> '+esc(t); });
+    $(`#${p}_src`).value = r.src;
+    statusEl.innerHTML=`✓ ${r.files} файлов, ${(r.size/1048576).toFixed(1)} МБ`; statusEl.className='upl-status ok';
+    onChange&&onChange();
+  }catch(e){ statusEl.innerHTML='✕ ошибка: '+esc(e.message||String(e)); statusEl.className='upl-status err'; toast('Ошибка загрузки: '+(e.message||e)); }
+  finally{ setUploadBusy(false); }
+}
+
 async function uploadFile(file, bucket, p, targetField, onChange){
   if(!file)return;
   const idf = $(`#${p}_id`);
@@ -1077,7 +1123,8 @@ function readGameForm(p){
     emoji: v('emoji')||'🎮', score_label: v('score_label')||'очков', status: v('status'),
     genre: v('genre'), setting: v('setting'), difficulty: v('difficulty'),
     accent: v('accent'), bg: v('bg'),
-    src: v('src'), thumbnail_url: v('thumbnail_url')||null
+    src: v('src'), thumbnail_url: v('thumbnail_url')||null,
+    build_type: v('src').startsWith(GAMES_CDN+'/') ? 'r2' : 'html'
   };
 }
 function validGame(g){
@@ -1303,6 +1350,20 @@ $('#um-go').addEventListener('click', async ()=>{
   if(!confirm(warn)) return;
   const btn=$('#um-go'); btn.disabled=true; btn.textContent='Обновляю…';
   try{
+    if(f && /\.zip$/i.test(f.name)){
+      // Многофайловый билд: новая версия = отдельная папка vN в R2, старые не трогаем.
+      if(wipe) throw new Error('сброс прогресса с zip пока не поддержан — сделай сброс отдельно без файла');
+      const nv=(updGame.version||1)+1;
+      const r=await uploadBuildZip(f, updGame.id, nv, t=>{btn.textContent=t;});
+      const {error}=await db.from('games').update({src:r.src, version:nv, build_type:'r2', build_size:r.size, build_files:r.files, updated_at:new Date().toISOString()}).eq('id',updGame.id);
+      if(error) throw new Error(error.message);
+      await db.from('game_versions').insert({game_id:updGame.id, version:nv, src:r.src, note:$('#um-note').value.trim()||null, wiped_progress:false, build_type:'r2', build_size:r.size, build_files:r.files});
+      const gg=GAMES.find(x=>x.id===updGame.id); if(gg) Object.assign(gg,{version:nv, src:r.src});
+      toast(`Обновление вышло: v${nv} (${r.files} файлов)`);
+      renderUpdateHistory(updGame.id); renderGames();
+      $('#um-file').value=''; $('#um-note').value='';
+      btn.disabled=false; btn.textContent='Выпустить обновление'; return;
+    }
     const body={game_id:updGame.id, note:$('#um-note').value.trim()||null, wipe_progress:wipe};
     if(f) body.html = await f.text();
     const {data:{session}}=await db.auth.getSession();
@@ -1361,6 +1422,9 @@ async function hardDeleteGame(g){
 async function renderGameIntoFrame(frame, src){
   if(!src){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; return; }
   frame.removeAttribute('srcdoc'); frame.src='about:blank';
+  // R2-билды (отдельный origin): прямой src + allow-same-origin, без srcdoc (иначе не найдутся .wasm/ассеты).
+  if(src.startsWith(GAMES_CDN+'/')){ frame.setAttribute('sandbox','allow-scripts allow-same-origin allow-pointer-lock'); frame.src=src; return; }
+  frame.setAttribute('sandbox','allow-scripts');
   try{
     const r = await fetch(src, {cache:'no-store'});
     if(!r.ok) throw new Error('HTTP '+r.status);

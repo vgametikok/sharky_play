@@ -1,0 +1,14 @@
+name = "sharky-games"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "BUILDS"
+bucket_name = "sharky-games"
+
+[vars]
+SUPABASE_URL = "https://safjqsofdrxdmvnfgvjf.supabase.co"
+SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhZmpxc29mZHJ4ZG12bmZndmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4Nzk2NDgsImV4cCI6MjA5NjQ1NTY0OH0.gcZ452loXUS0fmApZLr7PqvIYYZ8TqxIX2plgLNnoDo"
+# Who may embed games (frame-ancestors) and call the upload API (CORS)
+PLATFORM_ORIGINS = "https://vgametikok.github.io http://localhost:8080 http://localhost:3000 http://127.0.0.1:8080"
